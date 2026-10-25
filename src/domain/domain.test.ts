@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createContainer } from '@/di/container'
+import { localBackend } from "@/di/backends"
+import { createContainer } from "@/di/container"
 import { DEMO_ACCOUNT } from '@/data/auth/LocalAuthRepository'
 import { SEEDED_KEY } from '@/data/storage/localRepositories'
 import { buildAgenda } from './agenda/agenda'
@@ -42,7 +43,7 @@ class MemoryStorage implements Storage {
 function freshApp() {
   const storage = new MemoryStorage()
   storage.setItem(SEEDED_KEY, '1')
-  return createContainer(storage)
+  return createContainer(localBackend(storage))
 }
 
 const meeting = (over: Partial<Meeting> = {}): Meeting => ({
@@ -227,7 +228,7 @@ describe('use cases', () => {
 
   it('seeds a consistent demo practice', async () => {
     const storage = new MemoryStorage()
-    const app = createContainer(storage)
+    const app = createContainer(localBackend(storage))
     await app.ready
     const [cases, goals, followUps] = await Promise.all([
       app.crud.case.list(DEMO_ACCOUNT.id),

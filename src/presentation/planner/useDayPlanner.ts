@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { AgendaEntry } from '@/domain/agenda/agenda'
 import { buildDayPlan, clampBlock } from '@/domain/planner/dayPlan'
@@ -18,30 +17,39 @@ interface HistoryEntry {
 const MAX_HISTORY = 30
 
 /**
- * The planner's state: the day's agenda from the query cache, changed optimistically so drops land
- * instantly, persisted through the agenda use cases, with an undo stack of prior snapshots.
+ * The planner's state: the live agenda for the day plus optimistic overrides (so a drop lands on the
+ * frame it's released, before the database echoes it back), persisted through the agenda use cases,
+ * with an undo stack of prior snapshots.
  */
 export function useDayPlanner(date: ISODate) {
   const services = useServices()
   const userId = useUserId()
-  const client = useQueryClient()
-  const { data: entries, isLoading, queryKey } = useAgenda(date, date)
-  const plan = useMemo(() => buildDayPlan(entries), [entries])
+  const { data: base, isLoading } = useAgenda(date, date)
+  const [pending, setPending] = useState<Map<string, { entry: AgendaEntry; block: Block | null }>>(new Map())
   const history = useRef<HistoryEntry[]>([])
 
+  // Fresh data from the store supersedes any optimistic guess.
+  useEffect(() => setPending(new Map()), [base])
   useEffect(() => {
     history.current = []
   }, [date])
 
-  const refresh = useCallback(() => client.invalidateQueries(), [client])
+  const entries = useMemo(() => {
+    if (!pending.size) return base
+    const apply = (e: AgendaEntry, block: Block | null): AgendaEntry => ({ ...e, date, slot: block ?? undefined, duration: block?.duration ?? e.duration })
+    const merged = base.map((e) => (pending.has(e.key) ? apply(e, pending.get(e.key)!.block) : e))
+    for (const [key, p] of pending) if (!base.some((e) => e.key === key)) merged.push(apply(p.entry, p.block))
+    return merged
+  }, [base, pending, date])
+
+  const plan = useMemo(() => buildDayPlan(entries), [entries])
 
   const undo = useCallback(async () => {
     const entry = history.current.pop()
     if (!entry) return void toast('Nothing to undo')
     await services.agenda.restore(userId, entry.before)
-    await refresh()
     toast(`Undid: ${entry.label}`)
-  }, [services, userId, refresh])
+  }, [services, userId])
 
   const record = useCallback(
     (before: AnyEntity[], label: string) => {
@@ -51,51 +59,30 @@ export function useDayPlanner(date: ISODate) {
     [undo],
   )
 
-  /** Puts the change into the cached agenda immediately (adding the entry if it came from another day). */
-  const patchLocal = useCallback(
-    (entry: AgendaEntry, block: Block | null) =>
-      client.setQueryData<AgendaEntry[]>([...queryKey], (old = []) => {
-        const next = { ...entry, date, slot: block ?? undefined, duration: block?.duration ?? entry.duration }
-        return old.some((e) => e.key === entry.key) ? old.map((e) => (e.key === entry.key ? next : e)) : [...old, next]
-      }),
-    [client, queryKey, date],
-  )
-
-  const schedule = useCallback(
-    async (entry: AgendaEntry, block: Block) => {
-      const b = clampBlock(block)
-      patchLocal(entry, b)
+  const move = useCallback(
+    async (entry: AgendaEntry, block: Block | null) => {
+      setPending((p) => new Map(p).set(entry.key, { entry, block }))
       try {
-        const before = await services.agenda.schedule(userId, entry.ref, date, b)
-        record([before], `${entry.slot ? 'Moved' : 'Planned'} “${entry.title}” at ${formatClock(b.start)}`)
+        const before = await services.agenda.schedule(userId, entry.ref, date, block)
+        record([before], block ? `${entry.slot ? 'Moved' : 'Planned'} “${entry.title}” at ${formatClock(block.start)}` : `Took “${entry.title}” off the timeline`)
       } catch (e) {
+        setPending((p) => {
+          const next = new Map(p)
+          next.delete(entry.key)
+          return next
+        })
         toast.error(e instanceof Error ? e.message : 'Couldn’t move that')
-      } finally {
-        await refresh()
       }
     },
-    [patchLocal, services, userId, date, record, refresh],
+    [services, userId, date, record],
   )
 
-  const unschedule = useCallback(
-    async (entry: AgendaEntry) => {
-      patchLocal(entry, null)
-      try {
-        const before = await services.agenda.schedule(userId, entry.ref, date, null)
-        record([before], `Took “${entry.title}” off the timeline`)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Couldn’t unplan that')
-      } finally {
-        await refresh()
-      }
-    },
-    [patchLocal, services, userId, date, record, refresh],
-  )
+  const schedule = useCallback((entry: AgendaEntry, block: Block) => move(entry, clampBlock(block)), [move])
+  const unschedule = useCallback((entry: AgendaEntry) => move(entry, null), [move])
 
   const reflow = useCallback(
     async (from: number, gap: number, includeUnplanned: boolean) => {
       const before = await services.agenda.reflow(userId, date, { from, gap, includeUnplanned })
-      await refresh()
       if (before.length === 0) {
         toast(includeUnplanned ? 'Nothing more fits today' : 'Already in flow — nothing to move')
         return 0
@@ -103,7 +90,7 @@ export function useDayPlanner(date: ISODate) {
       record(before, includeUnplanned ? `Planned ${before.length} item${before.length > 1 ? 's' : ''}` : `Reflowed ${before.length} block${before.length > 1 ? 's' : ''}`)
       return before.length
     },
-    [services, userId, date, refresh, record],
+    [services, userId, date, record],
   )
 
   return { entries, plan, ready: !isLoading, schedule, unschedule, reflow, undo }

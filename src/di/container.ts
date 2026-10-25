@@ -1,17 +1,16 @@
-import { LocalAuthRepository, DEMO_ACCOUNT } from '@/data/auth/LocalAuthRepository'
 import { seedDemoData } from '@/data/seed/demoSeed'
-import { createLocalRepositories, SEEDED_KEY } from '@/data/storage/localRepositories'
-import { systemClock, uuidGenerator } from '@/data/storage/system'
 import { AgendaUseCases } from '@/domain/agenda/AgendaUseCases'
 import { GetCurrentUserUseCase } from '@/domain/auth/usecases/GetCurrentUserUseCase'
 import { LoginUseCase } from '@/domain/auth/usecases/LoginUseCase'
 import { LogoutUseCase } from '@/domain/auth/usecases/LogoutUseCase'
+import { RegisterUseCase, ResetPasswordUseCase } from '@/domain/auth/usecases/RegisterUseCase'
 import { CaseUseCases } from '@/domain/cases/CaseUseCases'
 import { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import { PlanUseCases } from '@/domain/plans/PlanUseCases'
 import { CrudUseCases } from '@/domain/shared/CrudUseCases'
 import { RecordOutcomeUseCase } from '@/domain/shared/RecordOutcomeUseCase'
-import type { DomainEnv } from '@/domain/shared/registry'
+import type { DomainEnv, EntityMap } from '@/domain/shared/registry'
+import type { EntityKind, ID } from '@/domain/shared/types'
 import {
   normalizeCase,
   normalizeFollowUp,
@@ -21,11 +20,11 @@ import {
   normalizePlan,
   normalizeTask,
 } from '@/domain/shared/validation'
+import type { Backend } from './backends'
 
 /** Composition root: the only place concrete data implementations are wired to domain use cases. */
-export function createContainer(storage: Storage = localStorage) {
-  const authRepository = new LocalAuthRepository(storage)
-  const env: DomainEnv = { repos: createLocalRepositories(storage), clock: systemClock, ids: uuidGenerator }
+export function createContainer(backend: Backend) {
+  const env: DomainEnv = { repos: backend.repos, clock: backend.clock, ids: backend.ids }
 
   const crud = {
     task: new CrudUseCases('task', env, normalizeTask),
@@ -43,10 +42,14 @@ export function createContainer(storage: Storage = localStorage) {
   const agenda = new AgendaUseCases(env, meetings)
 
   const container = {
+    backend: backend.kind,
     auth: {
-      login: new LoginUseCase(authRepository),
-      logout: new LogoutUseCase(authRepository),
-      getCurrentUser: new GetCurrentUserUseCase(authRepository),
+      login: new LoginUseCase(backend.auth),
+      register: new RegisterUseCase(backend.auth),
+      resetPassword: new ResetPasswordUseCase(backend.auth),
+      logout: new LogoutUseCase(backend.auth),
+      getCurrentUser: new GetCurrentUserUseCase(backend.auth),
+      onChange: (listener: Parameters<Backend['auth']['onChange']>[0]) => backend.auth.onChange(listener),
     },
     crud,
     meetings,
@@ -54,12 +57,20 @@ export function createContainer(storage: Storage = localStorage) {
     cases,
     outcomes,
     agenda,
+    /** Live views of each collection, updated on every change from any device. */
+    live: {
+      subscribe: <K extends EntityKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) =>
+        (backend.repos[kind].subscribe as (u: ID, l: (items: EntityMap[K][]) => void, e?: (e: Error) => void) => () => void)(userId, listener, onError),
+    },
+    /** Fills the given account with a realistic sample practice. */
+    seedSampleData: (userId: ID) => seedDemoData(container, userId, backend.clock.now()),
     /** Resolves once first-run demo data is in place. */
     ready: Promise.resolve(),
   }
 
-  if (storage.getItem(SEEDED_KEY) === null) {
-    container.ready = seedDemoData(container, DEMO_ACCOUNT.id, new Date()).then(() => storage.setItem(SEEDED_KEY, '1'))
+  const auto = backend.autoSeed
+  if (auto && !auto.isDone()) {
+    container.ready = seedDemoData(container, auto.userId, backend.clock.now()).then(auto.markDone)
   }
   return container
 }

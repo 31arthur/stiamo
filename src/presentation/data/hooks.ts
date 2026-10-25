@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { Container } from '@/di/container'
+import { buildAgenda } from '@/domain/agenda/agenda'
 import type { EntityMap } from '@/domain/shared/registry'
 import { toISODate } from '@/domain/shared/time'
 import type { EntityKind, ID, ISODate } from '@/domain/shared/types'
 import { useServices } from '@/presentation/app/services'
 import { useAuth } from '@/presentation/auth/AuthProvider'
+import { entitiesKey } from './live'
 
 export function useUserId(): ID {
   const { user } = useAuth()
@@ -16,28 +18,35 @@ export function useUserId(): ID {
 
 export const useToday = (): ISODate => toISODate(new Date())
 
-/** All records of one kind for the signed-in user. */
-export function useEntities<K extends EntityKind>(kind: K) {
-  const { crud } = useServices()
-  const userId = useUserId()
-  const query = useQuery({
-    queryKey: ['entities', kind, userId],
-    queryFn: () => crud[kind].list(userId) as Promise<EntityMap[K][]>,
-  })
-  return { data: query.data ?? (EMPTY as EntityMap[K][]), isLoading: query.isLoading }
-}
 const EMPTY: never[] = []
+
+/**
+ * All records of one kind for the signed-in user. Filled and kept current by LiveDataProvider's
+ * subscriptions, so this never fetches on its own.
+ */
+export function useEntities<K extends EntityKind>(kind: K) {
+  const userId = useUserId()
+  const query = useQuery<EntityMap[K][]>({ queryKey: entitiesKey(kind, userId), enabled: false })
+  return { data: query.data ?? (EMPTY as EntityMap[K][]), isLoading: query.data === undefined }
+}
 
 export function useEntity<K extends EntityKind>(kind: K, id: ID | undefined): EntityMap[K] | undefined {
   const { data } = useEntities(kind)
   return useMemo(() => data.find((e) => e.id === id), [data, id])
 }
 
+/** The unified agenda for a date range, derived live from the cached collections. */
 export function useAgenda(from: ISODate, to: ISODate) {
-  const { agenda } = useServices()
-  const userId = useUserId()
-  const query = useQuery({ queryKey: ['agenda', userId, from, to], queryFn: () => agenda.range(userId, from, to) })
-  return { data: query.data ?? EMPTY, isLoading: query.isLoading, queryKey: ['agenda', userId, from, to] as const }
+  const tasks = useEntities('task')
+  const meetings = useEntities('meeting')
+  const followUps = useEntities('followUp')
+  const hearings = useEntities('hearing')
+  const cases = useEntities('case')
+  const data = useMemo(
+    () => buildAgenda({ tasks: tasks.data, meetings: meetings.data, followUps: followUps.data, hearings: hearings.data, cases: cases.data }, from, to),
+    [tasks.data, meetings.data, followUps.data, hearings.data, cases.data, from, to],
+  )
+  return { data, isLoading: tasks.isLoading || meetings.isLoading || followUps.isLoading || hearings.isLoading }
 }
 
 interface ActionOptions<TResult> {
@@ -46,29 +55,24 @@ interface ActionOptions<TResult> {
 }
 
 /**
- * Wraps a use-case call as a mutation: errors become toasts and every success refreshes all reads
- * (everything is linked — a hearing write-up touches cases, plans, tasks and the agenda).
+ * Wraps a use-case call as a mutation; errors become toasts. No manual refresh is needed:
+ * live subscriptions deliver the change to every screen (and every device).
  */
-export function useAction<TArgs, TResult>(
-  run: (services: Container, userId: ID, args: TArgs) => Promise<TResult>,
-  options: ActionOptions<TResult> = {},
-) {
+export function useAction<TArgs, TResult>(run: (services: Container, userId: ID, args: TArgs) => Promise<TResult>, options: ActionOptions<TResult> = {}) {
   const services = useServices()
   const userId = useUserId()
-  const client = useQueryClient()
   const mutation = useMutation({
     mutationFn: (args: TArgs) => run(services, userId, args),
     onSuccess: (result) => {
       const message = typeof options.success === 'function' ? options.success(result) : options.success
       if (message) toast.success(message)
-      return client.invalidateQueries()
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Something went wrong'),
   })
   return { run: mutation.mutateAsync, pending: mutation.isPending }
 }
 
-/** Generic create/update/remove for a kind. */
+/** Generic create/update for a kind. */
 export function useSave<K extends EntityKind>(kind: K, success?: string) {
   return useAction<EntityMap[K] | Omit<EntityMap[K], 'id' | 'userId' | 'createdAt' | 'updatedAt'>, EntityMap[K]>(
     (s, userId, input) =>

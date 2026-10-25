@@ -8,6 +8,7 @@ import { ServicesProvider } from '@/presentation/app/services'
 import { WorkspaceFilterProvider } from '@/presentation/app/workspaceFilter'
 import { AuthProvider } from '@/presentation/auth/AuthProvider'
 import { ProtectedRoute } from '@/presentation/auth/ProtectedRoute'
+import { LiveDataProvider } from '@/presentation/data/live'
 import { AppShell } from '@/presentation/layout/AppShell'
 import { LoginPage } from '@/presentation/pages/LoginPage'
 
@@ -36,11 +37,13 @@ export default function App({ container }: { container: Container }) {
               <Route element={<ProtectedRoute />}>
                 <Route
                   element={
-                    <WorkspaceFilterProvider>
-                      <EditorHost>
-                        <AppShell />
-                      </EditorHost>
-                    </WorkspaceFilterProvider>
+                    <LiveDataProvider>
+                      <WorkspaceFilterProvider>
+                        <EditorHost>
+                          <AppShell />
+                        </EditorHost>
+                      </WorkspaceFilterProvider>
+                    </LiveDataProvider>
                   }
                 >
                   <Route index element={<Navigate to="/today" replace />} />
