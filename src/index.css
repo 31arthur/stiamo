@@ -203,3 +203,17 @@
     background-size: 100% var(--hour-height), 100% calc(var(--hour-height) / 4);
   }
 }
+/* Block editor: blend BlockNote into the page typography and spacing. */
+.stiamo-editor {
+  --bn-font-family: var(--font-sans);
+  --bn-colors-editor-background: transparent;
+}
+.stiamo-editor .bn-editor {
+  padding-inline: 0 0;
+  padding-left: 2.5rem;
+}
+@media (max-width: 640px) {
+  .stiamo-editor .bn-editor {
+    padding-left: 1.75rem;
+  }
+}

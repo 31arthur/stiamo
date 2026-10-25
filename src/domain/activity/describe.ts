@@ -143,7 +143,6 @@ export function diff<K extends EntityKind>(kind: K, before: Records[K], after: R
       add('Status', x.status, y.status)
       add('Due', x.dueDate, y.dueDate)
       add('Objective', x.objective, y.objective, text)
-      if (JSON.stringify(x.doc) !== JSON.stringify(y.doc)) changes.push({ field: 'Plan page', to: 'edited' })
       break
     }
     case 'goal': {
