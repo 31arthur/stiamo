@@ -47,14 +47,33 @@ export function FollowUpForm({ initial, onDone }: { initial: FollowUp | FollowUp
       <Field label="Workspace">
         <WorkspacePicker id="fu-ws" value={f.workspace} onChange={(workspace) => patch({ workspace })} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Due" htmlFor="fu-date">
-          <DateInput id="fu-date" value={f.due.date} onChange={(date) => patch({ due: { ...f.due, date: date ?? today } })} />
-        </Field>
-        <Field label="Time (optional)" htmlFor="fu-time">
-          <TimeInput id="fu-time" value={f.due.time} onChange={(time) => patch({ due: { ...f.due, time } })} />
-        </Field>
-      </div>
+      <Field label="When" hint="A follow-up can simply be pending — add a day, and a time only if it matters">
+        <Segmented
+          size="sm"
+          label="When"
+          value={!f.due ? 'none' : f.due.time === undefined ? 'day' : 'time'}
+          onChange={(v) =>
+            patch({ due: v === 'none' ? undefined : { date: f.due?.date ?? today, time: v === 'time' ? (f.due?.time ?? 10 * 60) : undefined } })
+          }
+          options={[
+            { value: 'none', label: 'Anytime' },
+            { value: 'day', label: 'On a day' },
+            { value: 'time', label: 'At a time' },
+          ]}
+        />
+      </Field>
+      {f.due && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Date" htmlFor="fu-date">
+            <DateInput id="fu-date" value={f.due.date} onChange={(date) => patch({ due: { ...f.due!, date: date ?? today } })} />
+          </Field>
+          {f.due.time !== undefined && (
+            <Field label="Time" htmlFor="fu-time">
+              <TimeInput id="fu-time" value={f.due.time} onChange={(time) => patch({ due: { ...f.due!, time } })} />
+            </Field>
+          )}
+        </div>
+      )}
       <Field label="Notes" htmlFor="fu-notes">
         <Textarea id="fu-notes" value={f.notes ?? ''} onChange={(e) => patch({ notes: e.target.value })} />
       </Field>

@@ -44,6 +44,8 @@ export const COLLECTIONS: Record<keyof Repositories, string> = {
   hearing: 'hearings',
   plan: 'plans',
   goal: 'goals',
+  link: 'links',
+  activity: 'activity',
 }
 
 export function firebaseBackend(config: FirebaseOptions): Backend {
@@ -60,6 +62,8 @@ export function firebaseBackend(config: FirebaseOptions): Backend {
       hearing: repo('hearing'),
       plan: repo('plan'),
       goal: repo('goal'),
+      link: repo('link'),
+      activity: repo('activity'),
     },
     clock: systemClock,
     ids: uuidGenerator,

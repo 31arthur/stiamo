@@ -26,13 +26,14 @@ export function FollowUpsPage() {
   const { matches } = useWorkspaceFilter()
   const { data: followUps } = useEntities('followUp')
 
-  const { overdue, todays, upcoming, logged } = useMemo(() => {
+  const { overdue, todays, upcoming, anytime, logged } = useMemo(() => {
     const mine = followUps.filter((f) => matches(f.workspace)).sort((a, b) => followUpKey(a).localeCompare(followUpKey(b)))
     const openOnes = mine.filter((f) => f.outcome.status === 'open')
     return {
-      overdue: openOnes.filter((f) => f.due.date < today),
-      todays: openOnes.filter((f) => f.due.date === today),
-      upcoming: openOnes.filter((f) => f.due.date > today),
+      overdue: openOnes.filter((f) => f.due && f.due.date < today),
+      todays: openOnes.filter((f) => f.due?.date === today),
+      upcoming: openOnes.filter((f) => f.due && f.due.date > today),
+      anytime: openOnes.filter((f) => !f.due),
       logged: mine
         .filter((f) => f.outcome.status !== 'open')
         .sort((a, b) => (b.outcome.recordedAt ?? '').localeCompare(a.outcome.recordedAt ?? ''))
@@ -64,6 +65,7 @@ export function FollowUpsPage() {
         </div>
         <div className="grid content-start gap-4">
           <FollowUpGroup title="Upcoming" items={upcoming} today={today} />
+          <FollowUpGroup title="Anytime" items={anytime} today={today} />
           <FollowUpGroup title="Recently logged" items={logged} today={today} />
         </div>
       </div>
@@ -94,7 +96,7 @@ export function FollowUpRow({ followUp: f, today }: { followUp: FollowUp; today:
   const { open } = useEditor()
   const Icon = CHANNEL_ICON[f.channel]
   const closed = f.outcome.status !== 'open'
-  const late = !closed && f.due.date < today
+  const late = !closed && !!f.due && f.due.date < today
 
   return (
     <motion.li
@@ -113,7 +115,7 @@ export function FollowUpRow({ followUp: f, today }: { followUp: FollowUp; today:
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
           <WorkspaceBadge ws={f.workspace} />
-          <span className={cn('tabular-nums', late && 'font-medium text-destructive')}>{friendlyDateTime(f.due.date, f.due.time, today)}</span>
+          <span className={cn('tabular-nums', late && 'font-medium text-destructive')}>{f.due ? friendlyDateTime(f.due.date, f.due.time, today) : 'Anytime'}</span>
           {f.contact && <span className="truncate">{f.contact}</span>}
           {f.trigger && (
             <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5">

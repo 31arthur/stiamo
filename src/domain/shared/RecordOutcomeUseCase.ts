@@ -1,3 +1,4 @@
+import type { ActivityLog } from '../activity/ActivityLog'
 import type { MeetingUseCases } from '../meetings/MeetingUseCases'
 import type { CrudUseCases } from './CrudUseCases'
 import { NotFoundError, required } from './errors'
@@ -12,7 +13,8 @@ export type OutcomeTarget = 'task' | 'followUp' | 'meeting' | 'hearing'
 export interface SpawnRequest {
   kind: 'task' | 'followUp'
   title: string
-  date: ISODate
+  /** Optional for follow-ups and tasks alike. */
+  date?: ISODate
   time?: Minutes
 }
 
@@ -26,6 +28,7 @@ export class RecordOutcomeUseCase {
     private readonly tasks: CrudUseCases<'task'>,
     private readonly followUps: CrudUseCases<'followUp'>,
     private readonly meetings: MeetingUseCases,
+    private readonly log?: ActivityLog,
   ) {}
 
   async execute(userId: ID, ref: { kind: OutcomeTarget; id: ID }, outcome: Outcome, spawn?: SpawnRequest): Promise<{ spawned?: EntityRef }> {
@@ -63,7 +66,9 @@ export class RecordOutcomeUseCase {
       }
       case 'hearing': {
         const h = await this.require(this.env.repos.hearing.get(userId, ref.id), 'Hearing')
-        await this.env.repos.hearing.save({ ...h, outcome: recorded, updatedAt: this.env.clock.now().toISOString() })
+        const updated = { ...h, outcome: recorded, updatedAt: this.env.clock.now().toISOString() }
+        await this.env.repos.hearing.save(updated)
+        await this.log?.changed(userId, 'hearing', h, updated)
         workspace = 'sb'
         break
       }
@@ -90,7 +95,7 @@ export class RecordOutcomeUseCase {
       channel: 'call',
       workspace,
       contact,
-      due: { date: spawn.date, time: spawn.time },
+      due: spawn.date ? { date: spawn.date, time: spawn.time } : undefined,
       duration: 15,
       subject: ref,
       notes: recorded.comment,

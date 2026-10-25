@@ -38,8 +38,10 @@ export function normalizeMeeting(m: Draft<Meeting>): Draft<Meeting> {
 }
 
 export function normalizeFollowUp(f: Draft<FollowUp>): Draft<FollowUp> {
-  checkDate(f.due.date, 'Due date')
-  checkMinute(f.due.time, 'Time')
+  if (f.due) {
+    checkDate(f.due.date, 'Due date')
+    checkMinute(f.due.time, 'Time')
+  }
   return { ...f, title: required(f.title, 'Title'), duration: positive(f.duration, 'Duration') }
 }
 

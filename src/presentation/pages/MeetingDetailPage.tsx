@@ -26,6 +26,7 @@ import { useSaveMeeting } from '@/presentation/forms/MeetingForm'
 import { MODE_ICON } from '@/presentation/meetings/MeetingCard'
 import { FollowUpRow } from '@/presentation/pages/FollowUpsPage'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
+import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
 
 export function MeetingDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -102,6 +103,9 @@ function MeetingDetail({ meeting: m }: { meeting: Meeting }) {
         <div className="grid content-start gap-4">
           <AgendaEditor meeting={m} onSave={(agenda) => save.run({ ...m, agenda })} />
           <MinutesEditor meeting={m} onSave={(minutes) => save.run({ ...m, minutes })} />
+          <Section title="Thread & history" description="Linked cases, plans, follow-ups and everything that happened">
+            <ThreadPanel root={{ kind: 'meeting', id: m.id }} />
+          </Section>
         </div>
         <div className="grid content-start gap-4">
           <OutcomeSection meeting={m} />
@@ -235,10 +239,10 @@ function AgendaEditor({ meeting: m, onSave }: { meeting: Meeting; onSave: (agend
 /** Agenda items record outcomes on the meeting itself; further actions become linked tasks/follow-ups. */
 function AgendaOutcome({ item, meeting: m, onChange }: { item: AgendaItem; meeting: Meeting; onChange: (o: AgendaItem['outcome']) => Promise<unknown> }) {
   const [open, setOpen] = useState(false)
-  const spawn = useAction<{ kind: 'task' | 'followUp'; title: string; date: string; time?: number }, unknown>((s, userId, a) =>
+  const spawn = useAction<{ kind: 'task' | 'followUp'; title: string; date?: string; time?: number }, unknown>((s, userId, a) =>
     a.kind === 'task'
       ? s.crud.task.create(userId, { title: a.title, notes: '', workspace: m.workspace, priority: 'normal', estimate: 30, dueDate: a.date, related: { kind: 'meeting', id: m.id }, outcome: OPEN })
-      : s.crud.followUp.create(userId, { title: a.title, channel: 'call', workspace: m.workspace, contact: m.contact || m.counterpart, due: { date: a.date, time: a.time }, duration: 15, subject: { kind: 'meeting', id: m.id }, outcome: OPEN }),
+      : s.crud.followUp.create(userId, { title: a.title, channel: 'call', workspace: m.workspace, contact: m.contact || m.counterpart, due: a.date ? { date: a.date, time: a.time } : undefined, duration: 15, subject: { kind: 'meeting', id: m.id }, outcome: OPEN }),
     { success: 'Further action created' },
   )
   const style = OUTCOME_STYLE[item.outcome.status]

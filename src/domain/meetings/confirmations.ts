@@ -57,7 +57,7 @@ export function syncConfirmations(meeting: Meeting, followUps: FollowUp[]): Conf
       })
     } else if (
       existing.outcome.status === 'open' &&
-      (existing.due.date !== due.date || existing.due.time !== due.time || existing.title !== title || existing.workspace !== meeting.workspace)
+      (existing.due?.date !== due.date || existing.due?.time !== due.time || existing.title !== title || existing.workspace !== meeting.workspace)
     ) {
       result.update.push({ ...existing, due, title, workspace: meeting.workspace, contact: meeting.contact || meeting.counterpart })
     }

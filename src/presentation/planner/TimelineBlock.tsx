@@ -43,6 +43,12 @@ export function TimelineBlock({ entry, column, columns, conflict, isPast, instan
   const closed = entry.outcome.status !== 'open'
   const compact = duration < 40
   const height = Math.max(duration * PX_PER_MINUTE - 3, 16)
+  const geometry = {
+    top: minuteToY(entry.slot.start),
+    height,
+    left: `calc(${(column / columns) * 100}% + 4px)`,
+    width: `calc(${100 / columns}% - 8px)`,
+  }
 
   function handleKeyDown(e: KeyboardEvent) {
     if (!entry.movable) return
@@ -91,15 +97,9 @@ export function TimelineBlock({ entry, column, columns, conflict, isPast, instan
       aria-label={`${entryLabel(entry)}: ${entry.title}, ${formatClock(entry.slot.start)} to ${formatClock(entry.slot.start + duration)}`}
       aria-roledescription="time block"
       aria-describedby="timeline-block-help"
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{
-        opacity: isDragging ? 0.35 : 1,
-        scale: 1,
-        top: minuteToY(entry.slot.start),
-        height,
-        left: `calc(${(column / columns) * 100}% + 4px)`,
-        width: `calc(${100 / columns}% - 8px)`,
-      }}
+      // Mount already in place; only later moves (drag, reflow, resize) animate.
+      initial={{ opacity: 0, scale: 0.96, ...geometry }}
+      animate={{ opacity: isDragging ? 0.35 : 1, scale: 1, ...geometry }}
       transition={instant || liveDuration !== null ? { duration: 0, opacity: { duration: 0.15 } } : { ...spring.soft, delay, opacity: { duration: 0.15 } }}
       className={cn(
         'group/block absolute z-10 flex touch-none overflow-hidden rounded-lg border border-black/5 text-left outline-none select-none dark:border-white/5',

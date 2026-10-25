@@ -20,7 +20,8 @@ export interface FollowUp extends Entity {
   workspace: WorkspaceId
   /** Name and/or number of who to reach. */
   contact?: string
-  due: { date: ISODate; time?: Minutes }
+  /** Optional: a follow-up can simply be pending, or due on a day, or at a specific time. */
+  due?: { date: ISODate; time?: Minutes }
   /** Time to block when placed on the planner. */
   duration: Minutes
   /** What this follow-up is about. */
@@ -31,4 +32,5 @@ export interface FollowUp extends Entity {
   outcome: Outcome
 }
 
-export const followUpKey = (f: FollowUp) => instantKey(f.due.date, f.due.time ?? 0)
+/** Sort key: dated follow-ups in time order, undated ones last. */
+export const followUpKey = (f: FollowUp) => (f.due ? instantKey(f.due.date, f.due.time ?? 0) : '9999')

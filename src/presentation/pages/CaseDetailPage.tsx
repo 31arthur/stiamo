@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { motion } from 'motion/react'
-import { AlertCircle, ArrowLeft, CalendarPlus, Gavel, ListChecks, NotebookPen, Pencil } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CalendarPlus, Gavel, Link2, ListChecks, NotebookPen, Pencil } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,7 +17,10 @@ import { friendlyDate, relativeDays } from '@/presentation/components/dates'
 import { Meta, Section } from '@/presentation/components/layout'
 import { OutcomeBadge } from '@/presentation/components/outcome'
 import { ProgressBar } from '@/presentation/components/progress'
-import { useAction, useEntities, useEntity, useSave, useToday } from '@/presentation/data/hooks'
+import { useAction, useEntities, useEntity, useGraph, useSave, useToday } from '@/presentation/data/hooks'
+import type { RecordInfo } from '@/presentation/components/records'
+import { LinkPicker } from '@/presentation/relations/LinkPicker'
+import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
 import { newHearing } from '@/presentation/forms/CaseForms'
 import { MeetingCard } from '@/presentation/meetings/MeetingCard'
 import { FollowUpRow } from '@/presentation/pages/FollowUpsPage'
@@ -50,7 +53,14 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
   const unrecorded = list.filter((h) => h.date < today && h.outcome.status === 'open')
   const casePlans = plans.filter((p) => p.caseId === c.id).sort((a, b) => (a.status === 'active' ? -1 : 1) - (b.status === 'active' ? -1 : 1))
   const isAboutCase = (r?: { kind: string; id: string }) => r?.kind === 'case' && r.id === c.id
-  const caseMeetings = meetings.filter((m) => isAboutCase(m.related) && m.slot.date >= today)
+  // Every meeting connected to the case — held about it or linked to it by hand.
+  const graph = useGraph()
+  const connectedIds = new Set(graph.neighbors({ kind: 'case', id: c.id }).filter((n) => n.ref.kind === 'meeting').map((n) => n.ref.id))
+  const caseMeetings = meetings
+    .filter((m) => connectedIds.has(m.id))
+    .sort((a, b) => (a.slot.date >= today ? 0 : 1) - (b.slot.date >= today ? 0 : 1) || a.slot.date.localeCompare(b.slot.date))
+  const [linking, setLinking] = useState(false)
+  const linkMeeting = useAction<RecordInfo, unknown>((s, userId, t) => s.links.link(userId, { kind: 'case', id: c.id }, t.ref, { a: c.title, b: t.title }), { success: 'Meeting linked to the case' })
   const caseFollowUps = followUps.filter((f) => isAboutCase(f.subject) && f.outcome.status === 'open')
   const caseTasks = tasks.filter((t) => isAboutCase(t.related) && !t.planId && t.outcome.status === 'open')
 
@@ -124,6 +134,9 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
               </ol>
             )}
           </Section>
+          <Section title="Thread & history" description="Everything connected to this case, and everything that happened">
+            <ThreadPanel root={{ kind: 'case', id: c.id }} />
+          </Section>
         </div>
 
         <div className="grid content-start gap-4">
@@ -157,15 +170,33 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
               )
             })}
           </Section>
-          {caseMeetings.length > 0 && (
-            <Section title="Upcoming appointments" bodyClassName="p-2">
+          <Section
+            title="Meetings & appointments"
+            description={`${caseMeetings.length} connected to this case`}
+            actions={
+              <Button variant="ghost" size="sm" onClick={() => setLinking(true)}>
+                <Link2 /> Link
+              </Button>
+            }
+            bodyClassName="p-2"
+          >
+            {caseMeetings.length === 0 ? (
+              <p className="p-2 text-sm text-muted-foreground">Link existing meetings, or set this case on an appointment.</p>
+            ) : (
               <ul className="grid gap-2">
                 {caseMeetings.map((m) => (
-                  <MeetingCard key={m.id} meeting={m} needsOutcome={false} confirmations={[]} />
+                  <MeetingCard key={m.id} meeting={m} needsOutcome={m.slot.date < today && m.outcome.status === 'open'} confirmations={[]} />
                 ))}
               </ul>
-            </Section>
-          )}
+            )}
+          </Section>
+          <LinkPicker
+            open={linking}
+            onOpenChange={setLinking}
+            from={{ kind: 'case', id: c.id }}
+            exclude={caseMeetings.map((m) => ({ kind: 'meeting' as const, id: m.id }))}
+            onPick={(t) => linkMeeting.run(t)}
+          />
           {(caseFollowUps.length > 0 || caseTasks.length > 0) && (
             <Section title="Open follow-ups & tasks" bodyClassName="p-1.5">
               <ul className="grid">

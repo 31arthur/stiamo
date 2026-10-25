@@ -91,7 +91,7 @@ export function buildAgenda(src: AgendaSources, from: ISODate, to: ISODate): Age
   }
 
   for (const f of src.followUps) {
-    if (!inRange(f.due.date)) continue
+    if (!f.due || !inRange(f.due.date)) continue
     const ref: EntityRef = { kind: 'followUp', id: f.id }
     entries.push({
       key: entryKey(ref),

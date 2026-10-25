@@ -33,4 +33,7 @@ export interface EntityRef {
   id: ID
 }
 
+/** Block-editor content, stored as-is (JSON). The domain treats it as opaque. */
+export type RichDoc = unknown[]
+
 export const sameRef = (a?: EntityRef, b?: EntityRef) => !!a && !!b && a.kind === b.kind && a.id === b.id

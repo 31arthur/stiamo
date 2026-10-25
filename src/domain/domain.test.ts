@@ -10,6 +10,7 @@ import type { Goal } from './goals/Goal'
 import { confirmationDue, syncConfirmations } from './meetings/confirmations'
 import type { Meeting } from './meetings/Meeting'
 import { buildDayPlan, packDay } from './planner/dayPlan'
+import { RelationGraph } from './relations/graph'
 import { planProgress } from './plans/ActionPlan'
 import { progressOf } from './shared/outcome'
 import type { Task } from './tasks/Task'
@@ -61,6 +62,12 @@ const meeting = (over: Partial<Meeting> = {}): Meeting => ({
   outcome: { status: 'open' },
   ...over,
 })
+
+/** A new-meeting draft (no system fields), as the UI would submit it. */
+const meetingDraft = (over: Partial<Meeting> = {}) => {
+  const { id: _id, userId: _u, createdAt: _c, updatedAt: _up, ...draft } = meeting(over)
+  return draft
+}
 
 const task = (id: string, over: Partial<Task> = {}): Task => ({
   id,
@@ -212,7 +219,7 @@ describe('use cases', () => {
 
   it('keeps confirmations in sync when an appointment is moved on the planner, and undo restores it', async () => {
     const app = freshApp()
-    const m = await app.meetings.save('u', { ...meeting(), id: undefined } as never)
+    const m = await app.meetings.save('u', meetingDraft())
     const before = await app.agenda.schedule('u', { kind: 'meeting', id: m.id }, '2026-10-29', { start: at(11), duration: 60 })
 
     const confirmations = (await app.crud.followUp.list('u')).filter((f) => f.subject?.id === m.id)
@@ -223,7 +230,7 @@ describe('use cases', () => {
     await app.agenda.restore('u', [before])
     expect((await app.crud.meeting.get('u', m.id))!.slot.date).toBe('2026-10-27')
     const restored = (await app.crud.followUp.list('u')).filter((f) => f.subject?.id === m.id)
-    expect(restored.map((f) => f.due.date).sort()).toEqual(['2026-10-26', '2026-10-27'])
+    expect(restored.map((f) => f.due!.date).sort()).toEqual(['2026-10-26', '2026-10-27'])
   })
 
   it('seeds a consistent demo practice', async () => {
@@ -238,5 +245,50 @@ describe('use cases', () => {
     expect(cases).toHaveLength(3)
     expect(goals).toHaveLength(3)
     expect(followUps.filter((f) => f.trigger).length).toBe(4) // two appointments × two confirmations
+    expect((await app.crud.link.list(DEMO_ACCOUNT.id)).length).toBeGreaterThan(0)
+  })
+})
+
+describe('relationships & history', () => {
+  it('builds a case thread and records its history', async () => {
+    const app = freshApp()
+    const c = await app.crud.case.create('u', { reference: 'CS 9', title: 'A v. B', client: 'A', court: 'HC', status: 'active', summary: '' })
+    const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-10-20', duration: 60, purpose: 'Evidence', outcome: { status: 'open' } })
+    const { plan, nextHearing } = await app.cases.recordHearing('u', h.id, {
+      summary: 'Part heard',
+      outcome: { status: 'partial' },
+      next: { date: '2026-11-03', purpose: 'Evidence (contd.)' },
+      plan: { title: 'Prep', objective: '', steps: ['Draft', 'File'] },
+    })
+    const m = await app.meetings.save('u', meetingDraft({ related: undefined }))
+    await app.links.link('u', { kind: 'case', id: c.id }, { kind: 'meeting', id: m.id }, { a: c.title, b: m.title })
+    const step = (await app.crud.task.list('u')).find((t) => t.title === 'Draft')!
+    const { spawned } = await app.outcomes.execute('u', { kind: 'task', id: step.id }, { status: 'done' }, { kind: 'followUp', title: 'Call registry' })
+
+    const [tasks, meetings, followUps, cases, hearings, plans, goals, links] = await Promise.all([
+      app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'),
+      app.crud.hearing.list('u'), app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.link.list('u'),
+    ])
+    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, links })
+    const thread = graph.thread({ kind: 'case', id: c.id })
+    const ids = new Set(thread.members.map((r) => r.id))
+    const expected = { hearing: h.id, next: nextHearing!.id, plan: plan!.id, step: step.id, spawned: spawned!.id, meeting: m.id }
+    expect(Object.entries(expected).filter(([, id]) => !ids.has(id)).map(([k]) => k)).toEqual([])
+    expect(thread.peers.map((p) => p.ref.id)).toEqual([m.id])
+    // A follow-up without any date is fine.
+    expect(followUps.find((f) => f.id === spawned!.id)!.due).toBeUndefined()
+
+    // The step's own thread climbs to its plan, the hearing and the case.
+    const up = graph.thread({ kind: 'task', id: step.id }).ancestors.map((a) => a.ref.kind)
+    expect(up).toEqual(expect.arrayContaining(['plan', 'hearing', 'case']))
+
+    const history = await app.crud.activity.list('u')
+    const forStep = history.filter((a) => a.ref.id === step.id).map((a) => a.action)
+    expect(forStep).toEqual(expect.arrayContaining(['created', 'outcome']))
+    expect(history.some((a) => a.ref.id === c.id && a.action === 'linked')).toBe(true)
+
+    // Deleting a record removes its links.
+    await app.meetings.remove('u', m.id)
+    expect(await app.crud.link.list('u')).toEqual([])
   })
 })
