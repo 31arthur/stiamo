@@ -19,6 +19,8 @@ import { Tabs } from '@/presentation/components/tabs'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
 import { useEntity, useRemove, useToday } from '@/presentation/data/hooks'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
+import { useAttachments } from '@/presentation/attachments/useAttachments'
 import type { EditorRequest } from './create'
 
 /** Side panel for a task or follow-up: its details, outcome, and the whole thread around it. */
@@ -102,6 +104,7 @@ function TaskBody({ task: t, onEdit, onDeleted }: { task: Task; onEdit: () => vo
                 </div>
               ),
             },
+            { id: 'files', label: <FilesLabel owner={{ kind: 'task', id: t.id }} />, content: <AttachmentsPanel owner={{ kind: 'task', id: t.id }} compact /> },
             { id: 'thread', label: 'Thread & history', content: <ThreadPanel root={{ kind: 'task', id: t.id }} /> },
           ]}
         />
@@ -153,10 +156,20 @@ function FollowUpBody({ followUp: f, onEdit, onDeleted }: { followUp: FollowUp; 
                 </div>
               ),
             },
+            { id: 'files', label: <FilesLabel owner={{ kind: 'followUp', id: f.id }} />, content: <AttachmentsPanel owner={{ kind: 'followUp', id: f.id }} compact /> },
             { id: 'thread', label: 'Thread & history', content: <ThreadPanel root={{ kind: 'followUp', id: f.id }} /> },
           ]}
         />
       </div>
     </>
+  )
+}
+
+function FilesLabel({ owner }: { owner: EntityRef }) {
+  const count = useAttachments(owner).length
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      Files {count > 0 && <span className="rounded-full bg-muted px-1.5 text-[10px] tabular-nums">{count}</span>}
+    </span>
   )
 }

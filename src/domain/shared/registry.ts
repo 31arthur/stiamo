@@ -6,6 +6,7 @@ import type { ActionPlan } from '../plans/ActionPlan'
 import type { Task } from '../tasks/Task'
 import type { Activity } from '../activity/Activity'
 import type { Link } from '../relations/Link'
+import type { Attachment } from '../attachments/Attachment'
 import type { Clock, IdGenerator, Repository } from './Repository'
 import type { EntityKind } from './types'
 
@@ -19,6 +20,7 @@ export interface EntityMap {
   goal: Goal
   link: Link
   activity: Activity
+  attachment: Attachment
 }
 
 /** Everything that's stored: records you work with, plus links and history. */

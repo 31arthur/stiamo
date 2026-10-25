@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { motion } from 'motion/react'
-import { AlertCircle, ArrowLeft, CalendarPlus, Gavel, Link2, ListChecks, NotebookPen, Pencil } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CalendarPlus, Gavel, Link2, ListChecks, NotebookPen, Paperclip, Pencil } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -21,6 +21,8 @@ import { useAction, useEntities, useEntity, useGraph, useSave, useToday } from '
 import type { RecordInfo } from '@/presentation/components/records'
 import { LinkPicker } from '@/presentation/relations/LinkPicker'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
+import { useAttachments } from '@/presentation/attachments/useAttachments'
 import { newHearing } from '@/presentation/forms/CaseForms'
 import { MeetingCard } from '@/presentation/meetings/MeetingCard'
 import { FollowUpRow } from '@/presentation/pages/FollowUpsPage'
@@ -170,6 +172,9 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
               )
             })}
           </Section>
+          <Section title="Case documents" description="Pleadings, orders, evidence, correspondence">
+            <AttachmentsPanel owner={{ kind: 'case', id: c.id }} compact />
+          </Section>
           <Section
             title="Meetings & appointments"
             description={`${caseMeetings.length} connected to this case`}
@@ -218,6 +223,8 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
 }
 
 function HearingItem({ hearing: h, today, onRecord, onEdit }: { hearing: Hearing; today: string; onRecord: () => void; onEdit: () => void }) {
+  const [showFiles, setShowFiles] = useState(false)
+  const fileCount = useAttachments({ kind: 'hearing', id: h.id }).length
   const past = instantKey(h.date) < instantKey(today)
   const upcoming = !past && h.outcome.status === 'open'
   return (
@@ -257,6 +264,10 @@ function HearingItem({ hearing: h, today, onRecord, onEdit }: { hearing: Hearing
         </div>
         {h.summary && <p className="mt-2 text-sm whitespace-pre-line text-muted-foreground">{h.summary}</p>}
         {h.outcome.comment && <p className="mt-1 text-xs text-muted-foreground italic">{h.outcome.comment}</p>}
+        <button type="button" onClick={() => setShowFiles(!showFiles)} className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <Paperclip className="size-3" /> {fileCount ? `${fileCount} file${fileCount === 1 ? '' : 's'}` : 'Attach order sheet / documents'}
+        </button>
+        {showFiles && <AttachmentsPanel owner={{ kind: 'hearing', id: h.id }} compact className="mt-2" />}
       </div>
     </motion.li>
   )
