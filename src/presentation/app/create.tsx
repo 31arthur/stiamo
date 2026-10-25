@@ -93,7 +93,10 @@ export function EditorHost({ children }: { children: ReactNode }) {
     [navigate, services, userId],
   )
 
-  const api = useMemo(() => ({ open: setRequest, openRef }), [openRef])
+  // Opening is deferred a frame: when triggered from a menu item, the menu's own close (and the
+  // tail of that pointer gesture) would otherwise land on the new dialog and dismiss it.
+  const open = useCallback((r: EditorRequest) => requestAnimationFrame(() => setRequest(r)), [])
+  const api = useMemo(() => ({ open, openRef }), [open, openRef])
   const editing = !!request?.value && 'createdAt' in request.value
   const [createTitle, editTitle, description] = request ? TITLES[request.kind] : ['', '', '']
 

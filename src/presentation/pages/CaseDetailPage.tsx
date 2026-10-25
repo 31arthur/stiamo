@@ -11,6 +11,7 @@ import type { Hearing, LegalCase } from '@/domain/cases/LegalCase'
 import { planProgress } from '@/domain/plans/ActionPlan'
 import { formatClock, instantKey } from '@/domain/shared/time'
 import { useEditor } from '@/presentation/app/create'
+import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { RecordHearingDialog } from '@/presentation/cases/RecordHearingDialog'
 import { ConfirmDelete } from '@/presentation/components/confirm'
 import { friendlyDate, relativeDays } from '@/presentation/components/dates'
@@ -40,6 +41,7 @@ export function CaseDetailPage() {
 }
 
 function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
+  useDocumentTitle(c.title)
   const today = useToday()
   const navigate = useNavigate()
   const editor = useEditor()
@@ -68,7 +70,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link to="/cases" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" /> Cases
         </Link>

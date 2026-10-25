@@ -22,6 +22,7 @@ import { ProgressBar } from '@/presentation/components/progress'
 import { RefChip } from '@/presentation/components/RefChip'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
 import { useAction, useEntities, useEntity, useToday } from '@/presentation/data/hooks'
+import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { useSaveMeeting } from '@/presentation/forms/MeetingForm'
 import { MODE_ICON } from '@/presentation/meetings/MeetingCard'
 import { FollowUpRow } from '@/presentation/pages/FollowUpsPage'
@@ -39,6 +40,7 @@ export function MeetingDetailPage() {
 }
 
 function MeetingDetail({ meeting: m }: { meeting: Meeting }) {
+  useDocumentTitle(m.title)
   const today = useToday()
   const navigate = useNavigate()
   const editor = useEditor()
@@ -51,7 +53,7 @@ function MeetingDetail({ meeting: m }: { meeting: Meeting }) {
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link to="/meetings" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" /> Meetings
         </Link>

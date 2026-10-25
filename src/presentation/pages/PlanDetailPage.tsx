@@ -18,6 +18,7 @@ import { Tabs } from '@/presentation/components/tabs'
 import { WS_STYLE, WorkspacePicker } from '@/presentation/components/workspace'
 import { useAction, useEntities, useEntity, useSave, useToday } from '@/presentation/data/hooks'
 import { easeOutExpo } from '@/presentation/motion/presets'
+import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
 
@@ -40,6 +41,7 @@ export function PlanDetailPage() {
 
 /** A plan as a page: properties, tracked steps, and a free-form block document below. */
 function PlanPage({ plan: p }: { plan: ActionPlan }) {
+  useDocumentTitle(p.title)
   const today = useToday()
   const navigate = useNavigate()
   const { data: tasks } = useEntities('task')

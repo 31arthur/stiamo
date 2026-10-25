@@ -4,7 +4,6 @@ import { CalendarDays, CalendarRange, Menu, Plus, Search, Sun } from 'lucide-rea
 import type { LucideIcon } from 'lucide-react'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { WORKSPACE_IDS, WORKSPACES } from '@/domain/shared/workspace'
@@ -12,11 +11,14 @@ import { useAttention } from '@/presentation/app/attention'
 import { useEditor } from '@/presentation/app/create'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
+import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { KIND_META } from '@/presentation/components/kinds'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 import { easeOutExpo, spring } from '@/presentation/motion/presets'
 import { AccountCard, SyncBanner } from './AccountCard'
 import { CommandPalette } from './CommandPalette'
+import { MobileTabBar } from './MobileTabBar'
+import { SECTION_TITLES, useDocumentTitle } from './useDocumentTitle'
 import { CREATE_MENU } from './createMenu'
 import { Logo } from './Logo'
 
@@ -35,6 +37,9 @@ export function AppShell() {
   const section = location.pathname.split('/')[1] ?? ''
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  // Detail pages (e.g. /cases/:id) name the tab after the record themselves.
+  const isDetail = section !== 'today' && location.pathname.split('/').filter(Boolean).length > 1
+  useDocumentTitle(isDetail ? undefined : (SECTION_TITLES[section] ?? ''))
 
   useEffect(() => setMobileOpen(false), [location.pathname])
 
@@ -50,7 +55,7 @@ export function AppShell() {
   }, [])
 
   return (
-    <div className="bg-ambient flex min-h-screen">
+    <div className="bg-ambient flex min-h-dvh">
       <aside className="glass sticky top-0 hidden h-screen w-64 shrink-0 border-r lg:block">
         <Sidebar onSearch={() => setPaletteOpen(true)} />
       </aside>
@@ -62,7 +67,7 @@ export function AppShell() {
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="glass sticky top-0 z-30 flex h-12 items-center gap-2 border-b px-3 lg:hidden">
+        <div className="glass sticky top-0 z-30 flex h-12 items-center gap-2 border-b px-3 pt-[env(safe-area-inset-top)] lg:hidden">
           <Button variant="ghost" size="icon-sm" aria-label="Open navigation" onClick={() => setMobileOpen(true)}>
             <Menu />
           </Button>
@@ -78,7 +83,7 @@ export function AppShell() {
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -4, filter: 'blur(4px)', transition: { duration: 0.12 } }}
             transition={{ duration: 0.4, ease: easeOutExpo }}
-            className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 py-6 sm:px-8"
+            className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-5 px-4 pt-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:gap-6 sm:px-8 sm:pt-6 lg:pb-8"
           >
             <SyncBanner />
             <Suspense fallback={null}>{outlet}</Suspense>
@@ -86,6 +91,7 @@ export function AppShell() {
         </AnimatePresence>
       </div>
 
+      <MobileTabBar />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   )
@@ -134,21 +140,16 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
       </div>
 
       <div className="flex gap-1.5">
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button className="flex-1 justify-start" size="sm" />}>
-            <Plus /> New
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-52">
-            {CREATE_MENU.map((c, i) => (
-              <div key={c.kind}>
-                {i === 4 && <DropdownMenuSeparator />}
-                <DropdownMenuItem onClick={() => open({ kind: c.kind } as never)}>
-                  <c.icon /> {c.label}
-                </DropdownMenuItem>
-              </div>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ActionMenu
+          trigger={<Button className="flex-1 justify-start" size="sm" />}
+          triggerContent={
+            <>
+              <Plus /> New
+            </>
+          }
+          contentProps={{ className: 'w-52' }}
+          items={CREATE_MENU.map((c, i) => ({ key: c.kind, label: c.label, icon: <c.icon />, separatorBefore: i === 4, onSelect: () => open({ kind: c.kind } as never) }))}
+        />
         <Button variant="outline" size="sm" onClick={onSearch} aria-label="Search and commands" className="gap-1 px-2 text-muted-foreground">
           <Search /> <kbd className="text-[10px]">Ctrl K</kbd>
         </Button>

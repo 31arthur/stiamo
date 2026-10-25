@@ -102,7 +102,7 @@ export function TimelineBlock({ entry, column, columns, conflict, isPast, instan
       animate={{ opacity: isDragging ? 0.35 : 1, scale: 1, ...geometry }}
       transition={instant || liveDuration !== null ? { duration: 0, opacity: { duration: 0.15 } } : { ...spring.soft, delay, opacity: { duration: 0.15 } }}
       className={cn(
-        'group/block absolute z-10 flex touch-none overflow-hidden rounded-lg border border-black/5 text-left outline-none select-none dark:border-white/5',
+        'group/block absolute z-10 flex touch-manipulation overflow-hidden rounded-lg border border-black/5 text-left outline-none select-none dark:border-white/5',
         'shadow-[0_1px_2px_oklch(0_0_0/6%)] transition-shadow hover:z-20 hover:shadow-float focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-ring',
         entry.movable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
         ws.soft,
@@ -146,7 +146,7 @@ export function TimelineBlock({ entry, column, columns, conflict, isPast, instan
         </span>
       )}
       {entry.movable && (
-        <div onPointerDown={startResize} aria-hidden className="absolute inset-x-0 bottom-0 flex h-2.5 cursor-ns-resize items-end justify-center opacity-0 group-hover/block:opacity-100">
+        <div onPointerDown={startResize} aria-hidden className="absolute inset-x-0 bottom-0 flex h-2.5 cursor-ns-resize touch-none items-end justify-center opacity-0 group-hover/block:opacity-100 pointer-coarse:h-4 pointer-coarse:opacity-100">
           <span className="mb-0.5 h-1 w-8 rounded-full bg-foreground/30" />
         </div>
       )}

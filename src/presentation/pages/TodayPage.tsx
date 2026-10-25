@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { addDays, format, isToday as isTodayDate, isValid, parseISO } from 'date-fns'
-import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragOverlay, MouseSensor, pointerWithin, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertCircle, CalendarClock, ChevronLeft, ChevronRight, Gavel, PhoneCall, Sparkles, SquareCheck, Users, Waves } from 'lucide-react'
@@ -95,7 +95,11 @@ function DayPlanner({ date }: { date: ISODate }) {
   const [addAt, setAddAt] = useState<number | null>(null)
   const [direction, setDirection] = useState(0)
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  // Mouse: drag after a small move. Touch: long-press to pick up, so the timeline still scrolls.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  )
 
   // Bring the useful part of the day into view when a day loads.
   useEffect(() => {

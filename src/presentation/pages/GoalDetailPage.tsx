@@ -19,6 +19,7 @@ import { Meta, Section } from '@/presentation/components/layout'
 import { ProgressBar, ProgressRing } from '@/presentation/components/progress'
 import { WS_STYLE, WorkspaceBadge } from '@/presentation/components/workspace'
 import { useAction, useEntities, useEntity, useRemove, useSave, useToday } from '@/presentation/data/hooks'
+import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { HEALTH_STYLE } from '@/presentation/goals/health'
 import { spring } from '@/presentation/motion/presets'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
@@ -36,6 +37,7 @@ export function GoalDetailPage() {
 const CONFIDENCE = ['', 'Won’t make it', 'Unlikely', 'Toss-up', 'Likely', 'Certain'] as const
 
 function GoalDetail({ goal: g }: { goal: Goal }) {
+  useDocumentTitle(g.title)
   const today = useToday()
   const navigate = useNavigate()
   const editor = useEditor()
@@ -54,7 +56,7 @@ function GoalDetail({ goal: g }: { goal: Goal }) {
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link to="/goals" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" /> Goals
         </Link>
@@ -127,7 +129,7 @@ function GoalDetail({ goal: g }: { goal: Goal }) {
           {g.keyResults.length === 0 && <p className="text-sm text-muted-foreground">Add measurable key results via Edit.</p>}
           {g.keyResults.map((kr) => (
             <div key={kr.id} className="grid gap-1.5">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-medium">{kr.label}</span>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon-xs" aria-label={`Decrease ${kr.label}`} onClick={() => setKr(kr, kr.current - 1)}>

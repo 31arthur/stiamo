@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion } from 'motion/react'
 import { Cloud, CloudOff, Database, HardDrive, LogOut, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ export function initialsOf(name: string | undefined) {
 export function AccountCard() {
   const { user, logout } = useAuth()
   const sync = useSync()
+  const [menuOpen, setMenuOpen] = useState(false)
   const seed = useAction<void, void>((s, userId) => s.seedSampleData(userId), { success: 'Sample practice added' })
 
   const status = sync.mode === 'local' ? { icon: HardDrive, label: 'This device only', tone: 'text-muted-foreground' } : sync.error ? { icon: CloudOff, label: 'Sync problem', tone: 'text-destructive' } : !sync.online ? { icon: CloudOff, label: 'Offline — will sync', tone: 'text-warning' } : { icon: Cloud, label: sync.ready ? 'Synced' : 'Connecting…', tone: 'text-success' }
@@ -41,17 +43,17 @@ export function AccountCard() {
           <div className="truncate font-medium">{user?.name}</div>
           <div className="truncate text-muted-foreground">{user?.email}</div>
         </div>
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Account menu" />}>
             <MoreHorizontal />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-56">
             <DropdownMenuLabel className="text-xs text-muted-foreground">{sync.mode === 'firebase' ? 'Cloud workspace' : 'Offline workspace'}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => seed.run()} disabled={seed.pending}>
+            <DropdownMenuItem closeOnClick={false} onClick={() => (setMenuOpen(false), seed.run())} disabled={seed.pending}>
               <Database /> Load sample practice
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={logout}>
+            <DropdownMenuItem variant="destructive" closeOnClick={false} onClick={() => (setMenuOpen(false), logout())}>
               <LogOut /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
