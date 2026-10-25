@@ -1,5 +1,6 @@
 import type { CalendarItem, NewCalendarItem } from '../entities/CalendarItem'
 import { ValidationError } from '@/domain/auth/errors'
+import { clampBlock } from '@/domain/planner/dayPlan'
 import { buildMonthGrid } from '../monthGrid'
 import type { MonthGrid } from '../monthGrid'
 import type { CalendarRepository } from '../repositories/CalendarRepository'
@@ -17,6 +18,10 @@ export class GetMonthViewUseCase {
     const items = await this.repository.listByRange(userId, grid.from, grid.to)
     const itemsByDate: Record<string, CalendarItem[]> = {}
     for (const item of items) (itemsByDate[item.date] ??= []).push(item)
+    // Timed items first, in time order; unplanned items keep insertion order after them.
+    for (const list of Object.values(itemsByDate)) {
+      list.sort((a, b) => (a.schedule?.start ?? Infinity) - (b.schedule?.start ?? Infinity))
+    }
     return { grid, itemsByDate }
   }
 }
@@ -35,6 +40,7 @@ export class AddCalendarItemUseCase {
       date: input.date,
       type: input.type,
       completed: false,
+      ...(input.schedule && { schedule: clampBlock(input.schedule) }),
     }
     await this.repository.add(item)
     return item

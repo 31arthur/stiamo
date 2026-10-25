@@ -12,7 +12,10 @@ export interface NavItem {
   match?: string[]
 }
 
-export const NAV_ITEMS: NavItem[] = [{ to: '/', label: 'Month' }]
+export const NAV_ITEMS: NavItem[] = [
+  { to: '/', label: 'Month' },
+  { to: '/day', label: 'Day planner' },
+]
 
 export function AppShell() {
   const { user, logout } = useAuth()

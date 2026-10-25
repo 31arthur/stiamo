@@ -1,8 +1,8 @@
 # Stiamo
 
-A calendar-first productivity app. The first release has a login screen (provider + protected routes) and a **monthly calendar** holding **tasks** and **follow-ups**.
+A calendar-first productivity app: a **monthly calendar** of tasks, follow-ups and meetings, and a **day planner** where you drag your day into shape and let it reflow.
 
-**Stack:** React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui, React Router, date-fns.
+**Stack:** React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui, Motion, dnd-kit, React Router, date-fns, Vitest.
 
 ## Getting started
 
@@ -18,6 +18,7 @@ Sign in with the demo account: `demo@stiamo.app` / `password123`.
 | `npm run dev` | Start the dev server |
 | `npm run build` | Type-check and build for production |
 | `npm run lint` | Lint with oxlint |
+| `npm test` | Run unit tests (Vitest) |
 
 ## Documentation
 

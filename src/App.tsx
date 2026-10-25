@@ -1,10 +1,11 @@
 import { MotionConfig } from 'motion/react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { container } from '@/di/container'
 import { AuthProvider } from '@/presentation/auth/AuthProvider'
 import { ProtectedRoute } from '@/presentation/auth/ProtectedRoute'
 import { AppShell } from '@/presentation/layout/AppShell'
 import { CalendarPage } from '@/presentation/pages/CalendarPage'
+import { DayPlannerPage } from '@/presentation/pages/DayPlannerPage'
 import { LoginPage } from '@/presentation/pages/LoginPage'
 
 export default function App() {
@@ -16,7 +17,8 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppShell />}>
-                <Route path="/" element={<CalendarPage />} />
+                <Route path="/" element={<CalendarRoute />} />
+                <Route path="/day/:date?" element={<DayPlannerPage />} />
               </Route>
             </Route>
           </Routes>
@@ -24,4 +26,9 @@ export default function App() {
       </AuthProvider>
     </MotionConfig>
   )
+}
+
+function CalendarRoute() {
+  const navigate = useNavigate()
+  return <CalendarPage onOpenDay={(date) => navigate(`/day/${date}`)} />
 }

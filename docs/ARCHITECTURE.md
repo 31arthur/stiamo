@@ -35,6 +35,26 @@ src/
 | Interface segregation | Small repository interfaces; `AuthProvider` receives only the `auth` use cases |
 | Dependency inversion | Use cases depend on repository interfaces; concrete classes are injected in the container |
 
+## Day planner
+
+- **Domain** (`domain/planner/dayPlan.ts`) is pure and unit-tested: `buildDayPlan` (scheduled/unplanned split, overlap detection, side-by-side column layout), `packDay` (the reflow algorithm), `clampBlock`, and slot snapping. Use cases in `domain/planner/usecases` persist through the same `CalendarRepository`.
+- A scheduled item carries `schedule: { start, duration }` in minutes from midnight; `pinned` controls whether reflow may move it.
+- **Presentation**: `useDayPlanner` holds the day's items, applies changes optimistically so drops never flicker, and keeps an undo history of item snapshots. Drag and drop uses `@dnd-kit/core` (pointer sensor, `pointerWithin` collisions, a `DragOverlay` ghost). Animation uses `motion`. Pixel/minute conversion lives in `presentation/planner/geometry.ts`.
+
+```
+domain/planner/dayPlan.ts            pure scheduling logic (+ dayPlan.test.ts)
+domain/planner/usecases/             GetDayItems, Schedule, Unschedule, TogglePin, Reflow, RestoreItems
+presentation/planner/useDayPlanner   state, optimistic updates, undo
+presentation/planner/Timeline        grid, now line, drop preview, click-to-add
+presentation/planner/TimelineBlock   draggable / resizable / keyboard block
+presentation/planner/UnplannedTray   droppable tray, quick add
+presentation/pages/DayPlannerPage    DnD orchestration, header, toasts
+```
+
+## Testing
+
+`npm test` runs Vitest. Domain logic is tested without React or storage.
+
 ## Auth flow
 
 `AuthProvider` restores the session on mount via `GetCurrentUserUseCase`, exposes `user`, `isLoading`, `login`, `logout` through `useAuth()`. `ProtectedRoute` redirects unauthenticated visitors to `/login` and returns them to the originally requested page after sign-in.

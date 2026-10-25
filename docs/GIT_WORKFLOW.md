@@ -15,3 +15,5 @@ The repository's default branch is `dev`; it acts as the trunk.
 | `feature/auth` | Login, `AuthProvider`, `ProtectedRoute` |
 | `feature/calendar` | Monthly calendar with tasks and follow-ups |
 | `docs/project-documentation` | These documents |
+| `feature/ui-motion-polish` | Motion system, app shell, animated login and calendar |
+| `feature/day-planner` | Day planner with drag and drop, reflow, undo; Vitest |
