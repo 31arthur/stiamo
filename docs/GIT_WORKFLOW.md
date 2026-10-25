@@ -17,3 +17,4 @@ The repository's default branch is `dev`; it acts as the trunk.
 | `docs/project-documentation` | These documents |
 | `feature/ui-motion-polish` | Motion system, app shell, animated login and calendar |
 | `feature/day-planner` | Day planner with drag and drop, reflow, undo; Vitest |
+| `feature/v2-practice-model` | Domain rebuilt: workspaces, outcomes, appointments/meetings, follow-ups, cases & hearings, action plans, goals; new shell and every screen |

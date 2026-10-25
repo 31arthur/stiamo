@@ -1,34 +1,69 @@
+import { lazy } from 'react'
 import { MotionConfig } from 'motion/react'
-import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
-import { container } from '@/di/container'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { Toaster } from 'sonner'
+import type { Container } from '@/di/container'
+import { EditorHost } from '@/presentation/app/create'
+import { ServicesProvider } from '@/presentation/app/services'
+import { WorkspaceFilterProvider } from '@/presentation/app/workspaceFilter'
 import { AuthProvider } from '@/presentation/auth/AuthProvider'
 import { ProtectedRoute } from '@/presentation/auth/ProtectedRoute'
 import { AppShell } from '@/presentation/layout/AppShell'
-import { CalendarPage } from '@/presentation/pages/CalendarPage'
-import { DayPlannerPage } from '@/presentation/pages/DayPlannerPage'
 import { LoginPage } from '@/presentation/pages/LoginPage'
 
-export default function App() {
+// Each section is its own chunk; the shell and login load first.
+const CalendarPage = lazy(() => import('@/presentation/pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
+const CaseDetailPage = lazy(() => import('@/presentation/pages/CaseDetailPage').then((m) => ({ default: m.CaseDetailPage })))
+const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
+const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
+const GoalDetailPage = lazy(() => import('@/presentation/pages/GoalDetailPage').then((m) => ({ default: m.GoalDetailPage })))
+const GoalsPage = lazy(() => import('@/presentation/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
+const MeetingDetailPage = lazy(() => import('@/presentation/pages/MeetingDetailPage').then((m) => ({ default: m.MeetingDetailPage })))
+const MeetingsPage = lazy(() => import('@/presentation/pages/MeetingsPage').then((m) => ({ default: m.MeetingsPage })))
+const PlanDetailPage = lazy(() => import('@/presentation/pages/PlanDetailPage').then((m) => ({ default: m.PlanDetailPage })))
+const PlansPage = lazy(() => import('@/presentation/pages/PlansPage').then((m) => ({ default: m.PlansPage })))
+const TasksPage = lazy(() => import('@/presentation/pages/TasksPage').then((m) => ({ default: m.TasksPage })))
+const TodayPage = lazy(() => import('@/presentation/pages/TodayPage').then((m) => ({ default: m.TodayPage })))
+
+export default function App({ container }: { container: Container }) {
   return (
     <MotionConfig reducedMotion="user">
-      <AuthProvider auth={container.auth}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AppShell />}>
-                <Route path="/" element={<CalendarRoute />} />
-                <Route path="/day/:date?" element={<DayPlannerPage />} />
+      <ServicesProvider container={container}>
+        <AuthProvider auth={container.auth}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route
+                  element={
+                    <WorkspaceFilterProvider>
+                      <EditorHost>
+                        <AppShell />
+                      </EditorHost>
+                    </WorkspaceFilterProvider>
+                  }
+                >
+                  <Route index element={<Navigate to="/today" replace />} />
+                  <Route path="/today/:date?" element={<TodayPage />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
+                  <Route path="/tasks" element={<TasksPage />} />
+                  <Route path="/follow-ups" element={<FollowUpsPage />} />
+                  <Route path="/meetings" element={<MeetingsPage />} />
+                  <Route path="/meetings/:id" element={<MeetingDetailPage />} />
+                  <Route path="/cases" element={<CasesPage />} />
+                  <Route path="/cases/:id" element={<CaseDetailPage />} />
+                  <Route path="/plans" element={<PlansPage />} />
+                  <Route path="/plans/:id" element={<PlanDetailPage />} />
+                  <Route path="/goals" element={<GoalsPage />} />
+                  <Route path="/goals/:id" element={<GoalDetailPage />} />
+                  <Route path="*" element={<Navigate to="/today" replace />} />
+                </Route>
               </Route>
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+        <Toaster position="bottom-center" theme="system" />
+      </ServicesProvider>
     </MotionConfig>
   )
-}
-
-function CalendarRoute() {
-  const navigate = useNavigate()
-  return <CalendarPage onOpenDay={(date) => navigate(`/day/${date}`)} />
 }
