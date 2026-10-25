@@ -2,7 +2,7 @@ import type { Credentials, User } from '../entities/User'
 import { ValidationError } from '../errors'
 import type { AuthRepository } from '../repositories/AuthRepository'
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export class LoginUseCase {
   constructor(private readonly authRepository: AuthRepository) {}

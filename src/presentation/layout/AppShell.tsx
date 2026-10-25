@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { CalendarDays, CalendarRange, LogOut, Menu, Plus, Search, Sun } from 'lucide-react'
+import { CalendarDays, CalendarRange, Menu, Plus, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -12,10 +12,10 @@ import { useAttention } from '@/presentation/app/attention'
 import { useEditor } from '@/presentation/app/create'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
-import { useAuth } from '@/presentation/auth/AuthProvider'
 import { KIND_META } from '@/presentation/components/kinds'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 import { easeOutExpo, spring } from '@/presentation/motion/presets'
+import { AccountCard, SyncBanner } from './AccountCard'
 import { CommandPalette } from './CommandPalette'
 import { CREATE_MENU } from './createMenu'
 import { Logo } from './Logo'
@@ -80,6 +80,7 @@ export function AppShell() {
             transition={{ duration: 0.4, ease: easeOutExpo }}
             className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 py-6 sm:px-8"
           >
+            <SyncBanner />
             <Suspense fallback={null}>{outlet}</Suspense>
           </motion.main>
         </AnimatePresence>
@@ -91,7 +92,6 @@ export function AppShell() {
 }
 
 function Sidebar({ onSearch }: { onSearch: () => void }) {
-  const { user, logout } = useAuth()
   const { open } = useEditor()
   const attention = useAttention()
   const { scope, setScope } = useWorkspaceFilter()
@@ -213,22 +213,7 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
         </div>
       </nav>
 
-      <div className="flex items-center gap-2 rounded-xl border bg-background/60 p-2">
-        <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-ws-sb to-ws-fsa text-xs font-semibold text-white">
-          {(user?.name ?? '?')
-            .split(' ')
-            .map((p) => p[0])
-            .join('')
-            .slice(0, 2)}
-        </div>
-        <div className="min-w-0 flex-1 text-xs leading-tight">
-          <div className="truncate font-medium">{user?.name}</div>
-          <div className="truncate text-muted-foreground">{user?.email}</div>
-        </div>
-        <Button variant="ghost" size="icon-sm" aria-label="Sign out" onClick={logout}>
-          <LogOut />
-        </Button>
-      </div>
+      <AccountCard />
     </div>
   )
 }
