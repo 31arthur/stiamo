@@ -164,6 +164,12 @@
   html {
     @apply font-sans antialiased;
     }
+  /* Grid items default to min-width:auto, so one long title can push a column off a phone screen.
+     Letting them shrink keeps every layout inside the viewport (utilities can still opt out). */
+  main .grid > *,
+  [role='dialog'] .grid > * {
+    min-width: 0;
+  }
   ::selection {
     background: color-mix(in oklch, var(--brand) 25%, transparent);
   }

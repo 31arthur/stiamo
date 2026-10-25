@@ -122,7 +122,7 @@ function TrayCard({ entry, onOpen, overdue }: { entry: AgendaEntry; onOpen: (e: 
       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
       transition={spring.soft}
       className={cn(
-        'group/card flex cursor-grab touch-none items-center gap-2 rounded-xl border bg-background px-2 py-1.5 outline-none select-none',
+        'group/card flex cursor-grab touch-manipulation items-center gap-2 rounded-xl border bg-background px-2 py-1.5 outline-none select-none',
         'transition-shadow hover:shadow-float focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing',
         isDragging && 'border-dashed shadow-none',
         overdue && 'border-destructive/30',

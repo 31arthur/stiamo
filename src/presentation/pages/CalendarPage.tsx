@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { cn } from '@/lib/utils'
 import type { AgendaEntry } from '@/domain/agenda/agenda'
 import { buildMonthGrid } from '@/domain/agenda/monthGrid'
@@ -20,6 +20,7 @@ import { WS_STYLE, WorkspaceDot } from '@/presentation/components/workspace'
 import { useAgenda, useToday } from '@/presentation/data/hooks'
 import { CREATE_MENU } from '@/presentation/layout/createMenu'
 import { easeOutExpo, spring } from '@/presentation/motion/presets'
+import { useIsCompact } from '@/presentation/layout/useMediaQuery'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const MAX_VISIBLE = 4
@@ -37,6 +38,8 @@ export function CalendarPage() {
   const grid = useMemo(() => buildMonthGrid(month), [month])
   const { data: entries } = useAgenda(grid.from, grid.to)
   const { matches } = useWorkspaceFilter()
+  const compact = useIsCompact()
+  const [selected, setSelected] = useState(today)
 
   const byDate = useMemo(() => {
     const map = new Map<ISODate, AgendaEntry[]>()
@@ -114,14 +117,71 @@ export function CalendarPage() {
             {grid.weeks.map((week) => (
               <div key={week[0]} className="grid grid-cols-7 border-b last:border-b-0">
                 {week.map((day) => (
-                  <DayCell key={day} day={day} month={month} today={today} entries={byDate.get(day) ?? []} />
+                  compact ? (
+                    <CompactDayCell key={day} day={day} month={month} today={today} selected={day === selected} entries={byDate.get(day) ?? []} onSelect={() => setSelected(day)} />
+                  ) : (
+                    <DayCell key={day} day={day} month={month} today={today} entries={byDate.get(day) ?? []} />
+                  )
                 ))}
               </div>
             ))}
           </motion.div>
         </AnimatePresence>
       </div>
+      {compact && <SelectedDay day={selected} today={today} entries={byDate.get(selected) ?? []} />}
     </>
+  )
+}
+
+/** Phone layout: a dot per item, colour = workspace; tap a day to list it below. */
+function CompactDayCell({ day, month, today, selected, entries, onSelect }: { day: ISODate; month: Date; today: ISODate; selected: boolean; entries: AgendaEntry[]; onSelect: () => void }) {
+  const date = parseISO(day)
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      aria-label={`${format(date, 'EEEE d MMMM')}, ${entries.length} item${entries.length === 1 ? '' : 's'}`}
+      className={cn('flex h-14 flex-col items-center gap-1 border-r pt-1.5 last:border-r-0', !isSameMonth(date, month) && 'text-muted-foreground/50')}
+    >
+      <span
+        className={cn(
+          'flex size-7 items-center justify-center rounded-full text-xs tabular-nums transition-colors',
+          day === today && 'font-semibold text-ws-sb',
+          selected && 'bg-foreground font-semibold text-background',
+        )}
+      >
+        {format(date, 'd')}
+      </span>
+      <span className="flex gap-0.5">
+        {entries.slice(0, 4).map((e) => (
+          <span key={e.key} className={cn('size-1.5 rounded-full', WS_STYLE[e.workspace].dot, e.outcome.status !== 'open' && 'opacity-40')} />
+        ))}
+      </span>
+    </button>
+  )
+}
+
+function SelectedDay({ day, today, entries }: { day: ISODate; today: ISODate; entries: AgendaEntry[] }) {
+  const navigate = useNavigate()
+  return (
+    <section className="grid gap-2">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl">{format(parseISO(day), day === today ? "'Today', d MMM" : 'EEEE d MMM')}</h2>
+        <Button variant="outline" size="sm" className="rounded-full" onClick={() => navigate(`/today/${day}`)}>
+          Plan day
+        </Button>
+      </div>
+      {entries.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Nothing on this day.</p>
+      ) : (
+        <ul className="grid gap-1.5">
+          {entries.map((e) => (
+            <EntryChip key={e.key} entry={e} large />
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -159,28 +219,20 @@ function DayCell({ day, month, today, entries }: { day: ISODate; month: Date; to
           {isToday && <motion.span className="absolute inset-0 rounded-full ring-2 ring-foreground/30" animate={{ scale: [1, 1.35], opacity: [0.8, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut' }} />}
           {format(date, 'd')}
         </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <motion.button
-                type="button"
-                whileHover={{ rotate: 90 }}
-                transition={spring.snappy}
-                aria-label={`Add on ${day}`}
-                className="flex size-6 items-center justify-center rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-foreground hover:text-background focus-visible:opacity-100 data-popup-open:opacity-100"
-              />
-            }
-          >
-            <Plus className="size-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            {CREATE_MENU.slice(0, 4).map((c) => (
-              <DropdownMenuItem key={c.kind} onClick={() => editor.open(presets(c.kind))}>
-                <c.icon /> {c.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ActionMenu
+          trigger={
+            <motion.button
+              type="button"
+              whileHover={{ rotate: 90 }}
+              transition={spring.snappy}
+              aria-label={`Add on ${day}`}
+              className="flex size-6 items-center justify-center rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-foreground hover:text-background focus-visible:opacity-100 data-popup-open:opacity-100"
+            />
+          }
+          triggerContent={<Plus className="size-3.5" />}
+          contentProps={{ align: 'end', className: 'w-44' }}
+          items={CREATE_MENU.slice(0, 4).map((c) => ({ key: c.kind, label: c.label, icon: <c.icon />, onSelect: () => editor.open(presets(c.kind)) }))}
+        />
       </div>
       <ul className="flex flex-col gap-0.5">
         {visible.map((e) => (
@@ -198,7 +250,7 @@ function DayCell({ day, month, today, entries }: { day: ISODate; month: Date; to
   )
 }
 
-function EntryChip({ entry: e }: { entry: AgendaEntry }) {
+function EntryChip({ entry: e, large = false }: { entry: AgendaEntry; large?: boolean }) {
   const { openRef } = useEditor()
   const Icon = entryIcon(e)
   const ws = WS_STYLE[e.workspace]
@@ -210,7 +262,7 @@ function EntryChip({ entry: e }: { entry: AgendaEntry }) {
         type="button"
         onClick={() => openRef(e.ref)}
         title={`${entryLabel(e)}: ${e.title}${e.subtitle ? ` — ${e.subtitle}` : ''}`}
-        className={cn('flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-left text-[11.5px] font-medium transition-[filter] hover:brightness-95', ws.soft, e.kind === 'hearing' && 'ring-1 ring-ws-sb/40')}
+        className={cn('flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-left text-[11.5px] font-medium transition-[filter] hover:brightness-95', large && 'gap-2 rounded-xl px-3 py-2.5 text-sm', ws.soft, e.kind === 'hearing' && 'ring-1 ring-ws-sb/40')}
       >
         {closed ? <StatusIcon className={cn('size-3 shrink-0', OUTCOME_STYLE[e.outcome.status].className)} /> : <Icon className={cn('size-3 shrink-0', ws.text)} />}
         {e.slot && <span className="shrink-0 text-foreground/50 tabular-nums">{formatClock(e.slot.start)}</span>}
