@@ -2,9 +2,19 @@ import type { CalendarItem } from '@/domain/calendar/entities/CalendarItem'
 import type { CalendarRepository } from '@/domain/calendar/repositories/CalendarRepository'
 
 const STORAGE_KEY = 'stiamo.calendar-items'
+const SEEDED_KEY = 'stiamo.seeded'
 
 export class LocalCalendarRepository implements CalendarRepository {
-  constructor(private readonly storage: Storage = localStorage) {}
+  /** `seed` items are added once per browser, alongside anything already stored. */
+  constructor(
+    private readonly storage: Storage = localStorage,
+    seed?: () => CalendarItem[],
+  ) {
+    if (seed && this.storage.getItem(SEEDED_KEY) === null) {
+      this.writeAll([...this.readAll(), ...seed()])
+      this.storage.setItem(SEEDED_KEY, '1')
+    }
+  }
 
   async listByRange(userId: string, from: string, to: string): Promise<CalendarItem[]> {
     return this.readAll().filter((i) => i.userId === userId && i.date >= from && i.date <= to)

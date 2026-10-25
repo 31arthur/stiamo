@@ -6,7 +6,7 @@ import { DATE_FORMAT } from '@/domain/calendar/monthGrid'
 import type { MonthView } from '@/domain/calendar/usecases/CalendarUseCases'
 import type { CalendarItem } from '@/domain/calendar/entities/CalendarItem'
 import { easeOutExpo, spring } from '@/presentation/motion/presets'
-import { ITEM_TYPE_STYLES } from './itemStyles'
+import { formatMinutes, ITEM_TYPE_STYLES } from './itemStyles'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MAX_VISIBLE_ITEMS = 3
@@ -196,6 +196,7 @@ function CalendarItemRow({ item, onToggle, onDelete }: CalendarItemRowProps) {
         </AnimatePresence>
       </motion.button>
       <span className="relative min-w-0 flex-1 truncate text-foreground/85">
+        {item.schedule && <span className="mr-1 opacity-60 tabular-nums">{formatMinutes(item.schedule.start)}</span>}
         {item.title}
         <motion.span
           className="absolute top-1/2 left-0 h-px bg-current"
