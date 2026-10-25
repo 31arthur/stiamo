@@ -21,6 +21,7 @@ import { WS_STYLE, WorkspaceBadge } from '@/presentation/components/workspace'
 import { useAction, useEntities, useEntity, useRemove, useSave, useToday } from '@/presentation/data/hooks'
 import { HEALTH_STYLE } from '@/presentation/goals/health'
 import { spring } from '@/presentation/motion/presets'
+import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
 
 export function GoalDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -201,6 +202,9 @@ function GoalDetail({ goal: g }: { goal: Goal }) {
       </div>
 
       <CheckIns goal={g} />
+      <Section title="Thread & history" description="Plans, steps and everything recorded under this goal">
+        <ThreadPanel root={{ kind: 'goal', id: g.id }} />
+      </Section>
     </>
   )
 }

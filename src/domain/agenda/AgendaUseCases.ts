@@ -1,3 +1,4 @@
+import type { ActivityLog } from '../activity/ActivityLog'
 import type { MeetingUseCases } from '../meetings/MeetingUseCases'
 import { packDay } from '../planner/dayPlan'
 import type { Block, PackOptions } from '../planner/dayPlan'
@@ -13,6 +14,7 @@ export class AgendaUseCases {
   constructor(
     private readonly env: DomainEnv,
     private readonly meetings: MeetingUseCases,
+    private readonly log?: ActivityLog,
   ) {}
 
   async range(userId: ID, from: ISODate, to: ISODate): Promise<AgendaEntry[]> {
@@ -37,24 +39,23 @@ export class AgendaUseCases {
       case 'task': {
         const t = await repos.task.get(userId, ref.id)
         if (!t) throw new NotFoundError('Task')
-        await repos.task.save({
+        const next = {
           ...t,
           slot: b ? { date, ...b } : undefined,
           // Keep it on this day when it's taken off the timeline.
           dueDate: b ? t.dueDate : (t.dueDate ?? date),
           updatedAt: now,
-        })
+        }
+        await repos.task.save(next)
+        await this.log?.changed(userId, 'task', t, next)
         return { kind: 'task', entity: t }
       }
       case 'followUp': {
         const f = await repos.followUp.get(userId, ref.id)
         if (!f) throw new NotFoundError('Follow-up')
-        await repos.followUp.save({
-          ...f,
-          due: { date, time: b?.start },
-          duration: b?.duration ?? f.duration,
-          updatedAt: now,
-        })
+        const next = { ...f, due: { date, time: b?.start }, duration: b?.duration ?? f.duration, updatedAt: now }
+        await repos.followUp.save(next)
+        await this.log?.changed(userId, 'followUp', f, next)
         return { kind: 'followUp', entity: f }
       }
       case 'meeting': {

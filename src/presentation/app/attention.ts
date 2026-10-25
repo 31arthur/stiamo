@@ -22,7 +22,7 @@ export function useAttention() {
     const nowMinute = minutesOf(new Date())
     const overdueTasks = tasks.filter((t) => matches(t.workspace) && isOverdue(t, today))
     const dueFollowUps = followUps
-      .filter((f) => matches(f.workspace) && f.outcome.status === 'open' && f.due.date <= today)
+      .filter((f) => matches(f.workspace) && f.outcome.status === 'open' && !!f.due && f.due.date <= today)
       .sort((a, b) => followUpKey(a).localeCompare(followUpKey(b)))
     const meetingsToRecord = meetings.filter(
       (m) =>

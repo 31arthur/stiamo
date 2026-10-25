@@ -3,7 +3,8 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { Container } from '@/di/container'
 import { buildAgenda } from '@/domain/agenda/agenda'
-import type { EntityMap } from '@/domain/shared/registry'
+import { RelationGraph } from '@/domain/relations/graph'
+import type { EntityMap, StoreKind } from '@/domain/shared/registry'
 import { toISODate } from '@/domain/shared/time'
 import type { EntityKind, ID, ISODate } from '@/domain/shared/types'
 import { useServices } from '@/presentation/app/services'
@@ -24,13 +25,13 @@ const EMPTY: never[] = []
  * All records of one kind for the signed-in user. Filled and kept current by LiveDataProvider's
  * subscriptions, so this never fetches on its own.
  */
-export function useEntities<K extends EntityKind>(kind: K) {
+export function useEntities<K extends StoreKind>(kind: K) {
   const userId = useUserId()
   const query = useQuery<EntityMap[K][]>({ queryKey: entitiesKey(kind, userId), enabled: false })
   return { data: query.data ?? (EMPTY as EntityMap[K][]), isLoading: query.data === undefined }
 }
 
-export function useEntity<K extends EntityKind>(kind: K, id: ID | undefined): EntityMap[K] | undefined {
+export function useEntity<K extends StoreKind>(kind: K, id: ID | undefined): EntityMap[K] | undefined {
   const { data } = useEntities(kind)
   return useMemo(() => data.find((e) => e.id === id), [data, id])
 }
@@ -83,4 +84,20 @@ export function useSave<K extends EntityKind>(kind: K, success?: string) {
 
 export function useRemove(kind: EntityKind, success = 'Deleted') {
   return useAction<ID, void>((s, userId, id) => s.crud[kind].remove(userId, id), { success })
+}
+
+/** The live relationship graph over every record and hand-made link. */
+export function useGraph() {
+  const tasks = useEntities('task').data
+  const meetings = useEntities('meeting').data
+  const followUps = useEntities('followUp').data
+  const cases = useEntities('case').data
+  const hearings = useEntities('hearing').data
+  const plans = useEntities('plan').data
+  const goals = useEntities('goal').data
+  const links = useEntities('link').data
+  return useMemo(
+    () => new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, links }),
+    [tasks, meetings, followUps, cases, hearings, plans, goals, links],
+  )
 }

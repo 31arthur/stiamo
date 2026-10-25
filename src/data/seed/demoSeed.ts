@@ -4,6 +4,7 @@ import type { PlanUseCases } from '@/domain/plans/PlanUseCases'
 import type { CrudUseCases } from '@/domain/shared/CrudUseCases'
 import type { Outcome } from '@/domain/shared/outcome'
 import type { RecordOutcomeUseCase } from '@/domain/shared/RecordOutcomeUseCase'
+import type { LinkUseCases } from '@/domain/relations/LinkUseCases'
 import { shiftDate, toISODate } from '@/domain/shared/time'
 import type { ID } from '@/domain/shared/types'
 
@@ -20,6 +21,7 @@ interface SeedTarget {
   plans: PlanUseCases
   cases: CaseUseCases
   outcomes: RecordOutcomeUseCase
+  links: LinkUseCases
 }
 
 const h = (hours: number, minutes = 0) => hours * 60 + minutes
@@ -170,6 +172,40 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     confirmations: [],
     outcome: open,
   })
+
+  // One case, many meetings: a conference held about it, and an earlier client call linked by hand.
+  await app.meetings.save(userId, {
+    kind: 'meeting',
+    title: 'Senior counsel conference — PW-2 strategy',
+    workspace: 'sb',
+    slot: { date: day(2), start: h(18), duration: 45 },
+    mode: 'virtual',
+    link: 'https://meet.example.com/mehta-counsel',
+    attendees: ['Sr. Adv. R. Iyer', 'Associate — Neha'],
+    purpose: 'Agree the line of cross-examination for the surveyor.',
+    agenda: [
+      { id: 'f1', topic: 'Weak points in P-9', minutes: 20, outcome: open },
+      { id: 'f2', topic: 'Admissibility argument', minutes: 20, outcome: open },
+    ],
+    confirmations: [],
+    related: { kind: 'case', id: mehta.id },
+    outcome: open,
+  })
+  const mehtaUpdate = await app.meetings.save(userId, {
+    kind: 'appointment',
+    title: 'Client update — Mehta Textiles',
+    workspace: 'sb',
+    slot: { date: day(-7), start: h(12), duration: 30 },
+    mode: 'phone',
+    counterpart: 'Mr. K. Mehta',
+    contact: '+91 98200 11223',
+    attendees: ['K. Mehta'],
+    agenda: [{ id: 'g1', topic: 'Explain evidence stage and timeline', outcome: open }],
+    confirmations: [],
+    outcome: open,
+  })
+  await app.outcomes.execute(userId, { kind: 'meeting', id: mehtaUpdate.id }, { status: 'done', comment: 'Client comfortable with timeline; wants monthly updates' })
+  await app.links.link(userId, { kind: 'case', id: mehta.id }, { kind: 'meeting', id: mehtaUpdate.id }, { a: mehta.title, b: mehtaUpdate.title }, 'Client call about the evidence stage')
 
   // A past meeting that still needs its outcome recorded.
   await app.meetings.save(userId, {

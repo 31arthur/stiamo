@@ -4,6 +4,8 @@ import type { Goal } from '../goals/Goal'
 import type { Meeting } from '../meetings/Meeting'
 import type { ActionPlan } from '../plans/ActionPlan'
 import type { Task } from '../tasks/Task'
+import type { Activity } from '../activity/Activity'
+import type { Link } from '../relations/Link'
 import type { Clock, IdGenerator, Repository } from './Repository'
 import type { EntityKind } from './types'
 
@@ -15,9 +17,14 @@ export interface EntityMap {
   hearing: Hearing
   plan: ActionPlan
   goal: Goal
+  link: Link
+  activity: Activity
 }
 
-export type Repositories = { [K in EntityKind]: Repository<EntityMap[K]> }
+/** Everything that's stored: records you work with, plus links and history. */
+export type StoreKind = keyof EntityMap
+
+export type Repositories = { [K in StoreKind]: Repository<EntityMap[K]> }
 
 /** A record together with its kind, e.g. for undo snapshots. */
 export type AnyEntity = { [K in EntityKind]: { kind: K; entity: EntityMap[K] } }[EntityKind]

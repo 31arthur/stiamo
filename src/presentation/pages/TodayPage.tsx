@@ -406,9 +406,9 @@ function AttentionRail({ className }: { className?: string }) {
           <OutcomeControl target="followUp" id={f.id} outcome={f.outcome} size="sm" />
           <div className="min-w-0">
             <span className="block truncate font-medium">{f.title}</span>
-            <span className={cn('block text-xs', f.due.date < today ? 'text-destructive' : 'text-muted-foreground')}>
-              {friendlyDate(f.due.date, today)}
-              {f.due.time !== undefined && ` ${formatClock(f.due.time)}`}
+            <span className={cn('block text-xs', f.due && f.due.date < today ? 'text-destructive' : 'text-muted-foreground')}>
+              {f.due ? friendlyDate(f.due.date, today) : 'Anytime'}
+              {f.due?.time !== undefined && ` ${formatClock(f.due.time)}`}
               {f.contact && ` · ${f.contact}`}
             </span>
           </div>

@@ -1,13 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { EntityKind } from '@/domain/shared/types'
+import type { StoreKind } from '@/domain/shared/registry'
 import { useServices } from '@/presentation/app/services'
 import { useAuth } from '@/presentation/auth/AuthProvider'
 
-export const LIVE_KINDS: EntityKind[] = ['task', 'meeting', 'followUp', 'case', 'hearing', 'plan', 'goal']
+export const LIVE_KINDS: StoreKind[] = ['task', 'meeting', 'followUp', 'case', 'hearing', 'plan', 'goal', 'link', 'activity']
 
-export const entitiesKey = (kind: EntityKind, userId: string) => ['entities', kind, userId] as const
+export const entitiesKey = (kind: StoreKind, userId: string) => ['entities', kind, userId] as const
 
 export interface SyncState {
   /** Every collection has delivered its first snapshot. */
@@ -34,7 +34,7 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return
-    const first = new Set<EntityKind>()
+    const first = new Set<StoreKind>()
     const unsubscribes = LIVE_KINDS.map((kind) =>
       services.live.subscribe(
         kind,

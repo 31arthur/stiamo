@@ -1,5 +1,5 @@
 import { progressOf } from '../shared/outcome'
-import type { Entity, EntityRef, ID, ISODate } from '../shared/types'
+import type { Entity, EntityRef, ID, ISODate, RichDoc } from '../shared/types'
 import type { WorkspaceId } from '../shared/workspace'
 import type { Task } from '../tasks/Task'
 
@@ -26,6 +26,8 @@ export interface ActionPlan extends Entity {
   origin?: EntityRef
   /** Set for plans that belong to a legal case. */
   caseId?: ID
+  /** The plan's page: rich blocks (text, headings, images, files, drawings…) from the block editor. */
+  doc?: RichDoc
 }
 
 export interface PlanProgress {

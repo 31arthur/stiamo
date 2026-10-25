@@ -23,6 +23,7 @@ import { newPlan, PlanForm } from '@/presentation/forms/PlanForm'
 import type { PlanDraft, PlanFormExtras } from '@/presentation/forms/PlanForm'
 import { newTask, TaskForm } from '@/presentation/forms/TaskForm'
 import type { TaskDraft } from '@/presentation/forms/TaskForm'
+import { RecordSheet } from './RecordSheet'
 import { useWorkspaceFilter } from './workspaceFilter'
 
 export type EditorRequest =
@@ -58,6 +59,7 @@ const Ctx = createContext<EditorApi | null>(null)
 /** Hosts every create/edit dialog so any screen (or the command palette) can open one. */
 export function EditorHost({ children }: { children: ReactNode }) {
   const [request, setRequest] = useState<EditorRequest | null>(null)
+  const [sheet, setSheet] = useState<EntityRef | null>(null)
   const navigate = useNavigate()
   const today = useToday()
   const userId = useUserId()
@@ -70,16 +72,9 @@ export function EditorHost({ children }: { children: ReactNode }) {
   const openRef = useCallback(
     async (ref: EntityRef) => {
       switch (ref.kind) {
-        case 'task': {
-          const value = await services.crud.task.get(userId, ref.id)
-          if (value) setRequest({ kind: 'task', value })
-          break
-        }
-        case 'followUp': {
-          const value = await services.crud.followUp.get(userId, ref.id)
-          if (value) setRequest({ kind: 'followUp', value })
-          break
-        }
+        case 'task':
+        case 'followUp':
+          return setSheet(ref)
         case 'hearing': {
           const h = await services.crud.hearing.get(userId, ref.id)
           if (h) navigate(`/cases/${h.caseId}`)
@@ -110,6 +105,7 @@ export function EditorHost({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={api}>
       {children}
+      <RecordSheet refTo={sheet} onClose={() => setSheet(null)} onEdit={setRequest} />
       <Dialog open={request !== null} onOpenChange={(o) => !o && close()}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
