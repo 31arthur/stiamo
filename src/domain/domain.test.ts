@@ -292,3 +292,20 @@ describe('relationships & history', () => {
     expect(await app.crud.link.list('u')).toEqual([])
   })
 })
+
+describe('attachments', () => {
+  it('attaches files to any record, records it in history, and enforces the size limit', async () => {
+    const app = freshApp()
+    const c = await app.crud.case.create('u', { reference: 'CS 10', title: 'X v. Y', client: 'X', court: 'HC', status: 'active', summary: '' })
+    const file = new File(['order text'], 'order.txt', { type: 'text/plain' })
+    const a = await app.attachments.attach('u', { kind: 'case', id: c.id }, c.title, file)
+    expect(a).toMatchObject({ name: 'order.txt', size: 10, owner: { kind: 'case', id: c.id } })
+    expect((await app.crud.activity.list('u')).some((x) => x.action === 'attached' && x.ref.id === c.id)).toBe(true)
+
+    const huge = { name: 'big.pdf', size: 30 * 1024 * 1024, type: 'application/pdf' } as File
+    await expect(app.attachments.attach('u', { kind: 'case', id: c.id }, c.title, huge)).rejects.toThrow(/limit/)
+
+    await app.attachments.remove('u', a, c.title)
+    expect(await app.crud.attachment.list('u')).toEqual([])
+  })
+})

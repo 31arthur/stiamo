@@ -22,6 +22,8 @@ import { useAction, useEntities, useEntity, useRemove, useSave, useToday } from 
 import { HEALTH_STYLE } from '@/presentation/goals/health'
 import { spring } from '@/presentation/motion/presets'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
+
 
 export function GoalDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -202,6 +204,9 @@ function GoalDetail({ goal: g }: { goal: Goal }) {
       </div>
 
       <CheckIns goal={g} />
+      <Section title="Files">
+        <AttachmentsPanel owner={{ kind: 'goal', id: g.id }} />
+      </Section>
       <Section title="Thread & history" description="Plans, steps and everything recorded under this goal">
         <ThreadPanel root={{ kind: 'goal', id: g.id }} />
       </Section>

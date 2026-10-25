@@ -27,6 +27,8 @@ import { MODE_ICON } from '@/presentation/meetings/MeetingCard'
 import { FollowUpRow } from '@/presentation/pages/FollowUpsPage'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
+
 
 export function MeetingDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -109,6 +111,9 @@ function MeetingDetail({ meeting: m }: { meeting: Meeting }) {
         </div>
         <div className="grid content-start gap-4">
           <OutcomeSection meeting={m} />
+          <Section title="Documents" description="Briefs, agendas, slides, recordings">
+            <AttachmentsPanel owner={{ kind: 'meeting', id: m.id }} compact />
+          </Section>
           <PrepSection meeting={m} />
           {(confirmations.length > 0 || m.kind === 'appointment') && (
             <Section title="Confirmations" description={m.confirmations.length ? 'Kept in sync with the appointment time' : 'Turn on in Edit to schedule calls'} bodyClassName="p-1.5">

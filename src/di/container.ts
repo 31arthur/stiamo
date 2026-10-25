@@ -5,6 +5,7 @@ import { LoginUseCase } from '@/domain/auth/usecases/LoginUseCase'
 import { LogoutUseCase } from '@/domain/auth/usecases/LogoutUseCase'
 import { RegisterUseCase, ResetPasswordUseCase } from '@/domain/auth/usecases/RegisterUseCase'
 import { ActivityLog } from '@/domain/activity/ActivityLog'
+import { AttachmentUseCases } from '@/domain/attachments/AttachmentUseCases'
 import { CaseUseCases } from '@/domain/cases/CaseUseCases'
 import { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import { PlanUseCases } from '@/domain/plans/PlanUseCases'
@@ -39,6 +40,7 @@ export function createContainer(backend: Backend) {
     goal: new CrudUseCases('goal', env, normalizeGoal, log),
     link: new CrudUseCases('link', env),
     activity: new CrudUseCases('activity', env),
+    attachment: new CrudUseCases('attachment', env),
   }
   const meetings = new MeetingUseCases(env, crud.meeting, crud.followUp)
   const plans = new PlanUseCases(env, crud.plan, crud.task, crud.goal)
@@ -46,6 +48,7 @@ export function createContainer(backend: Backend) {
   const outcomes = new RecordOutcomeUseCase(env, crud.task, crud.followUp, meetings, log)
   const agenda = new AgendaUseCases(env, meetings, log)
   const links = new LinkUseCases(env, log)
+  const attachments = new AttachmentUseCases(env, backend.files, log)
 
   const container = {
     backend: backend.kind,
@@ -64,6 +67,7 @@ export function createContainer(backend: Backend) {
     outcomes,
     agenda,
     links,
+    attachments,
     /** Live views of each collection, updated on every change from any device. */
     live: {
       subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) =>

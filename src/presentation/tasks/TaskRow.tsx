@@ -12,6 +12,8 @@ import { OutcomeControl, OutcomeNote } from '@/presentation/components/outcome'
 import { RefChip } from '@/presentation/components/RefChip'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
 import { spring } from '@/presentation/motion/presets'
+import { AttachmentBadge } from '@/presentation/attachments/AttachmentsPanel'
+import { useAttachmentCounts } from '@/presentation/attachments/useAttachments'
 
 const PRIORITY_TONE = { urgent: 'text-destructive', high: 'text-warning', normal: 'hidden', low: 'hidden' } as const
 
@@ -19,6 +21,7 @@ export function TaskRow({ task, today, showPlan = true }: { task: Task; today: I
   const { open } = useEditor()
   const overdue = isOverdue(task, today)
   const closed = task.outcome.status !== 'open'
+  const files = useAttachmentCounts()
 
   return (
     <motion.li
@@ -45,6 +48,7 @@ export function TaskRow({ task, today, showPlan = true }: { task: Task; today: I
             </span>
           )}
           <span className="tabular-nums">{formatDuration(task.estimate)}</span>
+          <AttachmentBadge count={files.get(`task:${task.id}`)} />
           {showPlan && task.planId && <RefChip refTo={{ kind: 'plan', id: task.planId }} />}
           {task.related && task.related.kind !== 'plan' && <RefChip refTo={task.related} />}
         </div>

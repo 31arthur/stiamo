@@ -19,6 +19,8 @@ import { WorkspaceBadge, WorkspaceDot } from '@/presentation/components/workspac
 import { useAction, useEntities, useEntity, useSave, useToday } from '@/presentation/data/hooks'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
+
 
 export function PlanDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -127,6 +129,9 @@ function PlanDetail({ plan: p }: { plan: ActionPlan }) {
                 ))}
               </div>
             )}
+          </Section>
+          <Section title="Files">
+            <AttachmentsPanel owner={{ kind: 'plan', id: p.id }} compact />
           </Section>
           <Section title="Thread & history">
             <ThreadPanel root={{ kind: 'plan', id: p.id }} />

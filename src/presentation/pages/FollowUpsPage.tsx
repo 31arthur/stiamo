@@ -17,6 +17,8 @@ import { RefChip } from '@/presentation/components/RefChip'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
 import { useEntities, useToday } from '@/presentation/data/hooks'
 import { spring } from '@/presentation/motion/presets'
+import { AttachmentBadge } from '@/presentation/attachments/AttachmentsPanel'
+import { useAttachmentCounts } from '@/presentation/attachments/useAttachments'
 
 export const CHANNEL_ICON: Record<FollowUpChannel, LucideIcon> = { call: Phone, message: MessageSquare, email: Mail, visit: MapPin }
 
@@ -96,6 +98,7 @@ export function FollowUpRow({ followUp: f, today }: { followUp: FollowUp; today:
   const { open } = useEditor()
   const Icon = CHANNEL_ICON[f.channel]
   const closed = f.outcome.status !== 'open'
+  const files = useAttachmentCounts()
   const late = !closed && !!f.due && f.due.date < today
 
   return (
@@ -123,6 +126,7 @@ export function FollowUpRow({ followUp: f, today }: { followUp: FollowUp; today:
             </span>
           )}
           <RefChip refTo={f.subject} />
+          <AttachmentBadge count={files.get(`followUp:${f.id}`)} />
         </div>
         {closed && (
           <div className="mt-1.5">

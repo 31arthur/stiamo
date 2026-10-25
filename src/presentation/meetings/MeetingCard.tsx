@@ -11,12 +11,15 @@ import { MEETING_KIND_ICON } from '@/presentation/components/kinds'
 import { OUTCOME_STYLE, OutcomeBadge } from '@/presentation/components/outcome'
 import { WS_STYLE, WorkspaceBadge } from '@/presentation/components/workspace'
 import { spring } from '@/presentation/motion/presets'
+import { AttachmentBadge } from '@/presentation/attachments/AttachmentsPanel'
+import { useAttachmentCounts } from '@/presentation/attachments/useAttachments'
 
 export const MODE_ICON: Record<MeetingMode, LucideIcon> = { in_person: MapPin, virtual: Video, phone: Phone }
 
 export function MeetingCard({ meeting: m, confirmations, needsOutcome }: { meeting: Meeting; confirmations: FollowUp[]; needsOutcome: boolean }) {
   const KindIcon = MEETING_KIND_ICON[m.kind]
   const ModeIcon = MODE_ICON[m.mode]
+  const files = useAttachmentCounts()
   const covered = m.agenda.filter((a) => a.outcome.status !== 'open').length
 
   return (
@@ -53,6 +56,7 @@ export function MeetingCard({ meeting: m, confirmations, needsOutcome }: { meeti
                 Agenda {covered}/{m.agenda.length}
               </span>
             )}
+            <AttachmentBadge count={files.get(`meeting:${m.id}`)} />
             {!m.prepPlanId && m.kind === 'meeting' && m.agenda.length === 0 && <span className="text-warning">No agenda yet</span>}
           </div>
           {confirmations.length > 0 && (
