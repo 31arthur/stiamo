@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { format, parseISO } from 'date-fns'
+import { motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 import type { CalendarItemType, NewCalendarItem } from '@/domain/calendar/entities/CalendarItem'
+import { spring } from '@/presentation/motion/presets'
+import { ITEM_TYPE_STYLES } from './itemStyles'
 
 interface AddItemDialogProps {
   /** yyyy-MM-dd of the day being added to; null keeps the dialog closed. */
@@ -14,15 +19,14 @@ interface AddItemDialogProps {
   onSubmit: (input: NewCalendarItem) => Promise<void>
 }
 
-const TYPES: { value: CalendarItemType; label: string }[] = [
-  { value: 'task', label: 'Task' },
-  { value: 'follow_up', label: 'Follow-up' },
-]
+const TYPES = Object.keys(ITEM_TYPE_STYLES) as CalendarItemType[]
 
 export function AddItemDialog({ date, onClose, onSubmit }: AddItemDialogProps) {
   return (
     <Dialog open={date !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>{date && <AddItemForm key={date} date={date} onClose={onClose} onSubmit={onSubmit} />}</DialogContent>
+      <DialogContent className="sm:max-w-md">
+        {date && <AddItemForm key={date} date={date} onClose={onClose} onSubmit={onSubmit} />}
+      </DialogContent>
     </Dialog>
   )
 }
@@ -44,36 +48,43 @@ function AddItemForm({ date, onClose, onSubmit }: Omit<AddItemDialogProps, 'date
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <form onSubmit={handleSubmit} className="grid gap-5">
       <DialogHeader>
-        <DialogTitle>Add to {date}</DialogTitle>
+        <DialogTitle className="font-display text-3xl font-normal tracking-tight">New entry</DialogTitle>
+        <DialogDescription>{format(parseISO(date), 'EEEE, d MMMM yyyy')}</DialogDescription>
       </DialogHeader>
-      <div className="flex gap-2" role="radiogroup" aria-label="Type">
-        {TYPES.map((t) => (
-          <Button
-            key={t.value}
-            type="button"
-            role="radio"
-            aria-checked={type === t.value}
-            variant={type === t.value ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setType(t.value)}
-          >
-            {t.label}
-          </Button>
-        ))}
+      <div className="flex w-fit gap-1 rounded-full bg-muted p-1" role="radiogroup" aria-label="Type">
+        {TYPES.map((t) => {
+          const selected = type === t
+          return (
+            <button
+              key={t}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setType(t)}
+              className={cn('relative rounded-full px-3.5 py-1 text-sm font-medium transition-colors', selected ? 'text-foreground' : 'text-muted-foreground')}
+            >
+              {selected && <motion.span layoutId="type-pill" transition={spring.snappy} className="absolute inset-0 rounded-full bg-background shadow-float" />}
+              <span className="relative flex items-center gap-1.5">
+                <span className={cn('size-2 rounded-full', ITEM_TYPE_STYLES[t].accent)} />
+                {ITEM_TYPE_STYLES[t].label}
+              </span>
+            </button>
+          )
+        })}
       </div>
       <div className="grid gap-2">
         <Label htmlFor="item-title">Title</Label>
-        <Input id="item-title" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+        <Input id="item-title" className="h-10" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="What needs doing?" />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="item-notes">Notes</Label>
-        <Textarea id="item-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <Textarea id="item-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
         <Button type="submit">Add</Button>
       </DialogFooter>
     </form>
