@@ -1,58 +1,66 @@
 # Features
 
-## Authentication
+Sign in with the demo account `demo@stiamo.app` / `password123`. A realistic practice is seeded on first run (three S&B cases with hearings, appointments with confirmations, FSA and media meetings, plans and goals). Clear the `stiamo.v2.*` keys in `localStorage` to start fresh.
 
-- Split-screen login with an animated brand panel; the form shakes on a failed sign-in.
-- `AuthProvider` context and `useAuth()` hook; `ProtectedRoute` guards every page except `/login`.
-- Backed by a demo account in `LocalAuthRepository` (`demo@stiamo.app` / `password123`). This is a placeholder, not real security.
+## Everywhere
 
-## Monthly calendar (`/`)
+- **Sidebar** grouped by intent: Plan (Today, Calendar) · Execute (Tasks, Follow-ups, Meetings) · S&B Legal (Cases) · Direction (Action plans, Goals). Badges show what's slipping: overdue tasks, due follow-ups, meetings without outcomes, hearings not written up.
+- **Workspace lens** — All, Personal, S&B Consultants, FSA, Media. Filters every list, the calendar and the planner; remembered per browser.
+- **New ▾** and **Ctrl/⌘ K** command palette: create anything, jump to any page, search cases, meetings, plans, goals and tasks.
+- **Outcome control** on every task, follow-up, meeting, hearing and agenda item: one click to mark done, or record partly done / not done / cancelled with a comment and a further action, optionally created right away as a linked task or follow-up.
+- **Linked chips** show where things came from and open them (plan, case, appointment, hearing…).
 
-- Sunday-first month grid with direction-aware slide/blur transitions between months.
-- **Tasks** (indigo), **follow-ups** (amber) and **meetings** (teal); timed items show their start time and sort first.
-- Add from the + on any day; complete (animated check + strike-through) or delete inline.
-- Month summary: counts per type and done/total.
-- Click a day number (or "+N more") to open that day in the planner.
+## Today — day planner (`/today`, `/today/yyyy-MM-dd`)
 
-## Day planner (`/day`, `/day/yyyy-MM-dd`)
-
-The planner turns a day's items into a timeline you can shape by hand.
+One timeline for tasks, appointments, meetings, follow-ups and court hearings, coloured by workspace.
 
 | Interaction | What happens |
 | --- | --- |
-| Drag a card from **Unplanned** onto the timeline | It's scheduled; a live preview shows the exact slot and time range before you drop |
-| Drag a block | Moves it, snapping to 15 minutes |
-| Drag a block onto **Unplanned** | Unschedules it |
-| Drag a block's bottom edge | Resizes it with a live duration badge |
-| Click empty time | Opens "New entry" pre-set to that time, with duration chips |
-| **Reflow from now** (`R`) | Packs unpinned blocks back-to-back from now (or 09:00 on other days) in their current order, flowing around pinned meetings and finished/completed blocks |
-| **Auto-plan** | Same as reflow, then fits every unplanned item into the remaining free time |
-| **Buffer** 0 / 5 / 10m | Breathing room inserted between packed blocks (remembered per browser) |
-| Pin (hover icon or `P`) | Pinned blocks never move during reflow. Meetings are pinned by default |
-| Undo (toast button or `Ctrl/⌘+Z`) | Reverts the last move, resize, plan, pin or reflow |
-| Keyboard on a focused block | `↑/↓` move 15m (`Alt` = 1h), `Shift+↑/↓` resize, `Enter` complete, `Delete` unplan |
+| Drag from **Unplanned** onto the timeline | Schedules it; a live preview shows the exact slot first |
+| Drag an **overdue** task (from earlier days) in | Pulls it into this day |
+| Drag a block / its bottom edge | Moves / resizes on a 15-minute grid. Moving an appointment re-times its confirmation calls |
+| Drag a block back to **Unplanned** | Takes it off the timeline (meetings always keep a time) |
+| Click empty time | Add a task, follow-up, appointment or meeting at that time |
+| **Reflow from now** (`R`) | Packs flexible blocks back-to-back in their current order, flowing around pinned ones (meetings, hearings, confirmation calls) |
+| **Auto-plan** | Same, then fits unplanned work into the free time |
+| **Buffer** 0/5/10m | Space between packed blocks |
+| Undo (toast button or Ctrl/⌘ Z) | Reverts the last move, resize, plan or reflow |
+| Keyboard on a block | ↑/↓ move (Alt = 1h), Shift+↑/↓ resize, Enter opens, Delete unplans |
 
-Also on the page:
+Plus: the now-line, **Now & Next**, overlap detection, and a **Needs attention** rail (hearings to write up, meetings to record, follow-ups due) you can act on while planning.
 
-- **Now line** with a pulsing marker; the elapsed part of the day is shaded and the timeline scrolls to the current time.
-- **Now & Next** card: the current block with a progress bar and time left, or how long you're free, plus what's next.
-- **Overlap detection**: overlapping blocks sit side by side, get a red ring, and the header counts them.
-- Header stats: progress ring (done/total), planned time, time still ahead.
-- Quick add in the tray (click the dot to cycle task → follow-up → meeting).
+## Calendar (`/calendar`)
 
-## Motion & accessibility
+Monday-first month view of the unified agenda, coloured by workspace with kind icons and times; hearings are outlined. Click an entry to open it, a date to plan that day, + to create on that date.
 
-- One motion language (`presentation/motion/presets.ts`): fast springs and blur-fades.
-- `MotionConfig reducedMotion="user"` respects the OS reduced-motion setting.
-- Dark mode follows the OS colour scheme.
-- Timeline blocks are focusable, labelled with their times, and fully keyboard operable.
+## Tasks (`/tasks`)
 
-## Demo data
+Grouped by date (Overdue, Today, Next 7 days, Later, No date) or by workspace; filter by open / outcome recorded. Priority flags, plan and source chips, the recorded outcome with its comment and further action. Quick add for today.
 
-On first load in a browser, a lived-in day is seeded for the demo account (meetings, tasks, follow-ups around today). Clear the `stiamo.*` keys in `localStorage` to start fresh.
+## Follow-ups (`/follow-ups`)
+
+Overdue, Today, Upcoming and Recently logged. Follow-up wording for outcomes (Reached, Left message, No answer). Confirmation follow-ups are labelled and link to their appointment.
+
+## Meetings & appointments (`/meetings`, `/meetings/:id`)
+
+- List by Upcoming / **Needs outcome** / Past, filter by kind; cards show confirmation status and agenda coverage.
+- Detail page: **agenda builder** (drag to reorder, owner, minutes, notes, per-item outcome with further actions, warning when the agenda overruns the slot), **minutes**, **outcome**, **preparation plan** (one click from the agenda), **confirmations**, attendees.
+
+## Cases (`/cases`, `/cases/:id`) — S&B Consultants
+
+- Register with next hearing (relative date), last hearing result, plan progress, and a red flag for hearings not yet written up.
+- Detail: case summary (autosaves), **hearing timeline**, **Record hearing** (summary → result → next listing → action plan with steps → stage/status, all in one dialog), action plans with inline steps and outcomes, upcoming appointments, open follow-ups and tasks for the matter.
+
+## Action plans (`/plans`, `/plans/:id`)
+
+Cards with progress, due date, origin, case and linked goals. Detail: reorderable steps with outcomes, outcome breakdown, the further actions noted on steps, and one-click linking to any number of goals.
+
+## Goals (`/goals`, `/goals/:id`)
+
+Portfolio counts by health and cards with a progress ring, **progress vs time** bar, and key results. Detail: health breakdown (key results / plans / time elapsed), key results with +/- updates, linked plans (link existing, create new, unlink), check-ins with confidence 1–5, mark achieved.
 
 ## Known limitations
 
-- Data is local to the browser; there is no backend.
-- No recurring events, time zones, or multi-day blocks yet.
-- Drag and drop is pointer-based. Keyboard users move blocks with the arrow keys instead of dragging.
+- Data lives in the browser; there is no backend or multi-device sync yet.
+- No recurring events, reminders/notifications or time zones.
+- Drag and drop is pointer-based; keyboard users move blocks with arrow keys.
