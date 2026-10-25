@@ -1,23 +1,32 @@
 import { useCallback, useEffect, useState } from 'react'
-import { addMonths, startOfMonth } from 'date-fns'
+import { addMonths, format, startOfMonth } from 'date-fns'
 import type { Container } from '@/di/container'
 import type { CalendarItem, NewCalendarItem } from '@/domain/calendar/entities/CalendarItem'
 import type { MonthView } from '@/domain/calendar/usecases/CalendarUseCases'
 
+const monthKey = (d: Date) => format(d, 'yyyy-MM')
+
 export function useMonthCalendar(calendar: Container['calendar'], userId: string) {
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
-  const [view, setView] = useState<MonthView | null>(null)
+  const [direction, setDirection] = useState(0)
+  const [loaded, setLoaded] = useState<{ key: string; view: MonthView } | null>(null)
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
     let active = true
-    calendar.getMonthView.execute(userId, month).then((v) => active && setView(v))
+    calendar.getMonthView.execute(userId, month).then((view) => active && setLoaded({ key: monthKey(month), view }))
     return () => {
       active = false
     }
   }, [calendar, userId, month, version])
 
   const refresh = useCallback(() => setVersion((v) => v + 1), [])
+
+  const goTo = (target: Date) => {
+    const next = startOfMonth(target)
+    setDirection(Math.sign(next.getTime() - month.getTime()))
+    setMonth(next)
+  }
 
   const addItem = useCallback(
     async (input: NewCalendarItem) => {
@@ -45,10 +54,12 @@ export function useMonthCalendar(calendar: Container['calendar'], userId: string
 
   return {
     month,
-    view,
-    goToPrevious: () => setMonth((m) => addMonths(m, -1)),
-    goToNext: () => setMonth((m) => addMonths(m, 1)),
-    goToToday: () => setMonth(startOfMonth(new Date())),
+    direction,
+    // Only expose data that belongs to the month on screen, so transitions never flash stale weeks.
+    view: loaded?.key === monthKey(month) ? loaded.view : null,
+    goToPrevious: () => goTo(addMonths(month, -1)),
+    goToNext: () => goTo(addMonths(month, 1)),
+    goToToday: () => goTo(new Date()),
     addItem,
     toggleItem,
     deleteItem,
