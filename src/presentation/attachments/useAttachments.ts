@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { Attachment } from '@/domain/attachments/Attachment'
+
+/** Drawing scenes are internal to the plan page; their PNG previews are what people see. */
+const SCENE_MIME = 'application/vnd.excalidraw+json'
 import type { EntityRef } from '@/domain/shared/types'
 import { useServices } from '@/presentation/app/services'
 import { useEntities } from '@/presentation/data/hooks'
@@ -8,7 +11,7 @@ import { useEntities } from '@/presentation/data/hooks'
 export function useAttachments(owner: EntityRef | undefined): Attachment[] {
   const { data } = useEntities('attachment')
   return useMemo(
-    () => (owner ? data.filter((a) => a.owner.kind === owner.kind && a.owner.id === owner.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)) : []),
+    () => (owner ? data.filter((a) => a.owner.kind === owner.kind && a.owner.id === owner.id && a.mime !== SCENE_MIME).sort((a, b) => b.createdAt.localeCompare(a.createdAt)) : []),
     [data, owner],
   )
 }
@@ -18,7 +21,7 @@ export function useAttachmentCounts(): Map<string, number> {
   const { data } = useEntities('attachment')
   return useMemo(() => {
     const m = new Map<string, number>()
-    for (const a of data) m.set(`${a.owner.kind}:${a.owner.id}`, (m.get(`${a.owner.kind}:${a.owner.id}`) ?? 0) + 1)
+    for (const a of data) if (a.mime !== SCENE_MIME) m.set(`${a.owner.kind}:${a.owner.id}`, (m.get(`${a.owner.kind}:${a.owner.id}`) ?? 0) + 1)
     return m
   }, [data])
 }

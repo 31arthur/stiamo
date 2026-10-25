@@ -27,7 +27,13 @@ const EMPTY: never[] = []
  */
 export function useEntities<K extends StoreKind>(kind: K) {
   const userId = useUserId()
-  const query = useQuery<EntityMap[K][]>({ queryKey: entitiesKey(kind, userId), enabled: false })
+  const { crud } = useServices()
+  // Data arrives through live subscriptions; the fetch is only a fallback for explicit refetches.
+  const query = useQuery<EntityMap[K][]>({
+    queryKey: entitiesKey(kind, userId),
+    queryFn: () => crud[kind].list(userId) as Promise<EntityMap[K][]>,
+    enabled: false,
+  })
   return { data: query.data ?? (EMPTY as EntityMap[K][]), isLoading: query.data === undefined }
 }
 

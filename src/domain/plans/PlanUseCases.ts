@@ -1,7 +1,8 @@
 import type { CrudUseCases } from '../shared/CrudUseCases'
 import { NotFoundError } from '../shared/errors'
 import type { DomainEnv } from '../shared/registry'
-import type { Draft, ID } from '../shared/types'
+import type { Draft, ID, RichDoc } from '../shared/types'
+import type { ActivityLog } from '../activity/ActivityLog'
 import { stepsOf } from './ActionPlan'
 import type { ActionPlan } from './ActionPlan'
 import type { Task } from '../tasks/Task'
@@ -12,6 +13,7 @@ export class PlanUseCases {
     private readonly plans: CrudUseCases<'plan'>,
     private readonly tasks: CrudUseCases<'task'>,
     private readonly goals: CrudUseCases<'goal'>,
+    private readonly log?: ActivityLog,
   ) {}
 
   /** Creates a plan, its steps as tasks, and links it to the given goals. */
@@ -51,6 +53,17 @@ export class PlanUseCases {
       order: steps.length ? Math.max(...steps.map((s) => s.order ?? 0)) + 1 : 0,
       outcome: { status: 'open' },
     })
+  }
+
+  /**
+   * Saves the plan's page content. `firstEditOfSession` writes a single "page edited" line to the
+   * history; autosaves after that stay quiet so the thread isn't flooded.
+   */
+  async saveDoc(userId: ID, planId: ID, doc: RichDoc, firstEditOfSession: boolean): Promise<void> {
+    const plan = await this.env.repos.plan.get(userId, planId)
+    if (!plan) throw new NotFoundError('Action plan')
+    await this.env.repos.plan.save({ ...plan, doc, updatedAt: this.env.clock.now().toISOString() })
+    if (firstEditOfSession) await this.log?.record(userId, { ref: { kind: 'plan', id: planId }, title: plan.title, action: 'updated', summary: 'Edited the plan page' })
   }
 
   /** Persists a new step order. */
