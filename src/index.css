@@ -9,12 +9,17 @@
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
     --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
-    --color-task: var(--task);
-    --color-task-soft: var(--task-soft);
-    --color-follow-up: var(--follow-up);
-    --color-follow-up-soft: var(--follow-up-soft);
-    --color-meeting: var(--meeting);
-    --color-meeting-soft: var(--meeting-soft);
+    --color-ws-personal: var(--ws-personal);
+    --color-ws-personal-soft: var(--ws-personal-soft);
+    --color-ws-sb: var(--ws-sb);
+    --color-ws-sb-soft: var(--ws-sb-soft);
+    --color-ws-fsa: var(--ws-fsa);
+    --color-ws-fsa-soft: var(--ws-fsa-soft);
+    --color-ws-media: var(--ws-media);
+    --color-ws-media-soft: var(--ws-media-soft);
+    --color-brand: var(--brand);
+    --color-success: var(--success);
+    --color-warning: var(--warning);
     --color-now: var(--now);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -89,22 +94,32 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
-    --task: oklch(0.55 0.2 275);
-    --task-soft: oklch(0.95 0.035 275);
-    --follow-up: oklch(0.68 0.16 60);
-    --follow-up-soft: oklch(0.96 0.045 75);
-    --meeting: oklch(0.58 0.13 170);
-    --meeting-soft: oklch(0.95 0.035 170);
+    --ws-personal: oklch(0.6 0.17 350);
+    --ws-personal-soft: oklch(0.96 0.03 350);
+    --ws-sb: oklch(0.5 0.17 268);
+    --ws-sb-soft: oklch(0.95 0.035 268);
+    --ws-fsa: oklch(0.58 0.12 195);
+    --ws-fsa-soft: oklch(0.95 0.035 195);
+    --ws-media: oklch(0.68 0.16 55);
+    --ws-media-soft: oklch(0.96 0.045 70);
+    --brand: oklch(0.5 0.17 268);
+    --success: oklch(0.6 0.15 155);
+    --warning: oklch(0.72 0.16 70);
     --now: oklch(0.63 0.22 25);
 }
 
 .dark {
-    --task: oklch(0.72 0.15 275);
-    --task-soft: oklch(0.32 0.08 275 / 60%);
-    --follow-up: oklch(0.8 0.14 70);
-    --follow-up-soft: oklch(0.36 0.07 65 / 60%);
-    --meeting: oklch(0.75 0.12 170);
-    --meeting-soft: oklch(0.33 0.06 170 / 60%);
+    --ws-personal: oklch(0.75 0.14 350);
+    --ws-personal-soft: oklch(0.33 0.07 350 / 60%);
+    --ws-sb: oklch(0.72 0.14 268);
+    --ws-sb-soft: oklch(0.32 0.08 268 / 60%);
+    --ws-fsa: oklch(0.76 0.11 195);
+    --ws-fsa-soft: oklch(0.32 0.06 195 / 60%);
+    --ws-media: oklch(0.8 0.14 65);
+    --ws-media-soft: oklch(0.36 0.07 65 / 60%);
+    --brand: oklch(0.72 0.14 268);
+    --success: oklch(0.72 0.15 155);
+    --warning: oklch(0.8 0.14 75);
     --now: oklch(0.7 0.2 25);
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
@@ -150,7 +165,7 @@
     @apply font-sans antialiased;
     }
   ::selection {
-    background: color-mix(in oklch, var(--task) 25%, transparent);
+    background: color-mix(in oklch, var(--brand) 25%, transparent);
   }
 }
 
@@ -158,8 +173,8 @@
   /* Soft ambient wash behind app surfaces. */
   .bg-ambient {
     background:
-      radial-gradient(60rem 40rem at 10% -10%, color-mix(in oklch, var(--task) 10%, transparent), transparent 60%),
-      radial-gradient(50rem 35rem at 110% 10%, color-mix(in oklch, var(--meeting) 9%, transparent), transparent 60%),
+      radial-gradient(60rem 40rem at 10% -10%, color-mix(in oklch, var(--ws-sb) 9%, transparent), transparent 60%),
+      radial-gradient(50rem 35rem at 110% 10%, color-mix(in oklch, var(--ws-fsa) 8%, transparent), transparent 60%),
       var(--background);
   }
   .glass {

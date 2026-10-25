@@ -1,82 +1,81 @@
 import { useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { useDraggable } from '@dnd-kit/core'
-import { AnimatePresence, motion } from 'motion/react'
-import { AlertTriangle, Check, Pin } from 'lucide-react'
+import { motion } from 'motion/react'
+import { AlertTriangle, Lock, Pin } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DAY_END, isPinned, MIN_DURATION, SLOT_MINUTES, snapToSlot } from '@/domain/planner/dayPlan'
-import type { ScheduledItem } from '@/domain/planner/dayPlan'
-import { formatDuration, formatMinutes, ITEM_TYPE_STYLES } from '@/presentation/calendar/itemStyles'
+import type { AgendaEntry } from '@/domain/agenda/agenda'
+import { DAY_END, MIN_DURATION, SLOT_MINUTES, snapToSlot } from '@/domain/planner/dayPlan'
+import type { ScheduledEntry } from '@/domain/planner/dayPlan'
+import type { OutcomeTarget } from '@/domain/shared/RecordOutcomeUseCase'
+import { formatClock, formatDuration } from '@/domain/shared/time'
+import { entryIcon, entryLabel } from '@/presentation/components/kinds'
+import { OutcomeControl } from '@/presentation/components/outcome'
+import { WS_STYLE } from '@/presentation/components/workspace'
 import { spring } from '@/presentation/motion/presets'
 import { dragId, minuteToY, PX_PER_MINUTE } from './geometry'
 
 export interface TimelineBlockActions {
-  onMove: (item: ScheduledItem, start: number) => void
-  onResize: (item: ScheduledItem, duration: number) => void
-  onToggleComplete: (item: ScheduledItem) => void
-  onTogglePin: (item: ScheduledItem) => void
-  onUnschedule: (item: ScheduledItem) => void
+  onMove: (entry: AgendaEntry, start: number) => void
+  onResize: (entry: ScheduledEntry, duration: number) => void
+  onUnschedule: (entry: AgendaEntry) => void
+  onOpen: (entry: AgendaEntry) => void
 }
 
 interface TimelineBlockProps extends TimelineBlockActions {
-  item: ScheduledItem
+  entry: ScheduledEntry
   column: number
   columns: number
   conflict: boolean
   isPast: boolean
-  /** Skip the position spring (e.g. right after a drop, where the overlay already showed the landing). */
+  /** Skip the position spring (right after a drop, where the overlay already showed the landing). */
   instant: boolean
-  /** Stagger index used when many blocks move at once (reflow). */
+  /** Stagger used when many blocks move at once (reflow). */
   delay: number
 }
 
-export function TimelineBlock({ item, column, columns, conflict, isPast, instant, delay, ...actions }: TimelineBlockProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: dragId(item.id),
-    data: { item },
-  })
+export function TimelineBlock({ entry, column, columns, conflict, isPast, instant, delay, ...actions }: TimelineBlockProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: dragId(entry.key), data: { entry }, disabled: !entry.movable })
   const [liveDuration, setLiveDuration] = useState<number | null>(null)
-  const duration = liveDuration ?? item.schedule.duration
-  const style = ITEM_TYPE_STYLES[item.type]
-  const pinned = isPinned(item)
+  const duration = liveDuration ?? entry.slot.duration
+  const ws = WS_STYLE[entry.workspace]
+  const Icon = entryIcon(entry)
+  const closed = entry.outcome.status !== 'open'
   const compact = duration < 40
-  const height = Math.max(duration * PX_PER_MINUTE - 3, 18)
+  const height = Math.max(duration * PX_PER_MINUTE - 3, 16)
 
   function handleKeyDown(e: KeyboardEvent) {
+    if (!entry.movable) return
     const step = e.altKey ? SLOT_MINUTES * 4 : SLOT_MINUTES
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault()
       const dir = e.key === 'ArrowUp' ? -1 : 1
-      if (e.shiftKey) actions.onResize(item, Math.max(MIN_DURATION, item.schedule.duration + dir * step))
-      else actions.onMove(item, item.schedule.start + dir * step)
-    } else if (e.key === 'Enter' || e.key === ' ') {
+      if (e.shiftKey) actions.onResize(entry, Math.max(MIN_DURATION, entry.slot.duration + dir * step))
+      else actions.onMove(entry, entry.slot.start + dir * step)
+    } else if (e.key === 'Enter') {
       e.preventDefault()
-      actions.onToggleComplete(item)
-    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      actions.onOpen(entry)
+    } else if ((e.key === 'Backspace' || e.key === 'Delete') && entry.kind !== 'meeting') {
       e.preventDefault()
-      actions.onUnschedule(item)
-    } else if (e.key.toLowerCase() === 'p') {
-      actions.onTogglePin(item)
+      actions.onUnschedule(entry)
     }
   }
 
   function startResize(e: PointerEvent<HTMLDivElement>) {
     e.stopPropagation()
     e.preventDefault()
-    e.currentTarget.setPointerCapture(e.pointerId)
-    const originY = e.clientY
-    const base = item.schedule.duration
-    const max = DAY_END - item.schedule.start
     const target = e.currentTarget
-    const onMove = (ev: globalThis.PointerEvent) => {
-      const next = snapToSlot(base + (ev.clientY - originY) / PX_PER_MINUTE)
-      setLiveDuration(Math.min(max, Math.max(MIN_DURATION, next)))
-    }
+    target.setPointerCapture(e.pointerId)
+    const originY = e.clientY
+    const base = entry.slot.duration
+    const max = DAY_END - entry.slot.start
+    const next = (y: number) => Math.min(max, Math.max(MIN_DURATION, snapToSlot(base + (y - originY) / PX_PER_MINUTE)))
+    const onMove = (ev: globalThis.PointerEvent) => setLiveDuration(next(ev.clientY))
     const onUp = (ev: globalThis.PointerEvent) => {
       target.removeEventListener('pointermove', onMove)
       target.removeEventListener('pointerup', onUp)
-      const next = Math.min(max, Math.max(MIN_DURATION, snapToSlot(base + (ev.clientY - originY) / PX_PER_MINUTE)))
-      if (next !== base) actions.onResize(item, next)
+      const d = next(ev.clientY)
+      if (d !== base) actions.onResize(entry, d)
       setLiveDuration(null)
     }
     target.addEventListener('pointermove', onMove)
@@ -89,95 +88,70 @@ export function TimelineBlock({ item, column, columns, conflict, isPast, instant
       {...attributes}
       {...listeners}
       onKeyDown={handleKeyDown}
-      aria-label={`${item.title}, ${formatMinutes(item.schedule.start)} to ${formatMinutes(item.schedule.start + duration)}`}
+      aria-label={`${entryLabel(entry)}: ${entry.title}, ${formatClock(entry.slot.start)} to ${formatClock(entry.slot.start + duration)}`}
       aria-roledescription="time block"
       aria-describedby="timeline-block-help"
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{
         opacity: isDragging ? 0.35 : 1,
         scale: 1,
-        top: minuteToY(item.schedule.start),
+        top: minuteToY(entry.slot.start),
         height,
         left: `calc(${(column / columns) * 100}% + 4px)`,
         width: `calc(${100 / columns}% - 8px)`,
       }}
-      transition={
-        instant || liveDuration !== null
-          ? { duration: 0, opacity: { duration: 0.15 } }
-          : { ...spring.soft, delay, opacity: { duration: 0.15 } }
-      }
-      whileHover={isDragging ? undefined : { y: -1 }}
+      transition={instant || liveDuration !== null ? { duration: 0, opacity: { duration: 0.15 } } : { ...spring.soft, delay, opacity: { duration: 0.15 } }}
       className={cn(
-        'group/block absolute z-10 flex cursor-grab touch-none overflow-hidden rounded-lg border border-black/5 text-left outline-none select-none active:cursor-grabbing dark:border-white/5',
+        'group/block absolute z-10 flex touch-none overflow-hidden rounded-lg border border-black/5 text-left outline-none select-none dark:border-white/5',
         'shadow-[0_1px_2px_oklch(0_0_0/6%)] transition-shadow hover:z-20 hover:shadow-float focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-ring',
-        style.chip,
+        entry.movable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
+        ws.soft,
+        entry.kind === 'hearing' && 'bg-[repeating-linear-gradient(135deg,transparent_0_8px,oklch(0_0_0/3%)_8px_16px)]',
         isDragging && 'border-dashed border-current shadow-none',
-        isPast && !item.completed && 'saturate-50',
-        item.completed && 'opacity-70',
+        isPast && !closed && 'saturate-50',
+        closed && 'opacity-70',
         conflict && 'ring-2 ring-destructive/60',
       )}
     >
-      <span className={cn('w-1 shrink-0', style.accent)} />
-      <div className={cn('flex min-w-0 flex-1 gap-1.5 pr-6 pl-2', compact ? 'items-center py-0' : 'flex-col py-1.5')}>
-        <div className="flex min-w-0 items-center gap-1.5">
+      <span className={cn('w-1 shrink-0', ws.bar)} />
+      <div className={cn('flex min-w-0 flex-1 gap-1.5 pr-6 pl-1.5', compact ? 'items-center' : 'flex-col py-1')}>
+        <div className="flex min-w-0 items-center gap-1">
+          <span onPointerDown={(e) => e.stopPropagation()} className="contents">
+            <OutcomeControl target={entry.kind as OutcomeTarget} id={entry.ref.id} outcome={entry.outcome} size="sm" />
+          </span>
+          <Icon className={cn('size-3.5 shrink-0', ws.text)} />
           <button
             type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => actions.onToggleComplete(item)}
-            aria-label={item.completed ? 'Mark as not done' : 'Mark as done'}
-            aria-pressed={item.completed}
             tabIndex={-1}
-            className={cn(
-              'flex size-4 shrink-0 items-center justify-center rounded-full border-[1.5px] border-current transition-colors',
-              item.completed && style.accent,
-            )}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => actions.onOpen(entry)}
+            className={cn('truncate text-[13px] font-medium text-foreground hover:underline', closed && 'line-through decoration-foreground/40')}
           >
-            <AnimatePresence>
-              {item.completed && (
-                <motion.span initial={{ scale: 0, rotate: -45 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }} transition={spring.snappy}>
-                  <Check className="size-2.5 text-white" strokeWidth={4} />
-                </motion.span>
-              )}
-            </AnimatePresence>
+            {entry.title}
           </button>
-          <span className={cn('truncate text-[13px] font-medium text-foreground', item.completed && 'line-through decoration-foreground/40')}>
-            {item.title}
-          </span>
         </div>
-        <div className={cn('flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums opacity-80', compact && 'ml-auto')}>
+        <div className={cn('flex shrink-0 items-center gap-1.5 text-[11px] text-foreground/60 tabular-nums', compact ? 'ml-auto' : 'pl-6')}>
           <span>
-            {formatMinutes(item.schedule.start)}
-            {!compact && ` – ${formatMinutes(item.schedule.start + duration)}`}
+            {formatClock(entry.slot.start)}
+            {!compact && ` – ${formatClock(entry.slot.start + duration)}`}
           </span>
-          {!compact && <span className="opacity-60">· {formatDuration(duration)}</span>}
+          {!compact && <span className="opacity-70">· {formatDuration(duration)}</span>}
           {conflict && <AlertTriangle className="size-3 text-destructive" aria-label="Overlaps another block" />}
         </div>
-        {!compact && duration >= 75 && item.notes && <p className="line-clamp-2 text-[11px] text-foreground/60">{item.notes}</p>}
+        {!compact && duration >= 45 && entry.subtitle && <p className="truncate pl-6 text-[11px] text-foreground/55">{entry.subtitle}</p>}
       </div>
-      <button
-        type="button"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => actions.onTogglePin(item)}
-        tabIndex={-1}
-        aria-label={pinned ? 'Unpin' : 'Pin to this time'}
-        className={cn(
-          'absolute top-1 right-1 flex size-5 items-center justify-center rounded-md transition-opacity hover:bg-black/5 dark:hover:bg-white/10',
-          pinned ? 'opacity-80' : 'opacity-0 group-hover/block:opacity-60',
-        )}
-      >
-        <Pin className={cn('size-3', pinned && 'fill-current')} />
-      </button>
-      <div
-        onPointerDown={startResize}
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 flex h-2.5 cursor-ns-resize items-end justify-center opacity-0 group-hover/block:opacity-100"
-      >
-        <span className="mb-0.5 h-1 w-8 rounded-full bg-current opacity-40" />
-      </div>
-      {liveDuration !== null && (
-        <span className="absolute right-2 bottom-1.5 rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background tabular-nums">
-          {formatDuration(liveDuration)}
+      {entry.pinned && (
+        <span className="absolute top-1 right-1.5 text-foreground/50" title={entry.movable ? 'Fixed time — reflow flows around it' : 'Set by the court'}>
+          {entry.movable ? <Pin className="size-3" /> : <Lock className="size-3" />}
         </span>
+      )}
+      {entry.movable && (
+        <div onPointerDown={startResize} aria-hidden className="absolute inset-x-0 bottom-0 flex h-2.5 cursor-ns-resize items-end justify-center opacity-0 group-hover/block:opacity-100">
+          <span className="mb-0.5 h-1 w-8 rounded-full bg-foreground/30" />
+        </div>
+      )}
+      {liveDuration !== null && (
+        <span className="absolute right-2 bottom-1.5 rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background tabular-nums">{formatDuration(liveDuration)}</span>
       )}
     </motion.div>
   )

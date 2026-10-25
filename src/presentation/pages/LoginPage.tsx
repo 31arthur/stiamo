@@ -8,14 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/presentation/auth/AuthProvider'
-import { Logo } from '@/presentation/layout/AppShell'
+import { Logo } from '@/presentation/layout/Logo'
 import { fadeUp, stagger } from '@/presentation/motion/presets'
 
 const SAMPLE_BLOCKS = [
-  { title: 'Design review', time: '09:30', tone: 'bg-meeting-soft text-meeting border-meeting/30', x: '8%', y: '18%', d: 0 },
-  { title: 'Write launch brief', time: '11:00', tone: 'bg-task-soft text-task border-task/30', x: '38%', y: '34%', d: 1.2 },
-  { title: 'Follow up with Priya', time: '14:15', tone: 'bg-follow-up-soft text-follow-up border-follow-up/30', x: '14%', y: '54%', d: 0.6 },
-  { title: '1:1 with Sam', time: '16:00', tone: 'bg-meeting-soft text-meeting border-meeting/30', x: '44%', y: '70%', d: 1.8 },
+  { title: 'Hearing — Mehta v. Coastal', time: '10:30 · Court 23', tone: 'bg-ws-sb-soft text-ws-sb border-ws-sb/30', x: '8%', y: '18%', d: 0 },
+  { title: 'FSA sprint planning', time: '11:30 · Virtual', tone: 'bg-ws-fsa-soft text-ws-fsa border-ws-fsa/30', x: '38%', y: '34%', d: 1.2 },
+  { title: 'Confirm appointment — Mr. Arora', time: '14:00 · Call', tone: 'bg-ws-personal-soft text-ws-personal border-ws-personal/30', x: '14%', y: '54%', d: 0.6 },
+  { title: 'Podcast episode prep', time: '17:00 · Studio 2', tone: 'bg-ws-media-soft text-ws-media border-ws-media/30', x: '44%', y: '70%', d: 1.8 },
 ]
 
 export function LoginPage() {
@@ -56,10 +56,10 @@ export function LoginPage() {
           </motion.div>
           <div className="max-w-md">
             <motion.h1 variants={fadeUp} className="font-display text-6xl leading-[1.02] tracking-tight">
-              Plan the day <em className="text-task">you meant</em> to have.
+              Plan the day <em className="text-ws-sb">you meant</em> to have.
             </motion.h1>
             <motion.p variants={fadeUp} className="mt-5 text-muted-foreground">
-              Tasks, follow-ups and meetings on one calm canvas. Drag your day into shape, then let it flow.
+              Cases and hearings, appointments and meetings, tasks, follow-ups and goals — across S&B, FSA, media and life. One calm canvas.
             </motion.p>
           </div>
           <motion.p variants={fadeUp} className="text-xs text-muted-foreground">

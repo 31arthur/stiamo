@@ -35,4 +35,6 @@ export interface Task extends Entity {
 /** The day a task shows up on: its planned slot, otherwise its due date. */
 export const taskDate = (t: Task): ISODate | undefined => t.slot?.date ?? t.dueDate
 
-export const isOverdue = (t: Task, today: ISODate) => t.outcome.status === 'open' && !!t.dueDate && t.dueDate < today
+/** Open, past its due date, and not already planned for today or later. */
+export const isOverdue = (t: Task, today: ISODate) =>
+  t.outcome.status === 'open' && !!t.dueDate && t.dueDate < today && !(t.slot && t.slot.date >= today)
