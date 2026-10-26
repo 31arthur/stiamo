@@ -61,7 +61,7 @@ Portfolio counts by health and cards with a progress ring, **progress vs time** 
 
 ## Cloud sync and accounts
 
-Email/password accounts (create account, sign in, reset password) backed by Firebase, with live sync across devices and offline support. Without a Firebase config the app runs fully offline with a demo account. See [FIREBASE.md](FIREBASE.md).
+Email/password accounts (create account, sign in, reset password) backed by Supabase, with live sync across devices. Without a Supabase config the app runs fully offline with a demo account. See [SUPABASE.md](SUPABASE.md).
 
 ## Threads, links and history
 
@@ -84,6 +84,6 @@ Bottom tab bar with a create button; dialogs become bottom sheets with a pinned 
 
 ## Known limitations
 
-- Cloud mode needs the one-time console setup in [FIREBASE.md](FIREBASE.md); until then the app runs offline on this device.
+- Cloud mode needs the one-time console setup in [SUPABASE.md](SUPABASE.md); until then the app runs offline on this device.
 - No recurring events, reminders/notifications or time zones.
 - Drag and drop is pointer-based; keyboard users move blocks with arrow keys.

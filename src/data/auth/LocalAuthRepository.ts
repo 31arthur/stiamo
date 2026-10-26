@@ -9,7 +9,7 @@ interface StoredAccount extends User {
   password: string
 }
 
-/** Offline demo account, used when no Firebase project is configured. */
+/** Offline demo account, used when no Supabase project is configured. */
 export const DEMO_ACCOUNT: StoredAccount = {
   id: 'user-demo',
   name: 'Demo User',
@@ -21,7 +21,7 @@ const NETWORK_LATENCY_MS = 250
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/** Browser-only accounts for offline/demo use. Not secure — swap for FirebaseAuthRepository in production. */
+/** Browser-only accounts for offline/demo use. Not secure — use SupabaseAuthRepository in production. */
 export class LocalAuthRepository implements AuthRepository {
   private listeners = new Set<(user: User | null) => void>()
 
@@ -55,7 +55,7 @@ export class LocalAuthRepository implements AuthRepository {
   }
 
   async resetPassword(): Promise<void> {
-    throw new ValidationError('Password reset needs the online (Firebase) mode')
+    throw new ValidationError('Password reset needs the online (Supabase) mode')
   }
 
   async logout(): Promise<void> {

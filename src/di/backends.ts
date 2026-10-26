@@ -8,9 +8,9 @@ import type { Clock, IdGenerator } from '@/domain/shared/Repository'
 import type { Repositories } from '@/domain/shared/registry'
 import type { ID } from '@/domain/shared/types'
 
-/** Everything that differs between running online (Firebase) and offline (browser storage). */
+/** Everything that differs between running online (Supabase) and offline (browser storage). */
 export interface Backend {
-  kind: 'firebase' | 'local'
+  kind: 'supabase' | 'local'
   auth: AuthRepository
   repos: Repositories
   clock: Clock

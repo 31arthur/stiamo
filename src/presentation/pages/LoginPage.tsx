@@ -123,7 +123,7 @@ export function LoginPage() {
                 </motion.h2>
               </AnimatePresence>
               <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                {backend === 'firebase' ? (
+                {backend === 'supabase' ? (
                   <>
                     <Cloud className="size-3.5" /> Synced securely to your Stiamo cloud
                   </>
@@ -163,7 +163,7 @@ export function LoginPage() {
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    {mode === 'signin' && backend === 'firebase' && (
+                    {mode === 'signin' && backend === 'supabase' && (
                       <button type="button" onClick={() => switchMode('reset')} className="text-xs text-muted-foreground hover:text-foreground">
                         Forgot password?
                       </button>

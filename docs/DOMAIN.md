@@ -31,7 +31,7 @@ Records are connected in two ways, and both feed a **thread** you can open from 
 
 Every create, update, outcome, rescheduling, link and file change writes an **Activity** (with a field-by-field change set). A record's history is the merged activity of its whole thread, plus notes you add. Free-form notes are Activity too.
 
-**Attachments** belong to any record (`owner`) — tasks, follow-ups, meetings, cases, individual hearings, plans, goals. Metadata lives with the data; bytes go through the `FileStore` port (Cloud Storage, chunked Firestore, or IndexedDB offline).
+**Attachments** belong to any record (`owner`) — tasks, follow-ups, meetings, cases, individual hearings, plans, goals. Metadata lives with the data; bytes go through the `FileStore` port (Supabase Storage, or IndexedDB offline).
 
 **Follow-ups** don't need a date: `due` is optional (anytime / on a day / at a time).
 

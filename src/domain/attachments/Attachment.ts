@@ -1,7 +1,7 @@
 import type { Entity, EntityRef, ID } from '../shared/types'
 
 /** Where the bytes live. Metadata always lives with the rest of the user's data. */
-export type FileBackend = 'storage' | 'inline' | 'local'
+export type FileBackend = 'storage' | 'local'
 
 /** A supporting document attached to a record: an order sheet, a contract, a photo, a recording… */
 export interface Attachment extends Entity {
@@ -12,15 +12,12 @@ export interface Attachment extends Entity {
   backend: FileBackend
   /** Object path for the storage backend. */
   path?: string
-  /** Number of chunks for the inline backend. */
-  chunks?: number
   caption?: string
 }
 
 export interface StoredFile {
   backend: FileBackend
   path?: string
-  chunks?: number
 }
 
 /** Port for the file bytes. */
