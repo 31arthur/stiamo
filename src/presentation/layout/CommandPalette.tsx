@@ -3,6 +3,7 @@ import { CalendarDays, Sun } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from '@/components/ui/command'
 import { Command } from '@/components/ui/command'
+import { counselLabel } from '@/domain/counsel/Counsel'
 import { formatClock } from '@/domain/shared/time'
 import { useEditor } from '@/presentation/app/create'
 import { friendlyDate } from '@/presentation/components/dates'
@@ -20,6 +21,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const { data: meetings } = useEntities('meeting')
   const { data: plans } = useEntities('plan')
   const { data: goals } = useEntities('goal')
+  const { data: counsel } = useEntities('counsel')
   const { data: tasks } = useEntities('task')
 
   const run = (fn: () => void) => () => {
@@ -35,6 +37,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       { label: 'Follow-ups', to: '/follow-ups', icon: KIND_META.followUp.icon },
       { label: 'Meetings & appointments', to: '/meetings', icon: KIND_META.meeting.icon },
       { label: 'Cases', to: '/cases', icon: KIND_META.case.icon },
+      { label: 'Counsel', to: '/counsel', icon: KIND_META.counsel.icon },
       { label: 'Action plans', to: '/plans', icon: KIND_META.plan.icon },
       { label: 'Goals', to: '/goals', icon: KIND_META.goal.icon },
     ],
@@ -67,6 +70,14 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               <CommandItem key={c.id} value={`case ${c.reference} ${c.courtNumber ?? ''} ${c.title} ${c.client ?? ''} ${c.organization ?? ''}`} onSelect={run(() => navigate(`/cases/${c.id}`))}>
                 <KIND_META.case.icon /> <span className="truncate">{c.title}</span>
                 <CommandShortcut>{c.reference}</CommandShortcut>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          <CommandGroup heading="Counsel">
+            {counsel.map((c) => (
+              <CommandItem key={c.id} value={`counsel ${c.name} ${c.firm ?? ''} ${c.city ?? ''}`} onSelect={run(() => navigate(`/counsel/${c.id}`))}>
+                <KIND_META.counsel.icon /> <span className="truncate">{counselLabel(c)}</span>
+                {c.city && <CommandShortcut>{c.city}</CommandShortcut>}
               </CommandItem>
             ))}
           </CommandGroup>

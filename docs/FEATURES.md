@@ -48,9 +48,13 @@ Overdue, Today, Upcoming and Recently logged. Follow-up wording for outcomes (Re
 
 ## Cases (`/cases`, `/cases/:id`) — S&B Consultants
 
-- **Opening a case** asks which organization it's filed for (NUMW, TUMWU, PMLU, MRC, TYP, Samrat & Associates) and its type (full case, PIL, writ, appeal, intervention, appearance only, complaint, legal opinion), previews the generated case number (`TUMWU-2026-004`) and assigns it on save. The court's own number is an optional extra field.
+- **Opening a case** asks which organization it's filed for (NUMW, TUMWU, PMLU, MRC, TYP, Samrat & Associates) and its type (PoW, Public Interest, Industrial Disputes, MW, Workmen Compensation, Other), who handles it (us by default, or outside counsel with terms), previews the generated case number (`TUMWU-2026-004`) and assigns it on save. The court's own number is an optional extra field.
 - Register with next hearing (relative date), last hearing result, plan progress, and a red flag for hearings not yet written up.
 - Detail: case summary (autosaves), **hearing timeline**, **Record hearing** (summary → result → next listing → action plan with steps → stage/status, all in one dialog), action plans with inline steps and outcomes, upcoming appointments, open follow-ups and tasks for the matter.
+
+## Counsel (`/counsel`, `/counsel/:id`)
+
+A directory of the outside **advocates and law firms** you know, with filters (advocates / firms / pro bono) and search. Each profile has contact buttons, the courts they appear before, what they're good for, notes, **every case they're briefed on with the terms** (fee or pro bono, scope, date), documents and a thread. On a case, **Handled by** shows "us" or the counsel with the terms; *Brief counsel* / *Change brief* / *Take it back* manage it, and the case list shows who is on each case.
 
 ## Action plans (`/plans`, `/plans/:id`)
 

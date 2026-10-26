@@ -1,5 +1,6 @@
 import type { Hearing, LegalCase } from '../cases/LegalCase'
 import type { FollowUp } from '../followups/FollowUp'
+import type { Counsel } from '../counsel/Counsel'
 import type { Goal } from '../goals/Goal'
 import type { Meeting } from '../meetings/Meeting'
 import type { ActionPlan } from '../plans/ActionPlan'
@@ -17,6 +18,7 @@ export type RelationKind =
   | 'plan' // case/hearing/meeting/goal → action plan
   | 'prep' // meeting → preparation plan
   | 'goal' // goal → plan it's served by
+  | 'counsel' // counsel → case they're briefed on
   | 'linked'
 
 export const RELATION_LABELS: Record<RelationKind, string> = {
@@ -28,6 +30,7 @@ export const RELATION_LABELS: Record<RelationKind, string> = {
   plan: 'Action plan',
   prep: 'Preparation',
   goal: 'Serves goal',
+  counsel: 'Engaged counsel',
   linked: 'Linked',
 }
 
@@ -47,6 +50,7 @@ export interface GraphSources {
   hearings: Hearing[]
   plans: ActionPlan[]
   goals: Goal[]
+  counsel: Counsel[]
   links: Link[]
 }
 
@@ -91,6 +95,7 @@ export class RelationGraph {
     reg('hearing', src.hearings)
     reg('plan', src.plans)
     reg('goal', src.goals)
+    reg('counsel', src.counsel)
 
     const ref = (kind: EntityKind, id: ID): EntityRef => ({ kind, id })
     for (const t of src.tasks) {
@@ -116,6 +121,7 @@ export class RelationGraph {
       }
       if (p.caseId && !(origin?.kind === 'case' && origin.id === p.caseId)) this.add({ parent: ref('case', p.caseId), child: ref('plan', p.id), kind: 'plan' })
     }
+    for (const c of src.cases) if (c.engagement) this.add({ parent: ref('counsel', c.engagement.counselId), child: ref('case', c.id), kind: 'counsel' })
     for (const g of src.goals) for (const pid of g.planIds) this.add({ parent: ref('goal', g.id), child: ref('plan', pid), kind: 'goal' })
     for (const l of src.links) {
       const edge: Edge = { parent: l.a, child: l.b, kind: 'linked', linkId: l.id }

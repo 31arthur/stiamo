@@ -22,7 +22,7 @@ The **publishable key is designed to be public** — it only identifies the proj
 
 ## 2. Create the tables (one time)
 
-Open the Supabase dashboard → **SQL Editor → New query**, paste the contents of [`supabase/migrations/0001_init.sql`](../supabase/migrations/0001_init.sql) and **Run**. It is safe to run again.
+Open the Supabase dashboard → **SQL Editor → New query**, paste the contents of each file in [`supabase/migrations`](../supabase/migrations) in order (`0001_init.sql`, then `0002_counsel.sql`) and **Run**. They are safe to run again.
 
 It creates, for each collection, a table of JSON documents (`id`, `user_id`, `data`), turns on **row-level security** so each signed-in user can only read and write their own rows, enables **Realtime** on the table, and creates a private **`attachments`** storage bucket whose policies confine each user to their own folder.
 
@@ -31,6 +31,7 @@ It creates, for each collection, a table of JSON documents (`id`, `user_id`, `da
 | `tasks`, `follow_ups` | tasks and follow-ups |
 | `meetings` | meetings and appointments (with agendas) |
 | `cases`, `hearings` | legal cases and hearings |
+| `counsel` | outside advocates and law firms |
 | `plans`, `goals` | action plans (incl. page content) and goals |
 | `links`, `activity` | hand-made links and the history trail |
 | `attachments` | file metadata (bytes are in Storage) |

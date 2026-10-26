@@ -8,6 +8,7 @@ import { ActivityLog } from '@/domain/activity/ActivityLog'
 import { AttachmentUseCases } from '@/domain/attachments/AttachmentUseCases'
 import { ValidationError } from '@/domain/auth/errors'
 import { CaseUseCases } from '@/domain/cases/CaseUseCases'
+import { CounselUseCases } from '@/domain/counsel/CounselUseCases'
 import { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import { PlanUseCases } from '@/domain/plans/PlanUseCases'
 import { LinkUseCases } from '@/domain/relations/LinkUseCases'
@@ -17,6 +18,7 @@ import type { DomainEnv, EntityMap, StoreKind } from '@/domain/shared/registry'
 import type { ID } from '@/domain/shared/types'
 import {
   normalizeCase,
+  normalizeCounsel,
   normalizeFollowUp,
   normalizeGoal,
   normalizeHearing,
@@ -39,13 +41,15 @@ export function createContainer(backend: Backend) {
     hearing: new CrudUseCases('hearing', env, normalizeHearing, log),
     plan: new CrudUseCases('plan', env, normalizePlan, log),
     goal: new CrudUseCases('goal', env, normalizeGoal, log),
+    counsel: new CrudUseCases('counsel', env, normalizeCounsel, log),
     link: new CrudUseCases('link', env),
     activity: new CrudUseCases('activity', env),
     attachment: new CrudUseCases('attachment', env),
   }
   const meetings = new MeetingUseCases(env, crud.meeting, crud.followUp)
   const plans = new PlanUseCases(env, crud.plan, crud.task, crud.goal, log)
-  const cases = new CaseUseCases(env, crud.case, crud.hearing, plans)
+  const cases = new CaseUseCases(env, crud.case, crud.hearing, plans, log)
+  const counsel = new CounselUseCases(env, crud.counsel, crud.case, log)
   const outcomes = new RecordOutcomeUseCase(env, crud.task, crud.followUp, meetings, log)
   const agenda = new AgendaUseCases(env, meetings, log)
   const links = new LinkUseCases(env, log)
@@ -66,6 +70,7 @@ export function createContainer(backend: Backend) {
     meetings,
     plans,
     cases,
+    counsel,
     outcomes,
     agenda,
     links,

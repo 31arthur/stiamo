@@ -15,6 +15,8 @@ import { LoginPage } from '@/presentation/pages/LoginPage'
 // Each section is its own chunk; the shell and login load first.
 const CalendarPage = lazy(() => import('@/presentation/pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
 const CaseDetailPage = lazy(() => import('@/presentation/pages/CaseDetailPage').then((m) => ({ default: m.CaseDetailPage })))
+const CounselPage = lazy(() => import('@/presentation/pages/CounselPage').then((m) => ({ default: m.CounselPage })))
+const CounselDetailPage = lazy(() => import('@/presentation/pages/CounselDetailPage').then((m) => ({ default: m.CounselDetailPage })))
 const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
 const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
 const GoalDetailPage = lazy(() => import('@/presentation/pages/GoalDetailPage').then((m) => ({ default: m.GoalDetailPage })))
@@ -55,6 +57,8 @@ export default function App({ container }: { container: Container }) {
                   <Route path="/meetings/:id" element={<MeetingDetailPage />} />
                   <Route path="/cases" element={<CasesPage />} />
                   <Route path="/cases/:id" element={<CaseDetailPage />} />
+                  <Route path="/counsel" element={<CounselPage />} />
+                  <Route path="/counsel/:id" element={<CounselDetailPage />} />
                   <Route path="/plans" element={<PlansPage />} />
                   <Route path="/plans/:id" element={<PlanDetailPage />} />
                   <Route path="/goals" element={<GoalsPage />} />

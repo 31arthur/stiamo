@@ -4,6 +4,7 @@ import { KIND_LABEL } from '@/domain/activity/describe'
 import type { Outcome } from '@/domain/shared/outcome'
 import type { EntityKind, EntityRef } from '@/domain/shared/types'
 import type { WorkspaceId } from '@/domain/shared/workspace'
+import { counselLabel } from '@/domain/counsel/Counsel'
 import { useEntities } from '@/presentation/data/hooks'
 import { KIND_META, MEETING_KIND_ICON } from './kinds'
 
@@ -27,6 +28,7 @@ export function useRecordLookup() {
   const hearings = useEntities('hearing').data
   const plans = useEntities('plan').data
   const goals = useEntities('goal').data
+  const counsel = useEntities('counsel').data
 
   const index = useMemo(() => {
     const map = new Map<string, RecordInfo>()
@@ -43,8 +45,9 @@ export function useRecordLookup() {
     }
     for (const p of plans) put({ ...base('plan', p.id), title: p.title, workspace: p.workspace, subtitle: p.dueDate })
     for (const g of goals) put({ ...base('goal', g.id), title: g.title, workspace: g.workspace })
+    for (const c of counsel) put({ ...base('counsel', c.id), title: counselLabel(c), kindLabel: c.kind === 'firm' ? 'Law firm' : 'Advocate', workspace: 'sb', subtitle: c.city })
     return map
-  }, [tasks, meetings, followUps, cases, hearings, plans, goals])
+  }, [tasks, meetings, followUps, cases, hearings, plans, goals, counsel])
 
   const lookup = useCallback((ref: EntityRef | undefined) => (ref ? index.get(`${ref.kind}:${ref.id}`) : undefined), [index])
   return { lookup, all: index }

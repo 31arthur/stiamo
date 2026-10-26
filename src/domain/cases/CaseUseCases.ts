@@ -6,7 +6,9 @@ import type { DomainEnv } from '../shared/registry'
 import type { Draft, ID, ISODate, Minutes } from '../shared/types'
 import { nextCaseNumber } from './caseNumber'
 import type { ActionPlan } from '../plans/ActionPlan'
-import type { CaseStatus, Hearing, LegalCase } from './LegalCase'
+import type { CaseStatus, Engagement, Hearing, LegalCase } from './LegalCase'
+import { counselLabel } from '../counsel/Counsel'
+import type { ActivityLog } from '../activity/ActivityLog'
 
 export interface HearingRecord {
   /** What happened at the hearing. */
@@ -32,6 +34,7 @@ export class CaseUseCases {
     private readonly cases: CrudUseCases<'case'>,
     private readonly hearings: CrudUseCases<'hearing'>,
     private readonly plans: PlanUseCases,
+    private readonly log: ActivityLog,
   ) {}
 
   /**
@@ -42,7 +45,47 @@ export class CaseUseCases {
     const year = draft.filedOn ? Number(draft.filedOn.slice(0, 4)) : this.env.clock.now().getFullYear()
     const existing = await this.env.repos.case.list(userId)
     const reference = nextCaseNumber(draft.organization, year, existing)
-    return this.cases.create(userId, { ...draft, reference })
+    if (draft.engagement) await this.requireCounsel(userId, draft.engagement.counselId)
+    const opened = await this.cases.create(userId, { ...draft, reference })
+    if (opened.engagement) await this.logAssignment(userId, opened, opened.engagement.counselId)
+    return opened
+  }
+
+  /**
+   * Briefs outside counsel on a case (or changes the brief), or takes it back with `null` so we
+   * handle it ourselves. The change is written to the history of both the case and the counsel.
+   */
+  async assignCounsel(userId: ID, caseId: ID, engagement: Engagement | null): Promise<LegalCase> {
+    const legalCase = await this.env.repos.case.get(userId, caseId)
+    if (!legalCase) throw new NotFoundError('Case')
+    if (engagement) await this.requireCounsel(userId, engagement.counselId)
+    const previous = legalCase.engagement?.counselId
+    const updated = await this.cases.update({ ...legalCase, engagement: engagement ? { ...engagement, scope: engagement.scope?.trim() || undefined, fee: engagement.fee?.trim() || undefined, notes: engagement.notes?.trim() || undefined } : undefined })
+
+    const title = `${legalCase.reference} — ${legalCase.title}`
+    const caseRef = { kind: 'case' as const, id: caseId }
+    if (previous && previous !== engagement?.counselId) {
+      const old = await this.env.repos.counsel.get(userId, previous)
+      if (old) await this.log.record(userId, { ref: { kind: 'counsel', id: old.id }, title: counselLabel(old), action: 'unlinked', summary: `No longer briefed on “${legalCase.title}”`, related: caseRef })
+    }
+    if (engagement) await this.logAssignment(userId, updated, engagement.counselId)
+    else await this.log.record(userId, { ref: caseRef, title, action: 'updated', summary: 'Taken back — now handled by us' })
+    return updated
+  }
+
+  private async requireCounsel(userId: ID, counselId: ID) {
+    const counsel = await this.env.repos.counsel.get(userId, counselId)
+    if (!counsel) throw new NotFoundError('Counsel')
+    return counsel
+  }
+
+  private async logAssignment(userId: ID, legalCase: LegalCase, counselId: ID) {
+    const counsel = await this.env.repos.counsel.get(userId, counselId)
+    if (!counsel) return
+    const e = legalCase.engagement!
+    const detail = e.proBono ? ' (pro bono)' : e.fee ? ` — ${e.fee}` : ''
+    await this.log.record(userId, { ref: { kind: 'case', id: legalCase.id }, title: `${legalCase.reference} — ${legalCase.title}`, action: 'linked', summary: `Briefed ${counselLabel(counsel)}${detail}`, related: { kind: 'counsel', id: counsel.id } })
+    await this.log.record(userId, { ref: { kind: 'counsel', id: counsel.id }, title: counselLabel(counsel), action: 'linked', summary: `Briefed on “${legalCase.title}”${detail}`, related: { kind: 'case', id: legalCase.id } })
   }
 
   /**

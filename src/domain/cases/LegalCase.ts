@@ -12,21 +12,37 @@ export const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
   closed: 'Closed',
 }
 
-/** How we are engaged on a matter — whether we run the whole case or take a part of it. */
-export type CaseType = 'full_case' | 'pil' | 'writ' | 'appeal' | 'intervention' | 'appearance' | 'complaint' | 'advisory'
+/** The kind of matter. */
+export type CaseType = 'pow' | 'public_interest' | 'industrial_dispute' | 'minimum_wages' | 'workmen_compensation' | 'other'
 
 export const CASE_TYPES: Record<CaseType, { label: string; description: string }> = {
-  full_case: { label: 'Full case', description: 'We conduct the whole matter, from filing to disposal' },
-  pil: { label: 'Public interest litigation', description: 'Filed for a wider group or cause, not one individual' },
-  writ: { label: 'Writ petition', description: 'Constitutional remedy before the High Court or Supreme Court' },
-  appeal: { label: 'Appeal / revision', description: 'Challenging an order or judgment' },
-  intervention: { label: 'Intervention', description: 'Joining a case someone else has filed' },
-  appearance: { label: 'Appearance only', description: 'We appear on specific hearings, not the whole case' },
-  complaint: { label: 'Complaint / representation', description: 'Before a labour authority, commission or police' },
-  advisory: { label: 'Legal opinion', description: 'Advice without a proceeding' },
+  pow: { label: 'PoW Case', description: 'Unpaid or delayed wages — Payment of Wages Act' },
+  public_interest: { label: 'Public Interest Case', description: 'Filed for a wider group or cause, not one individual' },
+  industrial_dispute: { label: 'Industrial Disputes Case', description: 'Termination, retrenchment, settlements — Industrial Disputes Act' },
+  minimum_wages: { label: 'MW Case', description: 'Pay below the notified rate — Minimum Wages Act' },
+  workmen_compensation: { label: 'Workmen Compensation Case', description: 'Compensation for injury or death at work' },
+  other: { label: 'Other', description: 'Anything that doesn’t fit the above' },
 }
 
 export const CASE_TYPE_ORDER = Object.keys(CASE_TYPES) as CaseType[]
+
+/** Older records may carry a type that no longer exists; those read as "Other" (a PIL as public interest). */
+export const caseTypeOf = (raw: string | undefined): CaseType => (raw && raw in CASE_TYPES ? (raw as CaseType) : raw === 'pil' ? 'public_interest' : 'other')
+
+/**
+ * Set when a case is briefed to outside counsel. A case with no engagement is handled by us,
+ * which is the usual situation.
+ */
+export interface Engagement {
+  counselId: ID
+  engagedOn?: ISODate
+  /** What they're briefed to do: "Appear at all hearings", "Draft and file only"… */
+  scope?: string
+  proBono: boolean
+  /** The agreed fee in words, e.g. "₹25,000 fixed + ₹3,000 per hearing". */
+  fee?: string
+  notes?: string
+}
 
 /** A legal matter, filed on behalf of one of the organizations. */
 export interface LegalCase extends Entity {
@@ -40,8 +56,10 @@ export interface LegalCase extends Entity {
   client?: string
   /** The court's own number for the matter, once it has one (e.g. "WP 1290/2026"). */
   courtNumber?: string
-  /** Court or forum; blank for opinions. */
+  /** Court or forum. */
   court?: string
+  /** Outside counsel briefed on the case. Absent means we handle it ourselves. */
+  engagement?: Engagement
   opposingParty?: string
   practiceArea?: string
   /** Procedural stage, e.g. "Evidence", "Arguments". */

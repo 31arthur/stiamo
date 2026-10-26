@@ -42,5 +42,5 @@ export class ActivityLog {
   }
 }
 
-export const RECORD_KINDS: EntityKind[] = ['task', 'meeting', 'followUp', 'case', 'hearing', 'plan', 'goal']
+export const RECORD_KINDS: EntityKind[] = ['task', 'meeting', 'followUp', 'case', 'hearing', 'plan', 'goal', 'counsel']
 export const isRecordKind = (k: string): k is EntityKind => (RECORD_KINDS as string[]).includes(k)

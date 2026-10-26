@@ -4,6 +4,7 @@ import type { Goal } from '../goals/Goal'
 import type { Meeting } from '../meetings/Meeting'
 import type { ActionPlan } from '../plans/ActionPlan'
 import type { Task } from '../tasks/Task'
+import type { Counsel } from '../counsel/Counsel'
 import { required, ValidationError } from './errors'
 import type { Draft } from './types'
 
@@ -52,6 +53,12 @@ export function normalizeCase(c: Draft<LegalCase>): Draft<LegalCase> {
     title: required(c.title, 'Title'),
     organization: required(c.organization, 'Organization') as typeof c.organization,
   }
+}
+
+export function normalizeCounsel(c: Draft<Counsel>): Draft<Counsel> {
+  const email = c.email?.trim()
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ValidationError('Enter a valid email address')
+  return { ...c, name: required(c.name, 'Name'), email: email || undefined, expertise: [...new Set(c.expertise)] }
 }
 
 export function normalizeHearing(h: Draft<Hearing>): Draft<Hearing> {

@@ -14,6 +14,7 @@ interface SeedTarget {
     task: CrudUseCases<'task'>
     followUp: CrudUseCases<'followUp'>
     case: CrudUseCases<'case'>
+    counsel: CrudUseCases<'counsel'>
     hearing: CrudUseCases<'hearing'>
     goal: CrudUseCases<'goal'>
   }
@@ -33,79 +34,119 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
   const day = (n: number) => shiftDate(today, n)
   const { crud } = app
 
-  // --- S&B: cases & hearings ------------------------------------------------------------------
+  // --- Counsel we know ---------------------------------------------------------------------------
+  const iyer = await crud.counsel.create(userId, {
+    kind: 'firm',
+    name: 'Iyer & Partners',
+    city: 'Hyderabad',
+    phone: '+91 40 2330 4455',
+    email: 'office@iyerpartners.example',
+    courts: 'Telangana High Court, Commissioner for Employees’ Compensation',
+    expertise: ['workmen_compensation', 'industrial_dispute'],
+    proBono: false,
+    status: 'active',
+    notes: 'Handled our last two compensation claims. Usually ₹35–50k per claim; likes the medical file and employer letters up front.',
+  })
+  const rao = await crud.counsel.create(userId, {
+    kind: 'advocate',
+    name: 'Adv. S. Rao',
+    firm: 'Rao Chambers',
+    city: 'Hyderabad',
+    phone: '+91 98480 11234',
+    email: 'srao@raochambers.example',
+    courts: 'Telangana High Court',
+    expertise: ['public_interest', 'minimum_wages'],
+    proBono: true,
+    status: 'active',
+    notes: 'Takes PILs for the unions pro bono. Prefers affidavits in English with Telugu translations attached.',
+  })
+  await crud.counsel.create(userId, {
+    kind: 'advocate',
+    name: 'Adv. Meera Pillai',
+    firm: 'Pillai Associates',
+    city: 'Bengaluru',
+    phone: '+91 99000 55678',
+    courts: 'Karnataka High Court, Labour Courts',
+    expertise: ['pow', 'industrial_dispute', 'other'],
+    proBono: false,
+    status: 'active',
+    notes: 'For matters that travel to Karnataka — workers returning from Bengaluru sites.',
+  })
+
+  // --- Cases & hearings (most are handled by us) -------------------------------------------------
   const mehta = await app.cases.open(userId, {
-    organization: 'SA',
-    type: 'full_case',
-    courtNumber: 'CS(COMM) 412/2025',
-    title: 'Mehta Textiles v. Coastal Freight',
-    client: 'Mehta Textiles Pvt Ltd',
-    court: 'Delhi High Court',
-    opposingParty: 'Coastal Freight Lines',
-    practiceArea: 'Commercial',
+    organization: 'TUMWU',
+    type: 'pow',
+    courtNumber: 'PW Appeal 14/2026',
+    title: 'Unpaid wages — Sri Lakshmi Brick Works (24 workers)',
+    client: '24 brick kiln workers from Odisha',
+    court: 'Authority under the Payment of Wages Act, Hyderabad',
+    opposingParty: 'Sri Lakshmi Brick Works',
+    practiceArea: 'Labour',
     stage: 'Evidence',
     status: 'active',
     filedOn: day(-210),
     summary:
-      'Suit for recovery of ₹2.4 Cr for cargo damaged in transit (Mumbai → Delhi, March 2025). Liability admitted in part; dispute over valuation and the limitation clause in the bill of lading.\n\nKey issues: (1) whether clause 14 caps liability, (2) valuation of damaged stock, (3) interest from date of claim.',
+      'Claim for four months of unpaid wages (₹9.6 L in all) and 10× compensation for delayed payment. The employer says the workers left voluntarily and were paid in full; no wage registers have been produced.\n\nKey issues: (1) whether wages were paid at all, (2) absence of registers under the Act, (3) limitation, and the employer’s plea that the workers were contract labour.',
   })
   const mehtaPast = await crud.hearing.create(userId, {
     caseId: mehta.id,
     date: day(-14),
     time: h(10, 30),
     duration: 90,
-    purpose: 'Examination-in-chief of PW-1',
-    forum: 'Court 23',
+    purpose: 'Evidence of WW-1 (worker leader)',
+    forum: 'Court Hall 2',
     outcome: open,
   })
   await app.cases.recordHearing(userId, mehtaPast.id, {
     summary:
-      'PW-1 (plant manager) examined; exhibits P-4 to P-11 marked. Defence objected to P-9 (surveyor report) — objection kept open. Opposite counsel sought time for cross.',
+      'WW-1 examined; muster-roll photographs and the workers’ ledger (Ex. W-4 to W-11) marked. Employer’s counsel objected to Ex. W-9 (the ledger) as unsigned — objection kept open. Time sought for cross-examination.',
     outcome: { status: 'done', comment: 'Proceeded as planned' },
-    next: { date: day(3), time: h(10, 30), purpose: 'Cross-examination of PW-2 (surveyor)' },
+    next: { date: day(3), time: h(10, 30), purpose: 'Cross-examination of employer’s witness (RW-1)' },
     plan: {
-      title: 'Prepare PW-2 cross-examination defence',
-      objective: 'Make the surveyor report (P-9) admissible and shore up the valuation.',
-      steps: ['Re-read surveyor report P-9 and annexures', 'Prep PW-2 for likely cross questions', 'Brief on admissibility of P-9', 'Compile valuation comparison chart'],
+      title: 'Prepare cross-examination of RW-1',
+      objective: 'Establish that no wages or registers exist and make the workers’ ledger (Ex. W-9) admissible.',
+      steps: ['Re-read the ledger Ex. W-9 against worker statements', 'Prep worker witnesses for likely cross questions', 'Brief on admissibility of an unsigned ledger', 'Tabulate wages due, worker by worker'],
     },
     caseUpdate: { stage: 'Evidence' },
   })
 
   const arora = await app.cases.open(userId, {
-    organization: 'SA',
-    type: 'full_case',
-    courtNumber: 'OP 88/2026',
-    title: 'In re: Arora Family Trust',
-    client: 'R. Arora (Trustee)',
-    court: 'District Court, Saket',
-    practiceArea: 'Trusts & succession',
+    organization: 'PMLU',
+    type: 'industrial_dispute',
+    courtNumber: 'ID 88/2026',
+    title: 'Retrenchment of 14 workers — Deccan Spinning Mills',
+    client: '14 retrenched mill workers',
+    court: 'Industrial Tribunal-cum-Labour Court, Hyderabad',
+    opposingParty: 'Deccan Spinning Mills Ltd',
+    practiceArea: 'Labour',
     stage: 'Pleadings',
     status: 'active',
     filedOn: day(-60),
-    summary: 'Petition for directions on distribution of trust assets after the death of the settlor. Two beneficiaries contest the 2019 deed of variation.',
+    summary: 'Workers retrenched without notice or retrenchment compensation after a shift closure. Conciliation failed; the reference to the Tribunal is pending the management’s written statement.',
   })
-  await crud.hearing.create(userId, { caseId: arora.id, date: day(-1), time: h(11), duration: 60, purpose: 'Reply to objections', forum: 'Court 4', outcome: open })
+  await crud.hearing.create(userId, { caseId: arora.id, date: day(-1), time: h(11), duration: 60, purpose: 'Written statement by management', forum: 'Court 4', outcome: open })
 
   const kapoor = await app.cases.open(userId, {
-    organization: 'SA',
-    type: 'appeal',
-    courtNumber: 'ITA 1290/2025',
-    title: 'Kapoor Retail v. ACIT',
-    client: 'Kapoor Retail LLP',
-    court: 'ITAT, Delhi Bench',
-    opposingParty: 'Assistant Commissioner of Income Tax',
-    practiceArea: 'Tax',
+    organization: 'MRC',
+    type: 'minimum_wages',
+    courtNumber: 'MW 1290/2025',
+    title: 'Minimum wages shortfall — Metro Guard Services',
+    client: '31 security guards',
+    court: 'Deputy Labour Commissioner, Secunderabad',
+    opposingParty: 'Metro Guard Services Pvt Ltd',
+    practiceArea: 'Labour',
     stage: 'Arguments',
     status: 'active',
     filedOn: day(-150),
-    summary: 'Appeal against addition of ₹68 L under s.68 for unexplained cash credits. Strong documentary trail for 80% of credits.',
+    summary: 'Guards on a 12-hour shift paid ₹9,500 a month against the notified minimum for the scheduled employment. Claim for the shortfall for 26 months plus overtime.',
   })
-  await crud.hearing.create(userId, { caseId: kapoor.id, date: day(12), time: h(14), duration: 60, purpose: 'Final arguments', forum: 'Bench B', outcome: open })
+  await crud.hearing.create(userId, { caseId: kapoor.id, date: day(12), time: h(14), duration: 60, purpose: 'Final arguments', forum: 'Hall B', outcome: open })
 
-  // A public interest case filed for a union, not an individual client.
+  // A public interest case, briefed to an outside advocate who takes these pro bono.
   const wages = await app.cases.open(userId, {
-    organization: 'TUMWU',
-    type: 'pil',
+    organization: 'NUMW',
+    type: 'public_interest',
     title: 'Unpaid wages of migrant construction workers',
     court: 'Telangana High Court',
     opposingParty: 'State Labour Department & 3 contractors',
@@ -113,26 +154,44 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     stage: 'Notice',
     status: 'active',
     filedOn: day(-40),
+    engagement: { counselId: rao.id, engagedOn: day(-45), proBono: true, scope: 'Draft, file and argue the PIL', notes: 'We supply affidavits and the worker list; she handles all appearances.' },
     summary: 'PIL seeking recovery of withheld wages and enforcement of the Inter-State Migrant Workmen Act for workers from Odisha and Bihar on a Hyderabad metro site. Affidavits from 38 workers filed.',
   })
   await crud.hearing.create(userId, { caseId: wages.id, date: day(6), time: h(11), duration: 45, purpose: 'Admission — notice to State', forum: 'Court 1', outcome: open })
 
+  // A paid brief to a law firm we know.
+  const compensation = await app.cases.open(userId, {
+    organization: 'SA',
+    type: 'workmen_compensation',
+    title: 'Death of Ravi Kumar at a construction site',
+    client: 'Family of Ravi Kumar',
+    court: 'Commissioner for Employees’ Compensation, Hyderabad',
+    opposingParty: 'Contractor and principal employer',
+    practiceArea: 'Labour',
+    stage: 'Claim filed',
+    status: 'active',
+    filedOn: day(-25),
+    engagement: { counselId: iyer.id, engagedOn: day(-24), proBono: false, fee: '₹40,000 fixed, paid in two parts', scope: 'File and conduct the claim to award', notes: 'Medical file and FIR with the firm. We stay in touch with the family.' },
+    summary: 'Compensation claim for the death of a 27-year-old scaffolding worker from Bihar who fell from the 4th floor. Employer disputes that he was employed on site; site attendance photos and a co-worker statement establish it.',
+  })
+  await crud.hearing.create(userId, { caseId: compensation.id, date: day(9), time: h(15), duration: 30, purpose: 'Notice to employer — first appearance', forum: 'Court Hall 1', outcome: open })
+
   // --- Appointments & meetings ----------------------------------------------------------------
   const aroraAppt = await app.meetings.save(userId, {
     kind: 'appointment',
-    title: 'Trust distribution consultation',
+    title: 'Workers’ meeting — retrenchment case',
     workspace: 'sb',
     slot: { date: today, start: h(15), duration: 60 },
     mode: 'in_person',
-    location: 'S&B office, Conference room',
-    counterpart: 'Mr. R. Arora',
+    location: 'PMLU office, Palamooru',
+    counterpart: 'Mr. P. Anjaiah (PMLU president)',
     contact: '+91 98100 22114',
-    attendees: ['R. Arora', 'Associate — Neha'],
-    purpose: 'Walk through objections and options before the next listing.',
+    attendees: ['P. Anjaiah', '6 retrenched workers', 'Associate — Neha'],
+    purpose: 'Walk the workers through the written statement and what we need from them.',
     agenda: [
-      { id: 'a1', topic: 'Status after last hearing', minutes: 10, outcome: open },
-      { id: 'a2', topic: 'Beneficiaries’ objections — response strategy', minutes: 30, outcome: open },
-      { id: 'a3', topic: 'Documents still needed from the client', minutes: 15, outcome: open },
+      { id: 'a1', topic: 'Where the case stands after the last listing', minutes: 10, outcome: open },
+      { id: 'a2', topic: 'Management’s plea — our response', minutes: 30, outcome: open },
+      { id: 'a3', topic: 'Termination letters and pay slips still needed', minutes: 15, outcome: open },
     ],
     confirmations: ['day_before', 'hour_before'],
     related: { kind: 'case', id: arora.id },
@@ -141,7 +200,7 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
   const aroraConfirmations = (await crud.followUp.list(userId)).filter((f) => f.subject?.id === aroraAppt.id)
   const dayBefore = aroraConfirmations.find((f) => f.trigger === 'day_before')
   if (dayBefore) {
-    await app.outcomes.execute(userId, { kind: 'followUp', id: dayBefore.id }, { status: 'done', comment: 'Confirmed; he’ll bring the 2019 deed.' })
+    await app.outcomes.execute(userId, { kind: 'followUp', id: dayBefore.id }, { status: 'done', comment: 'Confirmed; they’ll bring the termination letters.' })
   }
 
   const sprint = await app.meetings.save(userId, {
@@ -164,15 +223,15 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
 
   await app.meetings.save(userId, {
     kind: 'appointment',
-    title: 'Client intake — appeal strategy',
+    title: 'Worker intake — minimum wages claim',
     workspace: 'sb',
     slot: { date: day(1), start: h(10), duration: 45 },
     mode: 'phone',
-    counterpart: 'Ms. S. Kapoor',
+    counterpart: 'Mr. B. Yadav (guards’ representative)',
     contact: '+91 98111 40021',
-    attendees: ['S. Kapoor'],
-    purpose: 'Agree the line of argument for the ITAT final hearing.',
-    agenda: [{ id: 'c1', topic: 'Evidence for remaining 20% of credits', outcome: open }],
+    attendees: ['B. Yadav'],
+    purpose: 'Agree the line of argument for the final hearing.',
+    agenda: [{ id: 'c1', topic: 'Duty rosters to prove overtime', outcome: open }],
     confirmations: ['day_before', 'hour_before'],
     related: { kind: 'case', id: kapoor.id },
     outcome: open,
@@ -187,26 +246,26 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     location: 'Studio 2',
     attendees: ['Producer — Karan'],
     agenda: [
-      { id: 'd1', topic: 'Episode outline: litigation myths', outcome: open },
+      { id: 'd1', topic: 'Episode outline: your rights when wages are held back', outcome: open },
       { id: 'd2', topic: 'Guest shortlist', outcome: open },
     ],
     confirmations: [],
     outcome: open,
   })
 
-  // One case, many meetings: a conference held about it, and an earlier client call linked by hand.
+  // One case, many meetings: a prep meeting held about it, and an earlier union call linked by hand.
   await app.meetings.save(userId, {
     kind: 'meeting',
-    title: 'Senior counsel conference — PW-2 strategy',
+    title: 'Workers’ prep session — cross-examination',
     workspace: 'sb',
     slot: { date: day(2), start: h(18), duration: 45 },
     mode: 'virtual',
-    link: 'https://meet.example.com/mehta-counsel',
-    attendees: ['Sr. Adv. R. Iyer', 'Associate — Neha'],
-    purpose: 'Agree the line of cross-examination for the surveyor.',
+    link: 'https://meet.example.com/kiln-prep',
+    attendees: ['WW-1 and 3 other workers', 'Associate — Neha'],
+    purpose: 'Rehearse likely cross-examination questions with the witnesses.',
     agenda: [
-      { id: 'f1', topic: 'Weak points in P-9', minutes: 20, outcome: open },
-      { id: 'f2', topic: 'Admissibility argument', minutes: 20, outcome: open },
+      { id: 'f1', topic: 'Weak points in the ledger (Ex. W-9)', minutes: 20, outcome: open },
+      { id: 'f2', topic: 'Who testifies on which months', minutes: 20, outcome: open },
     ],
     confirmations: [],
     related: { kind: 'case', id: mehta.id },
@@ -214,19 +273,19 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
   })
   const mehtaUpdate = await app.meetings.save(userId, {
     kind: 'appointment',
-    title: 'Client update — Mehta Textiles',
+    title: 'Union update — TUMWU executive',
     workspace: 'sb',
     slot: { date: day(-7), start: h(12), duration: 30 },
     mode: 'phone',
-    counterpart: 'Mr. K. Mehta',
+    counterpart: 'Mr. K. Narsimha (TUMWU general secretary)',
     contact: '+91 98200 11223',
-    attendees: ['K. Mehta'],
-    agenda: [{ id: 'g1', topic: 'Explain evidence stage and timeline', outcome: open }],
+    attendees: ['K. Narsimha'],
+    agenda: [{ id: 'g1', topic: 'Explain the evidence stage and timeline', outcome: open }],
     confirmations: [],
     outcome: open,
   })
-  await app.outcomes.execute(userId, { kind: 'meeting', id: mehtaUpdate.id }, { status: 'done', comment: 'Client comfortable with timeline; wants monthly updates' })
-  await app.links.link(userId, { kind: 'case', id: mehta.id }, { kind: 'meeting', id: mehtaUpdate.id }, { a: mehta.title, b: mehtaUpdate.title }, 'Client call about the evidence stage')
+  await app.outcomes.execute(userId, { kind: 'meeting', id: mehtaUpdate.id }, { status: 'done', comment: 'Union comfortable with the timeline; wants monthly updates' })
+  await app.links.link(userId, { kind: 'case', id: mehta.id }, { kind: 'meeting', id: mehtaUpdate.id }, { a: mehta.title, b: mehtaUpdate.title }, 'Union call about the evidence stage')
 
   // A past meeting that still needs its outcome recorded.
   await app.meetings.save(userId, {
@@ -255,8 +314,8 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
   )
   const practicePlan = await app.plans.createWithSteps(
     userId,
-    { title: 'Grow commercial litigation pipeline', objective: 'Two new commercial mandates per month.', workspace: 'sb', status: 'active', dueDate: day(90) },
-    ['Publish article on carrier liability', 'Reconnect with 10 past clients', 'CLE talk at the bar association'],
+    { title: 'Grow labour-rights casework', objective: 'Two new worker cases a month through union referrals.', workspace: 'sb', status: 'active', dueDate: day(90) },
+    ['Publish an explainer on wage-claim remedies', 'Reconnect with 10 union branch leaders', 'Legal-aid camp at the labour adda'],
   )
 
   const tasks = await crud.task.list(userId)
@@ -264,19 +323,19 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     const t = tasks.find((x) => x.title === title)
     if (t) await app.outcomes.execute(userId, { kind: 'task', id: t.id }, outcome)
   }
-  await mark('Re-read surveyor report P-9 and annexures', { status: 'done' })
+  await mark('Re-read the ledger Ex. W-9 against worker statements', { status: 'done' })
   await mark('Finalise rate-limit thresholds', { status: 'done' })
   await mark('Load test billing service', { status: 'partial', comment: 'p95 fine; p99 spikes at 2k rps', nextAction: 'Profile billing DB connection pool' })
   await mark('Outline 8 episodes', { status: 'done' })
   await mark('Pitch column to Lexis Weekly', { status: 'not_done', comment: 'Editor on leave', nextAction: 'Follow up after the partnership call' })
-  await mark('Publish article on carrier liability', { status: 'done' })
+  await mark('Publish an explainer on wage-claim remedies', { status: 'done' })
 
-  const mehtaPlan = (await crud.task.list(userId)).find((t) => t.title === 'Prep PW-2 for likely cross questions')
+  const mehtaPlan = (await crud.task.list(userId)).find((t) => t.title === 'Prep worker witnesses for likely cross questions')
   const casePlanIds = mehtaPlan?.planId ? [mehtaPlan.planId] : []
 
   await crud.goal.create(userId, {
-    title: 'Grow S&B litigation practice',
-    description: 'Become the go-to firm for commercial and carrier-liability disputes in Delhi.',
+    title: 'Reach more workers through casework',
+    description: 'Be the first call for migrant workers’ wage and compensation problems in Hyderabad.',
     workspace: 'sb',
     horizon: 'year',
     startDate: day(-120),
@@ -284,7 +343,7 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     planIds: [practicePlan.id, ...casePlanIds],
     keyResults: [
       { id: 'kr1', label: 'Active matters', start: 8, target: 20, current: 12 },
-      { id: 'kr2', label: 'Reported judgments', start: 0, target: 4, current: 1 },
+      { id: 'kr2', label: 'Orders in workers’ favour', start: 0, target: 4, current: 1 },
     ],
     checkIns: [{ id: 'ci1', date: day(-30), confidence: 4, note: 'Pipeline healthy; need more visibility.' }],
     status: 'active',
@@ -323,16 +382,16 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
 
   await task('Review API rate-limit PR', 'fsa', { dueDate: today, estimate: 45, priority: 'high', slot: { date: today, start: h(9, 30), duration: 60 } })
   await task('Reply to press query — The Print', 'media', { dueDate: today, estimate: 20, priority: 'urgent' })
-  await task('Draft written submissions — Kapoor', 'sb', { dueDate: day(5), estimate: 120, priority: 'high', related: { kind: 'case', id: kapoor.id } })
+  await task('Draft written submissions — Metro Guard MW claim', 'sb', { dueDate: day(5), estimate: 120, priority: 'high', related: { kind: 'case', id: kapoor.id } })
   await task('Renew passport', 'personal', { dueDate: day(-3), estimate: 30 })
   await task('Gym', 'personal', { dueDate: today, estimate: 60, slot: { date: today, start: h(7), duration: 60 } })
   await task('Pay advance tax instalment', 'personal', { dueDate: day(4), estimate: 15, priority: 'high' })
 
   await crud.followUp.create(userId, {
-    title: 'Chase Coastal Freight’s counsel for documents',
+    title: 'Chase the employer’s counsel for wage registers',
     channel: 'email',
     workspace: 'sb',
-    contact: 'adv.verma@coastal-legal.in',
+    contact: 'adv.verma@example.in',
     due: { date: today },
     duration: 15,
     subject: { kind: 'case', id: mehta.id },

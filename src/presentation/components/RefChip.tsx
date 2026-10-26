@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import type { EntityRef } from '@/domain/shared/types'
+import { counselLabel } from '@/domain/counsel/Counsel'
 import { useEditor } from '@/presentation/app/create'
 import { useEntities } from '@/presentation/data/hooks'
 import { KIND_META, MEETING_KIND_ICON } from './kinds'
@@ -14,6 +15,7 @@ export function useRefInfo(ref: EntityRef | undefined) {
   const { data: hearings } = useEntities('hearing')
   const { data: plans } = useEntities('plan')
   const { data: goals } = useEntities('goal')
+  const { data: counsel } = useEntities('counsel')
 
   return useMemo(() => {
     if (!ref) return null
@@ -38,10 +40,14 @@ export function useRefInfo(ref: EntityRef | undefined) {
       }
       case 'plan':
         return label(KIND_META.plan.icon, 'Plan', find(plans)?.title)
+      case 'counsel': {
+        const c = find(counsel)
+        return c ? label(KIND_META.counsel.icon, 'Counsel', counselLabel(c)) : null
+      }
       case 'goal':
         return label(KIND_META.goal.icon, 'Goal', find(goals)?.title)
     }
-  }, [ref, tasks, meetings, followUps, cases, hearings, plans, goals])
+  }, [ref, tasks, meetings, followUps, cases, hearings, plans, goals, counsel])
 }
 
 function label(icon: (typeof KIND_META)['task']['icon'], kindLabel: string, title: string | undefined) {

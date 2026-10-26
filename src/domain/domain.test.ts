@@ -10,6 +10,7 @@ import type { Goal } from './goals/Goal'
 import { confirmationDue, syncConfirmations } from './meetings/confirmations'
 import type { Meeting } from './meetings/Meeting'
 import { buildDayPlan, packDay } from './planner/dayPlan'
+import { caseTypeOf } from './cases/LegalCase'
 import { RelationGraph } from './relations/graph'
 import { planProgress } from './plans/ActionPlan'
 import { progressOf } from './shared/outcome'
@@ -111,7 +112,7 @@ describe('agenda & planner', () => {
     meetings: [meeting()],
     followUps: [],
     hearings: [{ id: 'h1', ...stamp, caseId: 'c1', date: '2026-10-27', time: at(10, 30), duration: 60, purpose: 'Arguments', outcome: { status: 'open' as const } }],
-    cases: [{ id: 'c1', ...stamp, reference: 'SA-2026-001', title: 'A v. B', organization: 'SA' as const, type: 'full_case' as const, court: 'HC', status: 'active' as const, summary: '' }],
+    cases: [{ id: 'c1', ...stamp, reference: 'SA-2026-001', title: 'A v. B', organization: 'SA' as const, type: 'pow' as const, court: 'HC', status: 'active' as const, summary: '' }],
   }
 
   it('unifies tasks, meetings and hearings for a day, timed first', () => {
@@ -182,7 +183,7 @@ describe('progress', () => {
 describe('use cases', () => {
   it('records a hearing: summary, next listing, action plan with steps', async () => {
     const app = freshApp()
-    const c = await app.crud.case.create('u', { reference: 'OP 1', title: 'Trust', organization: 'SA', type: 'full_case', court: 'DC', status: 'active', summary: '' })
+    const c = await app.crud.case.create('u', { reference: 'OP 1', title: 'Trust', organization: 'SA', type: 'pow', court: 'DC', status: 'active', summary: '' })
     const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-10-20', duration: 60, purpose: 'Reply', outcome: { status: 'open' } })
 
     const result = await app.cases.recordHearing('u', h.id, {
@@ -242,7 +243,7 @@ describe('use cases', () => {
       app.crud.goal.list(DEMO_ACCOUNT.id),
       app.crud.followUp.list(DEMO_ACCOUNT.id),
     ])
-    expect(cases).toHaveLength(4)
+    expect(cases).toHaveLength(5)
     expect(goals).toHaveLength(3)
     expect(followUps.filter((f) => f.trigger).length).toBe(4) // two appointments × two confirmations
     expect((await app.crud.link.list(DEMO_ACCOUNT.id)).length).toBeGreaterThan(0)
@@ -252,7 +253,7 @@ describe('use cases', () => {
 describe('relationships & history', () => {
   it('builds a case thread and records its history', async () => {
     const app = freshApp()
-    const c = await app.crud.case.create('u', { reference: 'CS 9', title: 'A v. B', organization: 'SA', type: 'full_case', court: 'HC', status: 'active', summary: '' })
+    const c = await app.crud.case.create('u', { reference: 'CS 9', title: 'A v. B', organization: 'SA', type: 'pow', court: 'HC', status: 'active', summary: '' })
     const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-10-20', duration: 60, purpose: 'Evidence', outcome: { status: 'open' } })
     const { plan, nextHearing } = await app.cases.recordHearing('u', h.id, {
       summary: 'Part heard',
@@ -269,7 +270,7 @@ describe('relationships & history', () => {
       app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'),
       app.crud.hearing.list('u'), app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.link.list('u'),
     ])
-    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, links })
+    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel: [], links })
     const thread = graph.thread({ kind: 'case', id: c.id })
     const ids = new Set(thread.members.map((r) => r.id))
     const expected = { hearing: h.id, next: nextHearing!.id, plan: plan!.id, step: step.id, spawned: spawned!.id, meeting: m.id }
@@ -296,7 +297,7 @@ describe('relationships & history', () => {
 describe('attachments', () => {
   it('attaches files to any record, records it in history, and enforces the size limit', async () => {
     const app = freshApp()
-    const c = await app.crud.case.create('u', { reference: 'CS 10', title: 'X v. Y', organization: 'SA', type: 'full_case', court: 'HC', status: 'active', summary: '' })
+    const c = await app.crud.case.create('u', { reference: 'CS 10', title: 'X v. Y', organization: 'SA', type: 'pow', court: 'HC', status: 'active', summary: '' })
     const file = new File(['order text'], 'order.txt', { type: 'text/plain' })
     const a = await app.attachments.attach('u', { kind: 'case', id: c.id }, c.title, file)
     expect(a).toMatchObject({ name: 'order.txt', size: 10, owner: { kind: 'case', id: c.id } })
@@ -323,7 +324,7 @@ describe('case numbers', () => {
   it('numbers cases per organization and year, counting on from the highest used', async () => {
     const app = freshApp()
     const open = (organization: 'SA' | 'TUMWU', filedOn?: string) =>
-      app.cases.open('u', { organization, type: 'full_case', title: 'T', status: 'active', summary: '', filedOn })
+      app.cases.open('u', { organization, type: 'pow', title: 'T', status: 'active', summary: '', filedOn })
 
     const a = await open('TUMWU', '2026-03-01')
     const b = await open('TUMWU', '2026-05-09')
@@ -339,5 +340,63 @@ describe('case numbers', () => {
   it('requires an organization', async () => {
     const app = freshApp()
     await expect(app.cases.open('u', { type: 'pil', title: 'T', status: 'active', summary: '' } as never)).rejects.toThrow(/Organization/)
+  })
+})
+
+describe('counsel', () => {
+  const newCase = (app: ReturnType<typeof freshApp>) => app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'Unpaid wages', status: 'active', summary: '' })
+  const newCounsel = (app: ReturnType<typeof freshApp>, name = 'Adv. S. Rao') =>
+    app.crud.counsel.create('u', { kind: 'advocate', name, expertise: ['pow', 'pow', 'public_interest'], proBono: true, status: 'active', notes: '' })
+
+  it('handles cases ourselves by default, and briefs counsel with terms and a history trail', async () => {
+    const app = freshApp()
+    const c = await newCase(app)
+    expect(c.engagement).toBeUndefined()
+
+    const rao = await newCounsel(app)
+    expect(rao.expertise).toEqual(['pow', 'public_interest']) // duplicates dropped
+
+    const briefed = await app.cases.assignCounsel('u', c.id, { counselId: rao.id, engagedOn: '2026-10-01', proBono: true, scope: 'Appear at all hearings' })
+    expect(briefed.engagement).toMatchObject({ counselId: rao.id, proBono: true, scope: 'Appear at all hearings' })
+
+    const history = await app.crud.activity.list('u')
+    expect(history.some((a) => a.ref.id === c.id && a.summary.startsWith('Briefed Adv. S. Rao') && a.related?.id === rao.id)).toBe(true)
+    expect(history.some((a) => a.ref.id === rao.id && a.summary.includes('Briefed on'))).toBe(true)
+
+    // The counsel's thread leads to the case; the case's thread leads to the counsel.
+    const [tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links] = await Promise.all([
+      app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'),
+      app.crud.hearing.list('u'), app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.counsel.list('u'), app.crud.link.list('u'),
+    ])
+    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links })
+    expect(graph.thread({ kind: 'counsel', id: rao.id }).members.map((m) => m.id)).toContain(c.id)
+    expect(graph.thread({ kind: 'case', id: c.id }).ancestors.map((a) => a.ref.id)).toContain(rao.id)
+
+    const back = await app.cases.assignCounsel('u', c.id, null)
+    expect(back.engagement).toBeUndefined()
+    expect((await app.crud.activity.list('u')).some((a) => a.summary === 'Taken back — now handled by us')).toBe(true)
+  })
+
+  it('refuses to brief counsel who aren’t in the directory', async () => {
+    const app = freshApp()
+    const c = await newCase(app)
+    await expect(app.cases.assignCounsel('u', c.id, { counselId: 'nobody', proBono: false })).rejects.toThrow(/Counsel not found/)
+    await expect(app.cases.open('u', { organization: 'SA', type: 'other', title: 'T', status: 'active', summary: '', engagement: { counselId: 'nobody', proBono: false } })).rejects.toThrow(/Counsel not found/)
+  })
+
+  it('returns a removed counsel’s cases to us', async () => {
+    const app = freshApp()
+    const rao = await newCounsel(app)
+    const c = await newCase(app)
+    await app.cases.assignCounsel('u', c.id, { counselId: rao.id, proBono: false, fee: '₹25,000 fixed' })
+    await app.counsel.remove('u', rao.id)
+    expect((await app.crud.case.get('u', c.id))!.engagement).toBeUndefined()
+    expect(await app.crud.counsel.list('u')).toEqual([])
+  })
+
+  it('reads older case types sensibly', () => {
+    expect(caseTypeOf('pil')).toBe('public_interest')
+    expect(caseTypeOf('full_case')).toBe('other')
+    expect(caseTypeOf('pow')).toBe('pow')
   })
 })

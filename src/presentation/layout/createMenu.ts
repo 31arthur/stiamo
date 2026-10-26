@@ -10,4 +10,5 @@ export const CREATE_MENU: { kind: EditorKind; label: string; icon: LucideIcon }[
   { kind: 'case', label: 'Case', icon: KIND_META.case.icon },
   { kind: 'plan', label: 'Action plan', icon: KIND_META.plan.icon },
   { kind: 'goal', label: 'Goal', icon: KIND_META.goal.icon },
+  { kind: 'counsel', label: 'Counsel (advocate / firm)', icon: KIND_META.counsel.icon },
 ]

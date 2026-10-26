@@ -5,8 +5,9 @@ import { AlertCircle, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CASE_STATUS_LABELS, CASE_TYPES, hearingsOf, nextHearing } from '@/domain/cases/LegalCase'
+import { CASE_STATUS_LABELS, CASE_TYPES, caseTypeOf, hearingsOf, nextHearing } from '@/domain/cases/LegalCase'
 import type { CaseStatus } from '@/domain/cases/LegalCase'
+import { counselLabel } from '@/domain/counsel/Counsel'
 import { planProgress } from '@/domain/plans/ActionPlan'
 import { formatClock } from '@/domain/shared/time'
 import { useEditor } from '@/presentation/app/create'
@@ -32,6 +33,8 @@ export function CasesPage() {
   const { data: hearings } = useEntities('hearing')
   const { data: plans } = useEntities('plan')
   const { data: tasks } = useEntities('task')
+  const { data: counsel } = useEntities('counsel')
+  const counselNames = useMemo(() => new Map(counsel.map((k) => [k.id, counselLabel(k)])), [counsel])
   const [filter, setFilter] = useState<'active' | 'all'>('active')
 
   const rows = useMemo(
@@ -99,13 +102,14 @@ export function CasesPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[11px] text-muted-foreground">{c.reference}</span>
                     <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium', CASE_STATUS_TONE[c.status])}>{CASE_STATUS_LABELS[c.status]}</span>
-                    <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium">{CASE_TYPES[c.type]?.label ?? 'Case'}</span>
+                    <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium">{CASE_TYPES[caseTypeOf(c.type)].label}</span>
                   </div>
                   <div className="truncate font-medium">{c.title}</div>
                   <div className="truncate text-xs text-muted-foreground">
                     {c.organization ?? '—'}
                     {c.client ? ` · for ${c.client}` : ''}
                   </div>
+                  <div className="truncate text-[11px] text-muted-foreground">{c.engagement ? `With ${counselNames.get(c.engagement.counselId) ?? 'outside counsel'}${c.engagement.proBono ? ' · pro bono' : ''}` : 'Handled by us'}</div>
                 </div>
                 <div className="min-w-0 text-sm">
                   <div className="truncate">{c.court ?? '—'}</div>
