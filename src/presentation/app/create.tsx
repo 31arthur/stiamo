@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { Hearing, LegalCase } from '@/domain/cases/LegalCase'
 import type { FollowUp } from '@/domain/followups/FollowUp'
@@ -19,8 +20,6 @@ import { GoalForm, newGoal } from '@/presentation/forms/GoalForm'
 import type { GoalDraft } from '@/presentation/forms/GoalForm'
 import { MeetingForm, newMeeting } from '@/presentation/forms/MeetingForm'
 import type { MeetingDraft } from '@/presentation/forms/MeetingForm'
-import { newPlan, PlanForm } from '@/presentation/forms/PlanForm'
-import type { PlanDraft, PlanFormExtras } from '@/presentation/forms/PlanForm'
 import { newTask, TaskForm } from '@/presentation/forms/TaskForm'
 import type { TaskDraft } from '@/presentation/forms/TaskForm'
 import { CounselForm, newCounsel } from '@/presentation/forms/CounselForm'
@@ -29,13 +28,22 @@ import type { Counsel } from '@/domain/counsel/Counsel'
 import { RecordSheet } from './RecordSheet'
 import { useWorkspaceFilter } from './workspaceFilter'
 
+/** What a new action plan starts with. It's created straight away and opened as its own page. */
+export type PlanDraft = Partial<Omit<ActionPlan, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
+export interface PlanExtras {
+  steps?: string[]
+  goalIds?: string[]
+}
+
+export const UNTITLED_PLAN = 'Untitled plan'
+
 export type EditorRequest =
   | { kind: 'task'; value?: Task | Partial<TaskDraft> }
   | { kind: 'followUp'; value?: FollowUp | Partial<FollowUpDraft> }
   | { kind: 'appointment' | 'meeting'; value?: Meeting | Partial<MeetingDraft> }
   | { kind: 'case'; value?: LegalCase | Partial<CaseDraft> }
   | { kind: 'hearing'; value: Hearing | HearingDraft }
-  | { kind: 'plan'; value?: ActionPlan | Partial<PlanDraft>; extras?: PlanFormExtras }
+  | { kind: 'plan'; value?: PlanDraft; extras?: PlanExtras }
   | { kind: 'goal'; value?: Goal | Partial<GoalDraft> }
   | { kind: 'counsel'; value?: Counsel | Partial<CounselDraft> }
 
@@ -102,7 +110,32 @@ export function EditorHost({ children }: { children: ReactNode }) {
 
   // Opening is deferred a beat (a timer, not a frame, so it still fires in background tabs): when triggered from a menu item, the menu's own close (and the
   // tail of that pointer gesture) would otherwise land on the new dialog and dismiss it.
-  const open = useCallback((r: EditorRequest) => void setTimeout(() => setRequest(r), 30), [])
+  const createPlan = useCallback(
+    async (r: Extract<EditorRequest, { kind: 'plan' }>) => {
+      try {
+        const draft: Omit<ActionPlan, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
+          title: UNTITLED_PLAN,
+          objective: '',
+          status: 'active',
+          ...r.value,
+          workspace: r.value?.workspace ?? workspace ?? 'personal',
+        }
+        const plan = await services.plans.createWithSteps(userId, draft, r.extras?.steps ?? [], r.extras?.goalIds ?? [])
+        navigate(`/plans/${plan.id}`, { state: { fresh: true } })
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Couldn’t create the plan')
+      }
+    },
+    [navigate, services, userId, workspace],
+  )
+  const open = useCallback(
+    (r: EditorRequest) => {
+      // Plans don't use a dialog: they open as a page you write in, and save as you go.
+      if (r.kind === 'plan') return void createPlan(r)
+      setTimeout(() => setRequest(r), 30)
+    },
+    [createPlan],
+  )
   const api = useMemo(() => ({ open, openRef }), [open, openRef])
   const editing = !!request?.value && 'createdAt' in request.value
   const [createTitle, editTitle, description] = request ? TITLES[request.kind] : ['', '', '']
@@ -136,13 +169,6 @@ export function EditorHost({ children }: { children: ReactNode }) {
           )}
           {request?.kind === 'case' && <CaseForm initial={editing ? (request.value as LegalCase) : { ...newCase(), ...request.value }} onDone={done('/cases')} />}
           {request?.kind === 'hearing' && <HearingForm initial={request.value} onDone={done()} />}
-          {request?.kind === 'plan' && (
-            <PlanForm
-              initial={editing ? (request.value as ActionPlan) : newPlan({ ...(workspace && { workspace }), ...request.value })}
-              extras={request.extras}
-              onDone={done('/plans')}
-            />
-          )}
           {request?.kind === 'counsel' && <CounselForm initial={editing ? (request.value as Counsel) : newCounsel(request.value as Partial<CounselDraft>)} onDone={done('/counsel')} />}
           {request?.kind === 'goal' && (
             <GoalForm initial={editing ? (request.value as Goal) : { ...newGoal(today), workspace, ...request.value }} onDone={done('/goals')} />

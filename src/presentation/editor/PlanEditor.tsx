@@ -125,10 +125,28 @@ export default function PlanEditor({ owner, ownerTitle, initial, onSave, editabl
 
   // Debounced autosave.
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  useEffect(() => () => clearTimeout(timer.current), [])
-  const handleChange = () => {
+  const dirty = useRef(false)
+  const onSaveRef = useRef(onSave)
+  onSaveRef.current = onSave
+  const flush = () => {
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => onSave(editor.document as RichDoc), 700)
+    if (!dirty.current) return
+    dirty.current = false
+    onSaveRef.current(editor.document as RichDoc)
+  }
+  // Leaving the page (or closing the tab) saves whatever is still waiting.
+  useEffect(() => {
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      flush()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const handleChange = () => {
+    dirty.current = true
+    clearTimeout(timer.current)
+    timer.current = setTimeout(flush, 700)
   }
 
   const env = useMemo<EditorEnv>(() => ({ services, userId, owner, ownerTitle, attachments, editable }), [services, userId, owner, ownerTitle, attachments, editable])
