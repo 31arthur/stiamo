@@ -11,13 +11,17 @@
 - [x] Command palette, workspace lens, attention rail
 - [x] Domain & use-case tests
 
+- [x] Firebase backend: accounts, Firestore live sync, offline cache, security rules
+- [x] Relationship graph, thread history, flexible follow-ups
+- [x] Attachments with preview
+- [x] Notion-style plan pages with drawings
+- [x] Mobile-first layouts, icons and metadata
+
 ## Next
 
-- [ ] Backend API + real authentication (swap `LocalRepository` for HTTP repositories)
 - [ ] Notifications for confirmation calls and upcoming hearings
 - [ ] Recurring meetings and tasks
 - [ ] Week view; drag across days
 - [ ] Contacts / clients as first-class records (reuse across cases, appointments and follow-ups)
-- [ ] Document links on cases and hearings
 - [ ] Goal review cadence (weekly check-in prompts) and trend charts
 - [ ] Export: case history and hearing summaries as PDF

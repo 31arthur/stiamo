@@ -31,7 +31,15 @@ src/
   components/ui/              shadcn/ui primitives (Base UI)
 ```
 
-See [DOMAIN.md](DOMAIN.md) for the model itself.
+See [DOMAIN.md](DOMAIN.md) for the model and [FIREBASE.md](FIREBASE.md) for the backend.
+
+Additional pieces since v2:
+
+- `domain/relations` (links + `RelationGraph`), `domain/activity` (history), `domain/attachments` (files and the `FileStore` port).
+- `data/firebase` (Auth, Firestore repository with `onSnapshot`, error messages), `data/files` (Cloud Storage/Firestore-chunk and IndexedDB stores).
+- `di/backends.ts` (offline) and `di/firebaseBackend.ts` (cloud, lazy-loaded) feed `createContainer(backend)`.
+- `presentation/data/live.tsx` subscribes to every collection and pours snapshots into the query cache; screens never fetch on their own.
+- `presentation/relations`, `presentation/attachments`, `presentation/editor` (BlockNote + Excalidraw, both lazy-loaded).
 
 ## Layers
 

@@ -59,8 +59,31 @@ Cards with progress, due date, origin, case and linked goals. Detail: reorderabl
 
 Portfolio counts by health and cards with a progress ring, **progress vs time** bar, and key results. Detail: health breakdown (key results / plans / time elapsed), key results with +/- updates, linked plans (link existing, create new, unlink), check-ins with confidence 1–5, mark achieved.
 
+## Cloud sync and accounts
+
+Email/password accounts (create account, sign in, reset password) backed by Firebase, with live sync across devices and offline support. Without a Firebase config the app runs fully offline with a demo account. See [FIREBASE.md](FIREBASE.md).
+
+## Threads, links and history
+
+- Open a **task or follow-up** anywhere to get a side sheet with Overview, Files and **Thread & history**.
+- Cases, meetings, plans and goals have the same thread view: what it belongs to, a collapsible tree of everything that grew out of it, records you've linked by hand, and a merged timeline (created, outcome recorded, rescheduled, linked, files attached, notes).
+- A case lists **every connected meeting**; link existing ones with *Link*.
+- Follow-ups can be **anytime**, on a day, or at a time.
+
+## Documents
+
+Attach files to tasks, follow-ups, meetings, cases, each hearing, plans and goals — drop, paste or browse (25 MB each). Preview images (zoom), PDFs, video, audio and text in place with arrow-key navigation; other files open or download. A paperclip count shows on rows.
+
+## Plan pages
+
+A plan is a page: cover, editable title and objective, a properties table (status, due, workspace, progress, origin, goals), tracked steps, then a **Notion-style editor** (`/` for headings, lists, to-dos, toggles, tables, quotes, code, images, video, audio, files) and a **Drawing** block (Excalidraw) that re-opens for editing.
+
+## Mobile
+
+Bottom tab bar with a create button; dialogs become bottom sheets with a pinned action bar; the calendar shows dots plus a selected-day list; planner drag uses long-press so scrolling still works; nothing scrolls sideways at 375 px. The app is installable (web manifest, icons, theme colour).
+
 ## Known limitations
 
-- Data lives in the browser; there is no backend or multi-device sync yet.
+- Cloud mode needs the one-time console setup in [FIREBASE.md](FIREBASE.md); until then the app runs offline on this device.
 - No recurring events, reminders/notifications or time zones.
 - Drag and drop is pointer-based; keyboard users move blocks with arrow keys.
