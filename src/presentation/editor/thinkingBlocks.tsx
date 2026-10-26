@@ -42,7 +42,7 @@ export const QuestionBlock = createReactBlockSpec(
             title={parked ? 'Pick this question up again' : 'Park this question for later'}
             className={cn('qa-chip inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium select-none', style.chip)}
           >
-            {parked ? <PlayCircle className="size-3" /> : status === 'open' ? <PauseCircle className="size-3 opacity-0 transition-opacity group-hover:opacity-100" /> : null}
+            {parked ? <PlayCircle className="size-3" /> : status === 'open' ? <PauseCircle className="qa-chip-icon size-3" /> : null}
             {style.label}
           </button>
         </div>

@@ -258,14 +258,30 @@
   border: 1px solid color-mix(in oklch, var(--warning) 28%, transparent);
 }
 .stiamo-editor .qa-text-insight { font-weight: 500; }
-/* Empty-state hint inside the inline content (ProseMirror leaves just a trailing <br>). */
-.stiamo-editor .qa-text:has(> br:only-child)::before,
-.stiamo-editor .qa-text:has(> .ProseMirror-trailingBreak:only-child)::before {
-  content: attr(data-hint);
+/* Empty-state hint: the inline content wraps a lone trailing <br> when the block has no text. */
+.stiamo-editor .qa-text > [data-node-view-content-react] { position: relative; }
+.stiamo-editor .qa-text > [data-node-view-content-react]:has(> br:only-child)::before {
+  content: 'Type here…';
+  position: absolute;
+  inset: 0 auto auto 0;
   color: var(--muted-foreground);
   opacity: 0.55;
+  font-weight: 400;
   pointer-events: none;
-  position: absolute;
+  white-space: nowrap;
+}
+.stiamo-editor .qa-text-question > [data-node-view-content-react]:has(> br:only-child)::before { content: 'Type a question…'; }
+.stiamo-editor .qa-answer .qa-text > [data-node-view-content-react]:has(> br:only-child)::before { content: 'Your answer…'; }
+.stiamo-editor .qa-text-insight > [data-node-view-content-react]:has(> br:only-child)::before { content: 'What did you work out?'; }
+/* The status chip stays out of the way until the question is hovered, focused, or no longer open. */
+.stiamo-editor .qa-chip { margin-top: 0.1875rem; transition: opacity 0.15s; }
+.stiamo-editor .qa-question[data-status='open'] .qa-chip { opacity: 0; }
+.stiamo-editor .qa-question:hover .qa-chip,
+.stiamo-editor .qa-question:focus-within .qa-chip { opacity: 1; }
+.stiamo-editor .qa-chip-icon { display: none; }
+.stiamo-editor .qa-chip:hover .qa-chip-icon { display: inline-block; }
+@media (hover: none) {
+  .stiamo-editor .qa-question[data-status='open'] .qa-chip { opacity: 1; }
 }
 @media (max-width: 640px) {
   .stiamo-editor .qa-answer { margin-left: 0.5rem; }
