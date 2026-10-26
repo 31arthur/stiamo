@@ -2,8 +2,9 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { format, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowLeft, Link2, Minus, Pencil, Plus, Trophy, Unlink } from 'lucide-react'
+import { Link2, Minus, Pencil, Plus, Trophy, Unlink } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { BackButton } from '@/presentation/components/BackButton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -57,9 +58,7 @@ function GoalDetail({ goal: g }: { goal: Goal }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link to="/goals" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" /> Goals
-        </Link>
+        <BackButton fallback="/goals" />
         <div className="flex gap-1">
           {g.status === 'active' ? (
             <Button variant="outline" size="sm" onClick={() => save.run({ ...g, status: 'achieved' })}>

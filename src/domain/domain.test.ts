@@ -12,7 +12,8 @@ import type { Meeting } from './meetings/Meeting'
 import { buildDayPlan, packDay } from './planner/dayPlan'
 import { caseTypeOf } from './cases/LegalCase'
 import { RelationGraph } from './relations/graph'
-import { planProgress } from './plans/ActionPlan'
+import { planProgress, planScope } from './plans/ActionPlan'
+import { digestOf } from './plans/planDoc'
 import { progressOf } from './shared/outcome'
 import type { Task } from './tasks/Task'
 
@@ -398,5 +399,72 @@ describe('counsel', () => {
     expect(caseTypeOf('pil')).toBe('public_interest')
     expect(caseTypeOf('full_case')).toBe('other')
     expect(caseTypeOf('pow')).toBe('pow')
+  })
+})
+
+describe('plan thinking & scope', () => {
+  const para = (type: string, text: string, props: Record<string, unknown> = {}, children: unknown[] = []) => ({ id: `${type}-${text.slice(0, 6)}`, type, props, content: [{ type: 'text', text, styles: {} }], children })
+
+  it('reads questions, answers and insights out of a plan page', () => {
+    const doc = [
+      para('paragraph', 'Context'),
+      para('question', 'Who testifies?', { status: 'open' }),
+      para('answer', 'WW-1.'),
+      para('answer', 'And the supervisor.'),
+      para('question', 'Is the ledger admissible?', { status: 'open' }),
+      para('question', 'Limitation?', { status: 'parked' }, [para('answer', 'ignored: nested answers still count only when adjacent')]),
+      para('insight', 'Secure the ledger first.'),
+      para('insight', ''),
+    ]
+    const d = digestOf(doc)
+    expect(d.questions.map((q) => [q.text, q.status])).toEqual([
+      ['Who testifies?', 'answered'],
+      ['Is the ledger admissible?', 'open'],
+      ['Limitation?', 'parked'],
+    ])
+    expect(d.questions[0].answer).toBe('WW-1.\nAnd the supervisor.')
+    expect(d).toMatchObject({ open: 1, answered: 1, parked: 1 })
+    expect(d.insights.map((i) => i.text)).toEqual(['Secure the ledger first.']) // empty insights are skipped
+    expect(digestOf(undefined)).toMatchObject({ questions: [], insights: [], open: 0 })
+  })
+
+  it('scopes a plan to a case, one hearing or one task, and clears what no longer applies', async () => {
+    const app = freshApp()
+    const c = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'Wages', status: 'active', summary: '' })
+    const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-11-03', duration: 60, purpose: 'Evidence', outcome: { status: 'open' } })
+    const t = await app.crud.task.create('u', { title: 'Get ledger certified', notes: '', workspace: 'fsa', priority: 'normal', estimate: 30, outcome: { status: 'open' } })
+    const plan = await app.plans.createWithSteps('u', { title: 'Prep', objective: '', workspace: 'personal', status: 'active' }, ['Draft'])
+    expect(planScope(plan)).toBe('general')
+
+    expect(planScope(await app.plans.setScope('u', plan.id, { kind: 'case', caseId: c.id }))).toBe('case')
+    const forHearing = await app.plans.setScope('u', plan.id, { kind: 'hearing', hearingId: h.id })
+    expect(forHearing).toMatchObject({ hearingId: h.id, caseId: c.id, workspace: 'sb' })
+    const forTask = await app.plans.setScope('u', plan.id, { kind: 'task', taskId: t.id })
+    expect(forTask).toMatchObject({ taskId: t.id, hearingId: undefined, caseId: undefined, workspace: 'fsa' })
+    expect(planScope(await app.plans.setScope('u', plan.id, { kind: 'general' }))).toBe('general')
+
+    await expect(app.plans.setScope('u', plan.id, { kind: 'hearing' })).rejects.toThrow(/Choose the hearing/)
+    const step = (await app.crud.task.list('u')).find((x) => x.title === 'Draft')!
+    await expect(app.plans.setScope('u', plan.id, { kind: 'task', taskId: step.id })).rejects.toThrow(/own steps/)
+
+    // Scope changes show up in the plan's history.
+    expect((await app.crud.activity.list('u')).some((a) => a.ref.id === plan.id && a.summary.includes('Scope'))).toBe(true)
+  })
+
+  it('puts a plan under its hearing in the thread, and the post-hearing plan targets the next hearing', async () => {
+    const app = freshApp()
+    const c = await app.cases.open('u', { organization: 'SA', type: 'other', title: 'T', status: 'active', summary: '' })
+    const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-10-20', duration: 60, purpose: 'Reply', outcome: { status: 'open' } })
+    const { plan, nextHearing } = await app.cases.recordHearing('u', h.id, {
+      summary: 'Adjourned', outcome: { status: 'not_done' }, next: { date: '2026-11-10', purpose: 'Reply (contd.)' }, plan: { title: 'Prep', objective: '', steps: [] },
+    })
+    expect(plan!.hearingId).toBe(nextHearing!.id)
+
+    const [tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links] = await Promise.all([
+      app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'),
+      app.crud.hearing.list('u'), app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.counsel.list('u'), app.crud.link.list('u'),
+    ])
+    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links })
+    expect(graph.thread({ kind: 'plan', id: plan!.id }).ancestors.map((a) => a.ref.id)).toEqual(expect.arrayContaining([nextHearing!.id, h.id, c.id]))
   })
 })

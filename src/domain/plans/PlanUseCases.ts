@@ -1,10 +1,10 @@
 import type { CrudUseCases } from '../shared/CrudUseCases'
-import { NotFoundError } from '../shared/errors'
+import { NotFoundError, ValidationError } from '../shared/errors'
 import type { DomainEnv } from '../shared/registry'
 import type { Draft, ID, RichDoc } from '../shared/types'
 import type { ActivityLog } from '../activity/ActivityLog'
 import { stepsOf } from './ActionPlan'
-import type { ActionPlan } from './ActionPlan'
+import type { ActionPlan, PlanScope } from './ActionPlan'
 import type { Task } from '../tasks/Task'
 
 export class PlanUseCases {
@@ -53,6 +53,37 @@ export class PlanUseCases {
       order: steps.length ? Math.max(...steps.map((s) => s.order ?? 0)) + 1 : 0,
       outcome: { status: 'open' },
     })
+  }
+
+  /**
+   * Says what the plan covers. A hearing's plan belongs to that hearing's case; a task's plan takes
+   * the task's workspace (and its case, when the task came from one). Anything not chosen is cleared.
+   */
+  async setScope(userId: ID, planId: ID, scope: { kind: PlanScope; caseId?: ID; hearingId?: ID; taskId?: ID }): Promise<ActionPlan> {
+    const plan = await this.env.repos.plan.get(userId, planId)
+    if (!plan) throw new NotFoundError('Action plan')
+    const cleared = { ...plan, caseId: undefined, hearingId: undefined, taskId: undefined }
+
+    switch (scope.kind) {
+      case 'general':
+        return this.plans.update(cleared)
+      case 'case': {
+        if (!scope.caseId || !(await this.env.repos.case.get(userId, scope.caseId))) throw new ValidationError('Choose the case')
+        return this.plans.update({ ...cleared, caseId: scope.caseId, workspace: 'sb' })
+      }
+      case 'hearing': {
+        const hearing = scope.hearingId ? await this.env.repos.hearing.get(userId, scope.hearingId) : null
+        if (!hearing) throw new ValidationError('Choose the hearing')
+        return this.plans.update({ ...cleared, caseId: hearing.caseId, hearingId: hearing.id, workspace: 'sb' })
+      }
+      case 'task': {
+        const task = scope.taskId ? await this.env.repos.task.get(userId, scope.taskId) : null
+        if (!task) throw new ValidationError('Choose the task')
+        if (task.planId === planId) throw new ValidationError('A plan can’t be about one of its own steps')
+        const caseId = task.related?.kind === 'case' ? task.related.id : undefined
+        return this.plans.update({ ...cleared, taskId: task.id, caseId, workspace: task.workspace })
+      }
+    }
   }
 
   /**

@@ -83,6 +83,12 @@ Attach files to tasks, follow-ups, meetings, cases, each hearing, plans and goal
 
 **New action plan** doesn't open a form: it creates the plan and opens its page straight away, with the cursor in the title (from a case or goal it arrives already linked to it). Everything on the page saves as you go — title, objective and properties on commit, the block editor 0.7 s after you stop typing and again when you leave the page — with a *Saving… / Saved* indicator at the top. A plan is a page: cover, editable title and objective, a properties table (status, due, workspace, progress, origin, goals), tracked steps, then a **Notion-style editor** (`/` for headings, lists, to-dos, toggles, tables, quotes, code, images, video, audio, files) and a **Drawing** block (Excalidraw) that re-opens for editing.
 
+**Working a plan out.** Plans are written the way you'd think on paper. Type `??` and a space (or `/` → Question) to ask a question; press Enter to answer it; Enter again adds another line of the answer; Enter on an empty answer starts the next question. A question marks itself **Answered** once it has an answer beneath it, or you can **park** it for later. Type `!!` (or `/` → Insight) to mark an insight once something is concrete. A **Working it out** panel beside the page (above it on a phone) counts answered questions, lists what's still open (click to jump to it) and gathers all the insights, each with *Add as a step*.
+
+**What a plan covers.** The *Covers* row sets a plan to **General**, a **whole case**, **one hearing** or **one task**, and any number of steps (tasks) can hang off it either way. A plan made when you write up a hearing is for the next hearing and shows under that hearing on the case page; a plan for a task appears in that task's thread.
+
+**Back.** Every detail page has a Back button that returns to where you came from, falling back to its list if you opened it directly.
+
 ## Mobile
 
 Bottom tab bar with a create button; dialogs become bottom sheets with a pinned action bar; the calendar shows dots plus a selected-day list; planner drag uses long-press so scrolling still works; nothing scrolls sideways at 375 px. The app is installable (web manifest, icons, theme colour).

@@ -1,6 +1,7 @@
 import { format, parseISO } from 'date-fns'
-import { ArrowLeft, HeartHandshake, Mail, MapPin, Pencil, Phone, Scale } from 'lucide-react'
+import { HeartHandshake, Mail, MapPin, Pencil, Phone, Scale } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { BackButton } from '@/presentation/components/BackButton'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CASE_STATUS_LABELS, CASE_TYPES, caseTypeOf } from '@/domain/cases/LegalCase'
@@ -36,9 +37,7 @@ function CounselDetail({ counsel: c }: { counsel: Counsel }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link to="/counsel" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" /> Counsel
-        </Link>
+        <BackButton fallback="/counsel" />
         <div className="flex gap-1">
           <Button variant="outline" size="sm" onClick={() => editor.open({ kind: 'counsel', value: c })}>
             <Pencil /> Edit

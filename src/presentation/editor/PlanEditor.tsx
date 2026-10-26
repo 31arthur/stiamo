@@ -5,7 +5,7 @@ import '@blocknote/core/fonts/inter.css'
 import { BlockNoteView } from '@blocknote/mantine'
 import '@blocknote/mantine/style.css'
 import { createReactBlockSpec, getDefaultReactSlashMenuItems, SuggestionMenuController, useCreateBlockNote } from '@blocknote/react'
-import { PenLine } from 'lucide-react'
+import { HelpCircle, Lightbulb, MessageSquareReply, PenLine } from 'lucide-react'
 import type { Attachment } from '@/domain/attachments/Attachment'
 import type { EntityRef, RichDoc } from '@/domain/shared/types'
 import type { Container } from '@/di/container'
@@ -13,6 +13,7 @@ import { useServices } from '@/presentation/app/services'
 import { useFileUrl } from '@/presentation/attachments/useAttachments'
 import { useEntities, useUserId } from '@/presentation/data/hooks'
 import type { DrawingResult } from './DrawingDialog'
+import { AnswerBlock, InsightBlock, QuestionBlock, syncQuestionStatuses, thinkingExtension } from './thinkingBlocks'
 import { useColorScheme } from './useColorScheme'
 
 const DrawingDialog = lazy(() => import('./DrawingDialog'))
@@ -49,7 +50,9 @@ const DrawingBlock = createReactBlockSpec(
   },
 )
 
-const schema = BlockNoteSchema.create({ blockSpecs: { ...defaultBlockSpecs, drawing: DrawingBlock() } })
+const schema = BlockNoteSchema.create({
+  blockSpecs: { ...defaultBlockSpecs, drawing: DrawingBlock(), question: QuestionBlock(), answer: AnswerBlock(), insight: InsightBlock() },
+})
 
 function DrawingView({ scene, preview, onChange }: { scene: string; preview: string; onChange: (p: { scene: string; preview: string }) => void }) {
   const env = useContext(EditorContext)
@@ -110,6 +113,7 @@ export default function PlanEditor({ owner, ownerTitle, initial, onSave, editabl
 
   const editor = useCreateBlockNote({
     schema,
+    extensions: [thinkingExtension],
     initialContent: initial?.length ? (initial as PartialBlock<typeof schema.blockSchema>[]) : undefined,
     uploadFile: async (file: File) => {
       const att = await services.attachments.attach(userId, owner, ownerTitle, file)
@@ -144,6 +148,7 @@ export default function PlanEditor({ owner, ownerTitle, initial, onSave, editabl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const handleChange = () => {
+    syncQuestionStatuses(editor)
     dirty.current = true
     clearTimeout(timer.current)
     timer.current = setTimeout(flush, 700)
@@ -159,6 +164,31 @@ export default function PlanEditor({ owner, ownerTitle, initial, onSave, editabl
           getItems={async (query) =>
             filterSuggestionItems(
               [
+                // Working a plan out: pose questions, answer them, collect the insights.
+                {
+                  title: 'Question',
+                  subtext: 'Ask something you need to work out',
+                  aliases: ['ask', 'q', 'question', '??'],
+                  group: 'Thinking',
+                  icon: <HelpCircle size={18} />,
+                  onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'question' } as never),
+                },
+                {
+                  title: 'Answer',
+                  subtext: 'Answer the question above',
+                  aliases: ['a', 'answer', 'reply'],
+                  group: 'Thinking',
+                  icon: <MessageSquareReply size={18} />,
+                  onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'answer' } as never),
+                },
+                {
+                  title: 'Insight',
+                  subtext: 'Something concrete you’ve worked out',
+                  aliases: ['insight', 'learning', 'takeaway', 'conclusion', '!!'],
+                  group: 'Thinking',
+                  icon: <Lightbulb size={18} />,
+                  onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'insight' } as never),
+                },
                 ...getDefaultReactSlashMenuItems(editor),
                 {
                   title: 'Drawing',

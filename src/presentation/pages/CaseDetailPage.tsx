@@ -1,20 +1,23 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { motion } from 'motion/react'
-import { AlertCircle, ArrowLeft, CalendarPlus, Gavel, Link2, ListChecks, NotebookPen, Paperclip, Pencil } from 'lucide-react'
+import { AlertCircle, CalendarPlus, Gavel, Link2, ListChecks, NotebookPen, Paperclip, Pencil } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { BackButton } from '@/presentation/components/BackButton'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { CASE_STATUS_LABELS, CASE_TYPES, caseTypeOf, hearingsOf } from '@/domain/cases/LegalCase'
 import { organizationName } from '@/domain/cases/Organization'
 import type { Hearing, LegalCase } from '@/domain/cases/LegalCase'
+import type { ActionPlan } from '@/domain/plans/ActionPlan'
 import { planProgress } from '@/domain/plans/ActionPlan'
 import { formatClock, instantKey } from '@/domain/shared/time'
 import { useEditor } from '@/presentation/app/create'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { HandledBy } from '@/presentation/cases/HandledBy'
 import { RecordHearingDialog } from '@/presentation/cases/RecordHearingDialog'
+import { RefChip } from '@/presentation/components/RefChip'
 import { ConfirmDelete } from '@/presentation/components/confirm'
 import { friendlyDate, relativeDays } from '@/presentation/components/dates'
 import { Meta, Section } from '@/presentation/components/layout'
@@ -73,9 +76,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link to="/cases" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" /> Cases
-        </Link>
+        <BackButton fallback="/cases" />
         <div className="flex gap-1">
           <Button variant="outline" size="sm" onClick={() => editor.open({ kind: 'hearing', value: newHearing(c.id, today) })}>
             <CalendarPlus /> List hearing
@@ -140,7 +141,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
             ) : (
               <ol className="relative grid gap-4 pl-6 before:absolute before:top-2 before:bottom-2 before:left-[7px] before:w-px before:bg-border">
                 {[...list].reverse().map((h) => (
-                  <HearingItem key={h.id} hearing={h} today={today} onRecord={() => setRecording(h)} onEdit={() => editor.open({ kind: 'hearing', value: h })} />
+                  <HearingItem key={h.id} hearing={h} plans={plans.filter((x) => x.hearingId === h.id)} today={today} onRecord={() => setRecording(h)} onEdit={() => editor.open({ kind: 'hearing', value: h })} />
                 ))}
               </ol>
             )}
@@ -232,7 +233,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
   )
 }
 
-function HearingItem({ hearing: h, today, onRecord, onEdit }: { hearing: Hearing; today: string; onRecord: () => void; onEdit: () => void }) {
+function HearingItem({ hearing: h, plans, today, onRecord, onEdit }: { hearing: Hearing; plans: ActionPlan[]; today: string; onRecord: () => void; onEdit: () => void }) {
   const [showFiles, setShowFiles] = useState(false)
   const fileCount = useAttachments({ kind: 'hearing', id: h.id }).length
   const past = instantKey(h.date) < instantKey(today)
@@ -274,6 +275,14 @@ function HearingItem({ hearing: h, today, onRecord, onEdit }: { hearing: Hearing
         </div>
         {h.summary && <p className="mt-2 text-sm whitespace-pre-line text-muted-foreground">{h.summary}</p>}
         {h.outcome.comment && <p className="mt-1 text-xs text-muted-foreground italic">{h.outcome.comment}</p>}
+        {plans.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            Plan for this hearing:
+            {plans.map((x) => (
+              <RefChip key={x.id} refTo={{ kind: 'plan', id: x.id }} />
+            ))}
+          </div>
+        )}
         <button type="button" onClick={() => setShowFiles(!showFiles)} className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <Paperclip className="size-3" /> {fileCount ? `${fileCount} file${fileCount === 1 ? '' : 's'}` : 'Attach order sheet / documents'}
         </button>

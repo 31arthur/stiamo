@@ -1,8 +1,8 @@
 import { lazy, Suspense, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { motion } from 'motion/react'
-import { ArrowLeft, Calendar, CircleDot, Gauge, Layers, ListChecks, Loader2, Target, Waypoints } from 'lucide-react'
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Calendar, CircleDot, Crosshair, Gauge, Layers, ListChecks, Loader2, Target, Waypoints } from 'lucide-react'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { PLAN_STATUS_LABELS, planProgress } from '@/domain/plans/ActionPlan'
 import type { ActionPlan, PlanStatus } from '@/domain/plans/ActionPlan'
@@ -18,9 +18,13 @@ import { Tabs } from '@/presentation/components/tabs'
 import { WS_STYLE, WorkspacePicker } from '@/presentation/components/workspace'
 import { useAction, useEntities, useEntity, useSave, useToday } from '@/presentation/data/hooks'
 import { easeOutExpo } from '@/presentation/motion/presets'
+import { BackButton } from '@/presentation/components/BackButton'
+import { ErrorBoundary } from '@/presentation/components/ErrorBoundary'
 import { SaveStatus } from '@/presentation/components/SaveStatus'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { UNTITLED_PLAN } from '@/presentation/app/create'
+import { PlanDigestPanel } from '@/presentation/plans/PlanDigestPanel'
+import { PlanScopeEditor } from '@/presentation/plans/PlanScopeEditor'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
 
@@ -59,17 +63,16 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
     return s.plans.saveDoc(userId, p.id, doc, first)
   })
   const files = useAttachments({ kind: 'plan', id: p.id })
+  const addStep = useAction<string, unknown>((s, userId, text) => s.plans.addStep(userId, p.id, text), { success: 'Added as a step' })
 
   const prog = planProgress(p.id, tasks)
   const linkedGoals = goals.filter((g) => g.planIds.includes(p.id))
   const overdue = p.dueDate && p.dueDate < today && p.status === 'active'
 
   return (
-    <article className="mx-auto w-full max-w-4xl">
+    <article className="mx-auto w-full max-w-5xl">
       <div className="mb-3 flex items-center justify-between">
-        <Link to="/plans" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" /> Action plans
-        </Link>
+        <BackButton fallback="/plans" />
         <div className="flex items-center gap-2">
           <SaveStatus pending={save.pending || saveDoc.pending || toggleGoal.pending} />
           <ConfirmDelete
@@ -108,6 +111,9 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
             </div>
             {p.dueDate && <span className={cn('text-xs', overdue ? 'text-destructive' : 'text-muted-foreground')}>{overdue ? 'Overdue' : friendlyDate(p.dueDate, today)}</span>}
           </div>
+        </Property>
+        <Property icon={Crosshair} label="Covers">
+          <PlanScopeEditor plan={p} />
         </Property>
         <Property icon={Layers} label="Workspace">
           <WorkspacePicker id="plan-page-ws" value={p.workspace} onChange={(workspace) => save.run({ ...p, workspace })} />
@@ -162,7 +168,14 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
         </div>
       </section>
 
-      <section className="mt-8 border-t pt-6">
+      <section className="mt-8 grid gap-6 border-t pt-6 xl:grid-cols-[minmax(0,1fr)_17.5rem]">
+        <PlanDigestPanel
+          doc={p.doc}
+          stepTitles={tasks.filter((t) => t.planId === p.id).map((t) => t.title)}
+          onAddStep={(text) => addStep.run(text)}
+          className="xl:sticky xl:top-4 xl:order-2 xl:self-start"
+        />
+        <div className="min-w-0 xl:order-1">
         <Suspense
           fallback={
             <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
@@ -170,11 +183,14 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
             </div>
           }
         >
-          <PlanEditor owner={{ kind: 'plan', id: p.id }} ownerTitle={p.title} initial={p.doc} onSave={(doc) => saveDoc.run(doc)} />
+          <ErrorBoundary what="the page editor">
+            <PlanEditor owner={{ kind: 'plan', id: p.id }} ownerTitle={p.title} initial={p.doc} onSave={(doc) => saveDoc.run(doc)} />
+          </ErrorBoundary>
         </Suspense>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Type <kbd className="rounded border bg-muted px-1">/</kbd> for headings, lists, to-dos, tables, images, files, video and drawings. Saves automatically.
+          Type <kbd className="rounded border bg-muted px-1">/</kbd> for blocks, <kbd className="rounded border bg-muted px-1">??</kbd> for a question, <kbd className="rounded border bg-muted px-1">!!</kbd> for an insight. Saves automatically.
         </p>
+        </div>
       </section>
 
       <section className="mt-10 rounded-2xl border bg-card/70 p-4 sm:p-5">

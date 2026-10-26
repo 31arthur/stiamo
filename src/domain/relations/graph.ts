@@ -119,7 +119,10 @@ export class RelationGraph {
       if (origin && !(origin.kind === 'meeting' && src.meetings.some((m) => m.id === origin.id && m.prepPlanId === p.id))) {
         this.add({ parent: origin, child: ref('plan', p.id), kind: 'plan' })
       }
-      if (p.caseId && !(origin?.kind === 'case' && origin.id === p.caseId)) this.add({ parent: ref('case', p.caseId), child: ref('plan', p.id), kind: 'plan' })
+      // The narrowest scope is the parent: a hearing sits under its case, a task is its own thing.
+      if (p.hearingId) this.add({ parent: ref('hearing', p.hearingId), child: ref('plan', p.id), kind: 'plan' })
+      else if (p.caseId && !(origin?.kind === 'case' && origin.id === p.caseId) && !p.taskId) this.add({ parent: ref('case', p.caseId), child: ref('plan', p.id), kind: 'plan' })
+      if (p.taskId) this.add({ parent: ref('task', p.taskId), child: ref('plan', p.id), kind: 'plan' })
     }
     for (const c of src.cases) if (c.engagement) this.add({ parent: ref('counsel', c.engagement.counselId), child: ref('case', c.id), kind: 'counsel' })
     for (const g of src.goals) for (const pid of g.planIds) this.add({ parent: ref('goal', g.id), child: ref('plan', pid), kind: 'goal' })
