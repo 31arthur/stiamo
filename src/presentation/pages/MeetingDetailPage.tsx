@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AnimatePresence, Reorder } from 'motion/react'
-import { ArrowLeft, ExternalLink, GripVertical, ListChecks, Pencil, Plus, X } from 'lucide-react'
+import { ExternalLink, GripVertical, ListChecks, Pencil, Plus, X } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { BackButton } from '@/presentation/components/BackButton'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
@@ -54,9 +55,7 @@ function MeetingDetail({ meeting: m }: { meeting: Meeting }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link to="/meetings" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" /> Meetings
-        </Link>
+        <BackButton fallback="/meetings" />
         <div className="flex gap-1">
           <Button variant="outline" size="sm" onClick={() => editor.open({ kind: m.kind, value: m })}>
             <Pencil /> Edit

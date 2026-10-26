@@ -130,6 +130,8 @@ export class CaseUseCases {
           dueDate: record.plan.dueDate ?? nextHearing?.date,
           origin: { kind: 'hearing', id: hearing.id },
           caseId: hearing.caseId,
+          // The plan is for getting ready for the next date, when there is one.
+          hearingId: nextHearing?.id,
         },
         record.plan.steps,
       )

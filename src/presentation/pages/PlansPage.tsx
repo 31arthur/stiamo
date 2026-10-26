@@ -84,7 +84,9 @@ export function PlansPage() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {p.origin && <RefChip refTo={p.origin} />}
-                    {p.caseId && p.origin?.kind !== 'case' && <RefChip refTo={{ kind: 'case', id: p.caseId }} />}
+                    {p.hearingId && <RefChip refTo={{ kind: 'hearing', id: p.hearingId }} />}
+                    {p.taskId && <RefChip refTo={{ kind: 'task', id: p.taskId }} />}
+                    {p.caseId && !p.hearingId && p.origin?.kind !== 'case' && <RefChip refTo={{ kind: 'case', id: p.caseId }} />}
                     {linked.map((g) => (
                       <span key={g.id} className="inline-flex max-w-48 items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px]">
                         <Target className="size-3 shrink-0" /> <span className="truncate">{g.title}</span>

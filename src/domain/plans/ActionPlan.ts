@@ -26,9 +26,26 @@ export interface ActionPlan extends Entity {
   origin?: EntityRef
   /** Set for plans that belong to a legal case. */
   caseId?: ID
+  /** Set when the plan is only for one hearing of that case (e.g. preparing for the next date). */
+  hearingId?: ID
+  /** Set when the plan is only about one task. */
+  taskId?: ID
   /** The plan's page: rich blocks (text, headings, images, files, drawings…) from the block editor. */
   doc?: RichDoc
 }
+
+/** What a plan covers: nothing in particular, a whole case, a single hearing, or a single task. */
+export type PlanScope = 'general' | 'case' | 'hearing' | 'task'
+
+export const PLAN_SCOPE_LABELS: Record<PlanScope, string> = {
+  general: 'General',
+  case: 'Whole case',
+  hearing: 'One hearing',
+  task: 'One task',
+}
+
+export const planScope = (p: Pick<ActionPlan, 'caseId' | 'hearingId' | 'taskId'>): PlanScope =>
+  p.hearingId ? 'hearing' : p.taskId ? 'task' : p.caseId ? 'case' : 'general'
 
 export interface PlanProgress {
   total: number

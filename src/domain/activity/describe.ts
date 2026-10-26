@@ -2,6 +2,8 @@ import { CASE_TYPES, caseTypeOf } from '../cases/LegalCase'
 import type { Hearing, LegalCase } from '../cases/LegalCase'
 import { counselLabel } from '../counsel/Counsel'
 import type { Counsel } from '../counsel/Counsel'
+import { PLAN_SCOPE_LABELS, planScope } from '../plans/ActionPlan'
+import type { PlanScope } from '../plans/ActionPlan'
 import type { FollowUp } from '../followups/FollowUp'
 import type { Goal } from '../goals/Goal'
 import type { Meeting } from '../meetings/Meeting'
@@ -151,6 +153,7 @@ export function diff<K extends EntityKind>(kind: K, before: Records[K], after: R
       add('Status', x.status, y.status)
       add('Due', x.dueDate, y.dueDate)
       add('Objective', x.objective, y.objective, text)
+      add('Scope', planScope(x), planScope(y), (v: PlanScope) => PLAN_SCOPE_LABELS[v])
       break
     }
     case 'counsel': {

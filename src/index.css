@@ -223,3 +223,50 @@
     padding-left: 1.75rem;
   }
 }
+
+/* Question / answer / insight blocks in the plan editor. */
+.stiamo-editor .qa-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  width: 100%;
+  padding-block: 0.125rem;
+}
+.stiamo-editor .qa-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin-top: 0.1875rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  user-select: none;
+}
+.stiamo-editor .qa-mark-q { background: var(--foreground); color: var(--background); }
+.stiamo-editor .qa-mark-a { background: var(--muted); color: var(--muted-foreground); }
+.stiamo-editor .qa-mark-i { background: color-mix(in oklch, var(--warning) 22%, transparent); color: var(--warning); }
+.stiamo-editor .qa-text { min-width: 0; flex: 1; }
+.stiamo-editor .qa-text-question { font-weight: 600; font-size: 1.0625rem; }
+.stiamo-editor .qa-answer { margin-left: 1.5rem; padding-left: 0.875rem; border-left: 2px solid var(--border); }
+.stiamo-editor .qa-insight {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background: color-mix(in oklch, var(--warning) 11%, transparent);
+  border: 1px solid color-mix(in oklch, var(--warning) 28%, transparent);
+}
+.stiamo-editor .qa-text-insight { font-weight: 500; }
+/* Empty-state hint inside the inline content (ProseMirror leaves just a trailing <br>). */
+.stiamo-editor .qa-text:has(> br:only-child)::before,
+.stiamo-editor .qa-text:has(> .ProseMirror-trailingBreak:only-child)::before {
+  content: attr(data-hint);
+  color: var(--muted-foreground);
+  opacity: 0.55;
+  pointer-events: none;
+  position: absolute;
+}
+@media (max-width: 640px) {
+  .stiamo-editor .qa-answer { margin-left: 0.5rem; }
+}

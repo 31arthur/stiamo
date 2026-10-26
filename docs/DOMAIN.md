@@ -102,6 +102,10 @@ Past hearings without an outcome are flagged everywhere until written up.
 ### Action plan
 An objective with ordered **steps** (tasks). Plans record their **origin** (hearing, meeting, case or goal), may belong to a case, and can contribute to **several goals**. Deleting a plan keeps its steps as standalone tasks.
 
+A plan's **scope** says what it covers: *general*, a **whole case** (`caseId`), **one hearing** (`hearingId`, which also sets the case) or **one task** (`taskId`). `PlanUseCases.setScope` moves between them and clears what no longer applies; the plan sits under its narrowest scope in the thread. The plan created when a hearing is written up is scoped to the *next* hearing.
+
+A plan's page is written as questions, answers and insights (`question`, `answer` and `insight` blocks). `digestOf` reads them back: a question is **answered** once an answer with text follows it, **parked** if set aside, otherwise **open**; insights can each become a step.
+
 ### Goal
 The long view. A goal has a horizon, a start and target date, **key results** (from → target, current), **linked action plans** and periodic **check-ins** (confidence 1–5 + note).
 
