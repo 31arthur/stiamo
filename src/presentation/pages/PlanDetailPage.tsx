@@ -2,7 +2,7 @@ import { lazy, Suspense, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { motion } from 'motion/react'
 import { ArrowLeft, Calendar, CircleDot, Gauge, Layers, ListChecks, Loader2, Target, Waypoints } from 'lucide-react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { PLAN_STATUS_LABELS, planProgress } from '@/domain/plans/ActionPlan'
 import type { ActionPlan, PlanStatus } from '@/domain/plans/ActionPlan'
@@ -18,7 +18,9 @@ import { Tabs } from '@/presentation/components/tabs'
 import { WS_STYLE, WorkspacePicker } from '@/presentation/components/workspace'
 import { useAction, useEntities, useEntity, useSave, useToday } from '@/presentation/data/hooks'
 import { easeOutExpo } from '@/presentation/motion/presets'
+import { SaveStatus } from '@/presentation/components/SaveStatus'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
+import { UNTITLED_PLAN } from '@/presentation/app/create'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
 
@@ -44,6 +46,7 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
   useDocumentTitle(p.title)
   const today = useToday()
   const navigate = useNavigate()
+  const fresh = !!(useLocation().state as { fresh?: boolean } | null)?.fresh
   const { data: tasks } = useEntities('task')
   const { data: goals } = useEntities('goal')
   const save = useSave('plan')
@@ -67,13 +70,16 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
         <Link to="/plans" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" /> Action plans
         </Link>
-        <ConfirmDelete
+        <div className="flex items-center gap-2">
+          <SaveStatus pending={save.pending || saveDoc.pending || toggleGoal.pending} />
+          <ConfirmDelete
           what={p.title}
           onConfirm={async () => {
             await remove.run(p.id)
             navigate('/plans')
           }}
         />
+        </div>
       </div>
 
       <motion.div initial={{ opacity: 0, scaleY: 0.9 }} animate={{ opacity: 1, scaleY: 1 }} transition={{ duration: 0.5, ease: easeOutExpo }} className={cn('h-24 origin-top rounded-2xl bg-gradient-to-br to-transparent sm:h-32', COVER[p.workspace])} />
@@ -81,7 +87,7 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
         <ListChecks className={cn('size-7', WS_STYLE[p.workspace].text)} />
       </div>
 
-      <InlineText value={p.title} onCommit={(title) => title && save.run({ ...p, title })} className="mt-3 font-display text-4xl leading-tight tracking-tight sm:text-5xl" placeholder="Untitled plan" aria-label="Plan title" />
+      <InlineText value={p.title === UNTITLED_PLAN && fresh ? '' : p.title} autoFocus={fresh} onCommit={(title) => save.run({ ...p, title: title || UNTITLED_PLAN })} className="mt-3 font-display text-4xl leading-tight tracking-tight sm:text-5xl" placeholder="Untitled plan" aria-label="Plan title" />
       <InlineText value={p.objective} multiline onCommit={(objective) => save.run({ ...p, objective })} className="mt-1 text-base text-muted-foreground" placeholder="Add an objective — what does success look like?" aria-label="Objective" />
 
       {/* Properties, Notion-style */}
@@ -195,13 +201,13 @@ function Property({ icon: Icon, label, children }: { icon: typeof Calendar; labe
 }
 
 /** Text that looks like a heading until you click it, then saves on blur/Enter. */
-function InlineText({ value, onCommit, className, placeholder, multiline, ...aria }: { value: string; onCommit: (v: string) => void; className?: string; placeholder: string; multiline?: boolean; 'aria-label': string }) {
+function InlineText({ value, onCommit, className, placeholder, multiline, autoFocus, ...aria }: { value: string; onCommit: (v: string) => void; className?: string; placeholder: string; multiline?: boolean; autoFocus?: boolean; 'aria-label': string }) {
   const [draft, setDraft] = useState(value)
-  const commit = () => draft.trim() !== value && onCommit(draft.trim())
+  const commit = () => draft.trim() !== value.trim() && onCommit(draft.trim())
   const base = cn('w-full resize-none bg-transparent outline-none placeholder:text-muted-foreground/50', className)
   return multiline ? (
     <textarea value={draft} placeholder={placeholder} onBlur={commit} rows={1} onChange={(e) => setDraft(e.target.value)} className={cn(base, 'field-sizing-content')} {...aria} />
   ) : (
-    <input value={draft} placeholder={placeholder} onBlur={commit} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} className={base} {...aria} />
+    <input value={draft} autoFocus={autoFocus} placeholder={placeholder} onBlur={commit} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} className={base} {...aria} />
   )
 }

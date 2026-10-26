@@ -81,7 +81,7 @@ Attach files to tasks, follow-ups, meetings, cases, each hearing, plans and goal
 
 ## Plan pages
 
-A plan is a page: cover, editable title and objective, a properties table (status, due, workspace, progress, origin, goals), tracked steps, then a **Notion-style editor** (`/` for headings, lists, to-dos, toggles, tables, quotes, code, images, video, audio, files) and a **Drawing** block (Excalidraw) that re-opens for editing.
+**New action plan** doesn't open a form: it creates the plan and opens its page straight away, with the cursor in the title (from a case or goal it arrives already linked to it). Everything on the page saves as you go — title, objective and properties on commit, the block editor 0.7 s after you stop typing and again when you leave the page — with a *Saving… / Saved* indicator at the top. A plan is a page: cover, editable title and objective, a properties table (status, due, workspace, progress, origin, goals), tracked steps, then a **Notion-style editor** (`/` for headings, lists, to-dos, toggles, tables, quotes, code, images, video, audio, files) and a **Drawing** block (Excalidraw) that re-opens for editing.
 
 ## Mobile
 
