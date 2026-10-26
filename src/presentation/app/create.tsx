@@ -42,7 +42,7 @@ const TITLES: Record<EditorKind, [create: string, edit: string, description: str
   followUp: ['New follow-up', 'Edit follow-up', 'A call, message, email or visit to make'],
   appointment: ['New appointment', 'Edit appointment', 'With a client or outside party'],
   meeting: ['New meeting', 'Edit meeting', 'An agenda-driven discussion'],
-  case: ['Open a case', 'Edit case', 'S&B Consultants matter'],
+  case: ['Open a case', 'Edit case', 'Filed for one of the organizations'],
   hearing: ['List a hearing', 'Edit hearing', 'A date before the court'],
   plan: ['New action plan', 'Edit action plan', 'Steps towards an objective'],
   goal: ['Set a goal', 'Edit goal', 'Something to achieve over time'],

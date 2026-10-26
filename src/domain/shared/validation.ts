@@ -49,10 +49,8 @@ export function normalizeCase(c: Draft<LegalCase>): Draft<LegalCase> {
   checkDate(c.filedOn, 'Filed on')
   return {
     ...c,
-    reference: required(c.reference, 'Case number'),
     title: required(c.title, 'Title'),
-    client: required(c.client, 'Client'),
-    court: required(c.court, 'Court'),
+    organization: required(c.organization, 'Organization') as typeof c.organization,
   }
 }
 

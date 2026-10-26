@@ -34,8 +34,10 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
   const { crud } = app
 
   // --- S&B: cases & hearings ------------------------------------------------------------------
-  const mehta = await crud.case.create(userId, {
-    reference: 'CS(COMM) 412/2025',
+  const mehta = await app.cases.open(userId, {
+    organization: 'SA',
+    type: 'full_case',
+    courtNumber: 'CS(COMM) 412/2025',
     title: 'Mehta Textiles v. Coastal Freight',
     client: 'Mehta Textiles Pvt Ltd',
     court: 'Delhi High Court',
@@ -69,8 +71,10 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     caseUpdate: { stage: 'Evidence' },
   })
 
-  const arora = await crud.case.create(userId, {
-    reference: 'OP 88/2026',
+  const arora = await app.cases.open(userId, {
+    organization: 'SA',
+    type: 'full_case',
+    courtNumber: 'OP 88/2026',
     title: 'In re: Arora Family Trust',
     client: 'R. Arora (Trustee)',
     court: 'District Court, Saket',
@@ -82,8 +86,10 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
   })
   await crud.hearing.create(userId, { caseId: arora.id, date: day(-1), time: h(11), duration: 60, purpose: 'Reply to objections', forum: 'Court 4', outcome: open })
 
-  const kapoor = await crud.case.create(userId, {
-    reference: 'ITA 1290/2025',
+  const kapoor = await app.cases.open(userId, {
+    organization: 'SA',
+    type: 'appeal',
+    courtNumber: 'ITA 1290/2025',
     title: 'Kapoor Retail v. ACIT',
     client: 'Kapoor Retail LLP',
     court: 'ITAT, Delhi Bench',
@@ -95,6 +101,21 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     summary: 'Appeal against addition of ₹68 L under s.68 for unexplained cash credits. Strong documentary trail for 80% of credits.',
   })
   await crud.hearing.create(userId, { caseId: kapoor.id, date: day(12), time: h(14), duration: 60, purpose: 'Final arguments', forum: 'Bench B', outcome: open })
+
+  // A public interest case filed for a union, not an individual client.
+  const wages = await app.cases.open(userId, {
+    organization: 'TUMWU',
+    type: 'pil',
+    title: 'Unpaid wages of migrant construction workers',
+    court: 'Telangana High Court',
+    opposingParty: 'State Labour Department & 3 contractors',
+    practiceArea: 'Labour',
+    stage: 'Notice',
+    status: 'active',
+    filedOn: day(-40),
+    summary: 'PIL seeking recovery of withheld wages and enforcement of the Inter-State Migrant Workmen Act for workers from Odisha and Bihar on a Hyderabad metro site. Affidavits from 38 workers filed.',
+  })
+  await crud.hearing.create(userId, { caseId: wages.id, date: day(6), time: h(11), duration: 45, purpose: 'Admission — notice to State', forum: 'Court 1', outcome: open })
 
   // --- Appointments & meetings ----------------------------------------------------------------
   const aroraAppt = await app.meetings.save(userId, {

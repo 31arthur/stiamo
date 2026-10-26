@@ -6,7 +6,8 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { CASE_STATUS_LABELS, hearingsOf } from '@/domain/cases/LegalCase'
+import { CASE_STATUS_LABELS, CASE_TYPES, hearingsOf } from '@/domain/cases/LegalCase'
+import { organizationName } from '@/domain/cases/Organization'
 import type { Hearing, LegalCase } from '@/domain/cases/LegalCase'
 import { planProgress } from '@/domain/plans/ActionPlan'
 import { formatClock, instantKey } from '@/domain/shared/time'
@@ -95,13 +96,18 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground">{c.reference}</span>
           <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', CASE_STATUS_TONE[c.status])}>{CASE_STATUS_LABELS[c.status]}</span>
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{CASE_TYPES[c.type]?.label ?? 'Case'}</span>
           {c.practiceArea && <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px]">{c.practiceArea}</span>}
         </div>
         <h1 className="font-display text-4xl leading-tight tracking-tight sm:text-5xl">{c.title}</h1>
-        <div className="grid grid-cols-2 gap-4 rounded-2xl border bg-card/70 p-4 sm:grid-cols-5">
-          <Meta label="Client">{c.client}</Meta>
+        <div className="grid grid-cols-2 gap-4 rounded-2xl border bg-card/70 p-4 sm:grid-cols-3 lg:grid-cols-6">
+          <Meta label="Filed for">
+            <span title={organizationName(c.organization)}>{c.organization ?? '—'}</span>
+          </Meta>
+          <Meta label={c.type === 'pil' ? 'On behalf of' : 'Client'}>{c.client ?? organizationName(c.organization)}</Meta>
           <Meta label="Opposing party">{c.opposingParty ?? '—'}</Meta>
-          <Meta label="Court">{c.court}</Meta>
+          <Meta label="Court">{c.court ?? '—'}</Meta>
+          <Meta label="Court no.">{c.courtNumber ?? '—'}</Meta>
           <Meta label="Stage">{c.stage ?? '—'}</Meta>
           <Meta label="Filed">{c.filedOn ? format(parseISO(c.filedOn), 'd MMM yyyy') : '—'}</Meta>
         </div>
