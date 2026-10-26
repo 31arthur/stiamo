@@ -6,6 +6,7 @@ import { SupabaseRepository } from '@/data/supabase/SupabaseRepository'
 import { systemClock, uuidGenerator } from '@/data/storage/system'
 import type { Repositories } from '@/domain/shared/registry'
 import type { Backend } from './backends'
+import { signUpEnabled } from './flags'
 
 /** Postgres table behind each collection. */
 export const TABLES: Record<keyof Repositories, string> = {
@@ -41,6 +42,7 @@ export function supabaseBackend(config: SupabaseConfig): Backend {
       attachment: repo('attachment'),
     },
     files: new SupabaseFileStore(supabase),
+    allowSignUp: signUpEnabled(),
     clock: systemClock,
     ids: uuidGenerator,
   }

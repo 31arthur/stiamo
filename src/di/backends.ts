@@ -4,6 +4,7 @@ import { systemClock, uuidGenerator } from '@/data/storage/system'
 import type { AuthRepository } from '@/domain/auth/repositories/AuthRepository'
 import type { FileStore } from '@/domain/attachments/Attachment'
 import { LocalFileStore } from '@/data/files/LocalFileStore'
+import { signUpEnabled } from './flags'
 import type { Clock, IdGenerator } from '@/domain/shared/Repository'
 import type { Repositories } from '@/domain/shared/registry'
 import type { ID } from '@/domain/shared/types'
@@ -16,6 +17,8 @@ export interface Backend {
   clock: Clock
   ids: IdGenerator
   files: FileStore
+  /** Show account creation. See flags.ts. */
+  allowSignUp: boolean
   /** Offline demo: seed this user's sample data once on start-up. */
   autoSeed?: { userId: ID; isDone: () => boolean; markDone: () => void }
 }
@@ -28,6 +31,7 @@ export function localBackend(storage: Storage = localStorage): Backend {
     clock: systemClock,
     ids: uuidGenerator,
     files: new LocalFileStore(),
+    allowSignUp: signUpEnabled(),
     autoSeed: {
       userId: DEMO_ACCOUNT.id,
       isDone: () => storage.getItem(SEEDED_KEY) !== null,
