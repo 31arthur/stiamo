@@ -23,6 +23,9 @@ import { newPlan, PlanForm } from '@/presentation/forms/PlanForm'
 import type { PlanDraft, PlanFormExtras } from '@/presentation/forms/PlanForm'
 import { newTask, TaskForm } from '@/presentation/forms/TaskForm'
 import type { TaskDraft } from '@/presentation/forms/TaskForm'
+import { CounselForm, newCounsel } from '@/presentation/forms/CounselForm'
+import type { CounselDraft } from '@/presentation/forms/CounselForm'
+import type { Counsel } from '@/domain/counsel/Counsel'
 import { RecordSheet } from './RecordSheet'
 import { useWorkspaceFilter } from './workspaceFilter'
 
@@ -34,6 +37,7 @@ export type EditorRequest =
   | { kind: 'hearing'; value: Hearing | HearingDraft }
   | { kind: 'plan'; value?: ActionPlan | Partial<PlanDraft>; extras?: PlanFormExtras }
   | { kind: 'goal'; value?: Goal | Partial<GoalDraft> }
+  | { kind: 'counsel'; value?: Counsel | Partial<CounselDraft> }
 
 export type EditorKind = EditorRequest['kind']
 
@@ -45,6 +49,7 @@ const TITLES: Record<EditorKind, [create: string, edit: string, description: str
   case: ['Open a case', 'Edit case', 'Filed for one of the organizations'],
   hearing: ['List a hearing', 'Edit hearing', 'A date before the court'],
   plan: ['New action plan', 'Edit action plan', 'Steps towards an objective'],
+  counsel: ['Add counsel', 'Edit counsel', 'An outside advocate or law firm you work with'],
   goal: ['Set a goal', 'Edit goal', 'Something to achieve over time'],
 }
 
@@ -88,6 +93,8 @@ export function EditorHost({ children }: { children: ReactNode }) {
           return navigate(`/plans/${ref.id}`)
         case 'goal':
           return navigate(`/goals/${ref.id}`)
+        case 'counsel':
+          return navigate(`/counsel/${ref.id}`)
       }
     },
     [navigate, services, userId],
@@ -136,6 +143,7 @@ export function EditorHost({ children }: { children: ReactNode }) {
               onDone={done('/plans')}
             />
           )}
+          {request?.kind === 'counsel' && <CounselForm initial={editing ? (request.value as Counsel) : newCounsel(request.value as Partial<CounselDraft>)} onDone={done('/counsel')} />}
           {request?.kind === 'goal' && (
             <GoalForm initial={editing ? (request.value as Goal) : { ...newGoal(today), workspace, ...request.value }} onDone={done('/goals')} />
           )}

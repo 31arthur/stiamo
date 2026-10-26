@@ -1,4 +1,7 @@
+import { CASE_TYPES, caseTypeOf } from '../cases/LegalCase'
 import type { Hearing, LegalCase } from '../cases/LegalCase'
+import { counselLabel } from '../counsel/Counsel'
+import type { Counsel } from '../counsel/Counsel'
 import type { FollowUp } from '../followups/FollowUp'
 import type { Goal } from '../goals/Goal'
 import type { Meeting } from '../meetings/Meeting'
@@ -10,7 +13,7 @@ import type { EntityKind, EntityRef, Minutes } from '../shared/types'
 import type { Task } from '../tasks/Task'
 import type { ActivityAction, FieldChange } from './Activity'
 
-type Records = { task: Task; meeting: Meeting; followUp: FollowUp; case: LegalCase; hearing: Hearing; plan: ActionPlan; goal: Goal }
+type Records = { task: Task; meeting: Meeting; followUp: FollowUp; case: LegalCase; hearing: Hearing; plan: ActionPlan; goal: Goal; counsel: Counsel }
 
 export const KIND_LABEL: Record<EntityKind, string> = {
   task: 'Task',
@@ -20,6 +23,7 @@ export const KIND_LABEL: Record<EntityKind, string> = {
   hearing: 'Hearing',
   plan: 'Action plan',
   goal: 'Goal',
+  counsel: 'Counsel',
 }
 
 export function titleOf<K extends EntityKind>(kind: K, e: Records[K]): string {
@@ -30,6 +34,8 @@ export function titleOf<K extends EntityKind>(kind: K, e: Records[K]): string {
     }
     case 'hearing':
       return `Hearing: ${(e as Hearing).purpose}`
+    case 'counsel':
+      return counselLabel(e as Counsel)
     default:
       return (e as { title: string }).title
   }
@@ -126,8 +132,10 @@ export function diff<K extends EntityKind>(kind: K, before: Records[K], after: R
     case 'case': {
       const [x, y] = [before as LegalCase, after as LegalCase]
       add('Status', x.status, y.status)
+      add('Type', x.type, y.type, (v: string) => CASE_TYPES[caseTypeOf(v)].label)
       add('Stage', x.stage, y.stage)
       add('Court', x.court, y.court)
+      add('Court number', x.courtNumber, y.courtNumber)
       add('Summary', x.summary, y.summary, text)
       break
     }
@@ -143,6 +151,15 @@ export function diff<K extends EntityKind>(kind: K, before: Records[K], after: R
       add('Status', x.status, y.status)
       add('Due', x.dueDate, y.dueDate)
       add('Objective', x.objective, y.objective, text)
+      break
+    }
+    case 'counsel': {
+      const [x, y] = [before as Counsel, after as Counsel]
+      add('Status', x.status, y.status)
+      add('Phone', x.phone, y.phone)
+      add('Email', x.email, y.email)
+      add('Pro bono', x.proBono, y.proBono, (v: boolean) => (v ? 'yes' : 'no'))
+      add('Notes', x.notes, y.notes, text)
       break
     }
     case 'goal': {

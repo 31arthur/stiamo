@@ -5,7 +5,7 @@ import type { StoreKind } from '@/domain/shared/registry'
 import { useServices } from '@/presentation/app/services'
 import { useAuth } from '@/presentation/auth/AuthProvider'
 
-export const LIVE_KINDS: StoreKind[] = ['task', 'meeting', 'followUp', 'case', 'hearing', 'plan', 'goal', 'link', 'activity', 'attachment']
+export const LIVE_KINDS: StoreKind[] = ['task', 'meeting', 'followUp', 'case', 'hearing', 'plan', 'goal', 'counsel', 'link', 'activity', 'attachment']
 
 export const entitiesKey = (kind: StoreKind, userId: string) => ['entities', kind, userId] as const
 

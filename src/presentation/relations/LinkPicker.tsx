@@ -6,7 +6,7 @@ import type { RecordInfo } from '@/presentation/components/records'
 import { useRecordLookup } from '@/presentation/components/records'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 
-const ORDER: EntityKind[] = ['case', 'meeting', 'hearing', 'plan', 'goal', 'task', 'followUp']
+const ORDER: EntityKind[] = ['case', 'counsel', 'meeting', 'hearing', 'plan', 'goal', 'task', 'followUp']
 
 /** Search every record and pick one to link to `from`. */
 export function LinkPicker({ open, onOpenChange, from, exclude, onPick }: { open: boolean; onOpenChange: (o: boolean) => void; from: EntityRef; exclude: EntityRef[]; onPick: (target: RecordInfo) => void }) {

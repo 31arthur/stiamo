@@ -17,6 +17,8 @@
 - [x] Notion-style plan pages with drawings
 - [x] Mobile-first layouts, icons and metadata
 
+- [x] Case organizations, labour-law case types, generated case numbers, counsel directory and briefs
+
 ## Next
 
 - [ ] Notifications for confirmation calls and upcoming hearings

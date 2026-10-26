@@ -119,8 +119,11 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
       ],
     },
     {
-      label: 'S&B Legal',
-      items: [{ to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length, tone: 'danger' }],
+      label: 'Legal',
+      items: [
+        { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length, tone: 'danger' },
+        { to: '/counsel', label: 'Counsel', icon: KIND_META.counsel.icon },
+      ],
     },
     {
       label: 'Direction',

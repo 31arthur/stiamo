@@ -9,7 +9,9 @@ import type { OrganizationCode } from '@/domain/cases/Organization'
 import type { CaseStatus, Hearing, LegalCase } from '@/domain/cases/LegalCase'
 import { OPEN } from '@/domain/shared/outcome'
 import { formatDuration } from '@/domain/shared/time'
-import { DateInput, DURATION_PRESETS, Field, NativeSelect, TimeInput } from '@/presentation/components/form'
+import { ValidationError } from '@/domain/shared/errors'
+import { emptyEngagement, EngagementFields } from '@/presentation/cases/EngagementFields'
+import { DateInput, DURATION_PRESETS, Field, NativeSelect, Segmented, TimeInput } from '@/presentation/components/form'
 import { useAction, useEntities, useSave, useToday } from '@/presentation/data/hooks'
 import { FormShell, usePatch } from './shared'
 
@@ -17,7 +19,7 @@ import { FormShell, usePatch } from './shared'
 export type CaseDraft = Omit<LegalCase, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'reference' | 'organization'> & { reference?: string; organization?: OrganizationCode }
 export type HearingDraft = Omit<Hearing, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 
-export const newCase = (): CaseDraft => ({ type: 'full_case', title: '', status: 'active', summary: '' })
+export const newCase = (): CaseDraft => ({ type: 'pow', title: '', status: 'active', summary: '' })
 
 export const newHearing = (caseId: string, date: string): HearingDraft => ({ caseId, date, time: 10 * 60 + 30, duration: 60, purpose: '', outcome: OPEN })
 
@@ -36,7 +38,10 @@ export function CaseForm({ initial, onDone }: { initial: LegalCase | CaseDraft; 
     <FormShell
       submitLabel={editing ? 'Save' : 'Open case'}
       onCancel={() => onDone()}
-      onSubmit={async () => onDone(editing ? await update.run(c as LegalCase) : await open.run(c))}
+      onSubmit={async () => {
+        if (!editing && c.engagement && !c.engagement.counselId) throw new ValidationError('Choose the counsel, or switch back to “Handled by us”')
+        onDone(editing ? await update.run(c as LegalCase) : await open.run(c))
+      }}
     >
       {editing ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-sm">
@@ -99,11 +104,27 @@ export function CaseForm({ initial, onDone }: { initial: LegalCase | CaseDraft; 
         </div>
       </Field>
 
+      {!editing && (
+        <Field label="Handled by" hint="Most cases are handled by us; brief outside counsel when needed">
+          <Segmented<'self' | 'counsel'>
+            size="sm"
+            label="Handled by"
+            value={c.engagement ? 'counsel' : 'self'}
+            onChange={(v) => patch({ engagement: v === 'counsel' ? (c.engagement ?? emptyEngagement()) : undefined })}
+            options={[
+              { value: 'self', label: 'Handled by us' },
+              { value: 'counsel', label: 'Outside counsel' },
+            ]}
+          />
+        </Field>
+      )}
+      {!editing && c.engagement && <EngagementFields value={c.engagement} onChange={(engagement) => patch({ engagement })} caseType={c.type} idPrefix="new-eng" />}
+
       <Field label="Title" htmlFor="case-title">
-        <Input id="case-title" autoFocus value={c.title} onChange={(e) => patch({ title: e.target.value })} placeholder={c.type === 'pil' ? 'e.g. Unpaid wages of migrant construction workers' : 'Petitioner v. Respondent'} />
+        <Input id="case-title" autoFocus value={c.title} onChange={(e) => patch({ title: e.target.value })} placeholder={c.type === 'public_interest' ? 'e.g. Unpaid wages of migrant construction workers' : 'e.g. 24 workers v. Sri Lakshmi Brick Works'} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={c.type === 'pil' ? 'On behalf of (group or cause)' : 'On behalf of (client)'} htmlFor="case-client" hint="Leave blank when it's simply the organization">
+        <Field label={c.type === 'public_interest' ? 'On behalf of (group or cause)' : 'On behalf of (worker or group)'} htmlFor="case-client" hint="Leave blank when it's simply the organization">
           <Input id="case-client" value={c.client ?? ''} onChange={(e) => patch({ client: e.target.value || undefined })} />
         </Field>
         <Field label="Opposing party" htmlFor="case-opp">

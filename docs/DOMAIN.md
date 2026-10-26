@@ -74,18 +74,21 @@ Cases are filed on behalf of an **organization**: NUMW (National Union for Migra
 
 **Case numbers are generated, never typed**: `{ORG}-{YYYY}-{NNN}`, e.g. `TUMWU-2026-004`. The year is the filing year (today's when no filing date is given) and the count carries on from the highest number already used for that organization and year, so deleting a case never reuses a number. The court's own number is kept separately as the optional *court number*.
 
-Each case has a **type**, saying how we are engaged:
+Each case has a **type**:
 
 | Type | Meaning |
 | --- | --- |
-| Full case | we conduct the whole matter, from filing to disposal |
-| Public interest litigation | filed for a wider group or cause, not one individual |
-| Writ petition | constitutional remedy before the High Court or Supreme Court |
-| Appeal / revision | challenging an order or judgment |
-| Intervention | joining a case someone else has filed |
-| Appearance only | we appear on specific hearings, not the whole case |
-| Complaint / representation | before a labour authority, commission or police |
-| Legal opinion | advice without a proceeding |
+| PoW Case | unpaid or delayed wages — Payment of Wages Act |
+| Public Interest Case | filed for a wider group or cause, not one individual |
+| Industrial Disputes Case | termination, retrenchment, settlements — Industrial Disputes Act |
+| MW Case | pay below the notified rate — Minimum Wages Act |
+| Workmen Compensation Case | compensation for injury or death at work |
+| Other | anything else |
+
+**Who handles it.** Most cases are handled by us. When one isn't, the case carries an **engagement** — the outside counsel briefed, when, the scope of the brief, whether it's pro bono or the agreed fee, and notes. No engagement means we handle it. Assigning, changing or taking a brief back is written to the history of both the case and the counsel (`CaseUseCases.assignCounsel`).
+
+### Counsel
+The directory of outside **advocates and law firms** we know: contact details, city, the courts they appear before, the kinds of case they're good for, whether they take pro bono matters, and notes. Their page lists every case they're briefed on with the terms of each, plus documents (fee agreements, vakalatnamas) and a thread that includes those cases. Removing counsel returns their cases to us.
 
 A **case** also has an optional client (or group, for a PIL), opposing party, court, practice area, stage, status and a running **summary**. **Hearings** are listed against it. Recording a hearing (`CaseUseCases.recordHearing`) is one step that:
 

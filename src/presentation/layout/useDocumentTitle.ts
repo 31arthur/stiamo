@@ -16,6 +16,7 @@ export const SECTION_TITLES: Record<string, string> = {
   'follow-ups': 'Follow-ups',
   meetings: 'Meetings & appointments',
   cases: 'Cases',
+  counsel: 'Counsel',
   plans: 'Action plans',
   goals: 'Goals',
 }
