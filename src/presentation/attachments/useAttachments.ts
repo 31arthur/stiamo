@@ -33,8 +33,9 @@ export function useFileUrl(attachment: Attachment | undefined) {
     queryKey: ['file-url', attachment?.id],
     queryFn: () => attachments.url(attachment!),
     enabled: !!attachment,
-    staleTime: Infinity,
-    gcTime: Infinity,
+    // Signed links expire after an hour; ask again well before that.
+    staleTime: 40 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   })
 }
 

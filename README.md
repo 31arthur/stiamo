@@ -8,7 +8,7 @@ A personal operating system for a practitioner working across **S&B Consultants 
 - **Action plans** that roll up into **goals** with key results and health tracked against time
 - A **day planner** to drag the day into shape, reflow it, and undo; a month **calendar** of everything
 
-**Stack:** React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui (Base UI), Firebase (Auth, Firestore, Storage), TanStack Query, BlockNote, Excalidraw, Motion, dnd-kit, React Router, date-fns, Vitest. Clean Architecture (domain / data / presentation) with SOLID use cases.
+**Stack:** React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui (Base UI), Supabase (Auth, Postgres, Realtime, Storage), TanStack Query, BlockNote, Excalidraw, Motion, dnd-kit, React Router, date-fns, Vitest. Clean Architecture (domain / data / presentation) with SOLID use cases.
 
 ## Getting started
 
@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Without Firebase config the app runs offline on this device: sign in with `demo@stiamo.app` / `password123` (a demo practice is seeded on first run). To use your cloud project, copy `.env.example` to `.env.local` and follow [docs/FIREBASE.md](docs/FIREBASE.md).
+Without Supabase config the app runs offline on this device: sign in with `demo@stiamo.app` / `password123` (a demo practice is seeded on first run). To use your cloud project, copy `.env.example` to `.env.local`, run the SQL migration, and follow [docs/SUPABASE.md](docs/SUPABASE.md).
 
 | Script | Purpose |
 | --- | --- |
@@ -29,7 +29,7 @@ Without Firebase config the app runs offline on this device: sign in with `demo@
 ## Documentation
 
 - [Domain model](docs/DOMAIN.md) — workspaces, outcomes, aggregates, links, history, files
-- [Firebase setup](docs/FIREBASE.md) — accounts, live sync, rules, hosting
+- [Supabase setup](docs/SUPABASE.md) — accounts, tables, row-level security, live sync, files
 - [Architecture](docs/ARCHITECTURE.md) — layers, use cases, SOLID mapping, state and motion
 - [Features](docs/FEATURES.md) — every screen and interaction
 - [Git workflow](docs/GIT_WORKFLOW.md) — branching and merge conventions

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource/instrument-serif/400.css'
 import '@fontsource/instrument-serif/400-italic.css'
 import './index.css'
-import { readFirebaseConfig } from '@/data/firebase/firebaseApp'
+import { readSupabaseConfig } from '@/data/supabase/supabaseClient'
 import { localBackend } from '@/di/backends'
 import { createContainer } from '@/di/container'
 import App from './App.tsx'
@@ -14,9 +14,9 @@ const applyScheme = () => document.documentElement.classList.toggle('dark', dark
 applyScheme()
 darkQuery.addEventListener('change', applyScheme)
 
-// Online with Firebase when configured (.env.local), otherwise fully offline on browser storage.
-const firebaseConfig = readFirebaseConfig()
-const backend = firebaseConfig ? (await import('@/di/firebaseBackend')).firebaseBackend(firebaseConfig) : localBackend()
+// Online with Supabase when configured (.env.local), otherwise fully offline on browser storage.
+const supabaseConfig = readSupabaseConfig()
+const backend = supabaseConfig ? (await import('@/di/supabaseBackend')).supabaseBackend(supabaseConfig) : localBackend()
 const container = createContainer(backend)
 
 createRoot(document.getElementById('root')!).render(

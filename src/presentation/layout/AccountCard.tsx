@@ -30,7 +30,7 @@ export function AccountCard() {
     <div className="grid gap-1.5">
       <div className={cn('flex items-center gap-1.5 px-2.5 text-[11px]', status.tone)}>
         <span className="relative flex size-2">
-          {sync.mode === 'firebase' && sync.online && !sync.error && (
+          {sync.mode === 'supabase' && sync.online && !sync.error && (
             <motion.span className="absolute inset-0 rounded-full bg-current" animate={{ scale: [1, 2.4], opacity: [0.5, 0] }} transition={{ duration: 2, repeat: Infinity }} />
           )}
           <span className="relative size-2 rounded-full bg-current" />
@@ -48,7 +48,7 @@ export function AccountCard() {
             <MoreHorizontal />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-56">
-            <DropdownMenuLabel className="text-xs text-muted-foreground">{sync.mode === 'firebase' ? 'Cloud workspace' : 'Offline workspace'}</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-xs text-muted-foreground">{sync.mode === 'supabase' ? 'Cloud workspace' : 'Offline workspace'}</DropdownMenuLabel>
             <DropdownMenuItem closeOnClick={false} onClick={() => (setMenuOpen(false), seed.run())} disabled={seed.pending}>
               <Database /> Load sample practice
             </DropdownMenuItem>

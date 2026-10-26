@@ -11,7 +11,7 @@
 - [x] Command palette, workspace lens, attention rail
 - [x] Domain & use-case tests
 
-- [x] Firebase backend: accounts, Firestore live sync, offline cache, security rules
+- [x] Supabase backend: accounts, Postgres with row-level security, Realtime sync, file storage
 - [x] Relationship graph, thread history, flexible follow-ups
 - [x] Attachments with preview
 - [x] Notion-style plan pages with drawings
