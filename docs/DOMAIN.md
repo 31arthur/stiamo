@@ -69,8 +69,25 @@ Both have a mode (in person / virtual / phone), location or link, counterpart, c
 ### Follow-up
 A call, message, email or visit to make, due on a date (optionally at a time), about a subject (any record). Confirmation follow-ups carry `trigger: 'day_before' | 'hour_before'`.
 
-### Legal case & hearing (S&B)
-A **case** has a reference number, client, opposing party, court, practice area, stage, status and a running **summary**. **Hearings** are listed against it. Recording a hearing (`CaseUseCases.recordHearing`) is one step that:
+### Legal case & hearing
+Cases are filed on behalf of an **organization**: NUMW (National Union for Migrant Workers), TUMWU (Telangana Unorganized and Migrant Workers Union), PMLU (Palamooru Migrant Labour Union), MRC (Migrants Rights Council), TYP (The Youth Project) or SA (Samrat & Associates).
+
+**Case numbers are generated, never typed**: `{ORG}-{YYYY}-{NNN}`, e.g. `TUMWU-2026-004`. The year is the filing year (today's when no filing date is given) and the count carries on from the highest number already used for that organization and year, so deleting a case never reuses a number. The court's own number is kept separately as the optional *court number*.
+
+Each case has a **type**, saying how we are engaged:
+
+| Type | Meaning |
+| --- | --- |
+| Full case | we conduct the whole matter, from filing to disposal |
+| Public interest litigation | filed for a wider group or cause, not one individual |
+| Writ petition | constitutional remedy before the High Court or Supreme Court |
+| Appeal / revision | challenging an order or judgment |
+| Intervention | joining a case someone else has filed |
+| Appearance only | we appear on specific hearings, not the whole case |
+| Complaint / representation | before a labour authority, commission or police |
+| Legal opinion | advice without a proceeding |
+
+A **case** also has an optional client (or group, for a PIL), opposing party, court, practice area, stage, status and a running **summary**. **Hearings** are listed against it. Recording a hearing (`CaseUseCases.recordHearing`) is one step that:
 
 1. writes the hearing **summary** and **outcome** (proceeded / part-heard / adjourned / cancelled),
 2. lists the **next hearing** (date, time, purpose) and links it (`nextHearingId`),

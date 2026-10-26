@@ -3,9 +3,10 @@ import type { CrudUseCases } from '../shared/CrudUseCases'
 import { NotFoundError } from '../shared/errors'
 import type { Outcome } from '../shared/outcome'
 import type { DomainEnv } from '../shared/registry'
-import type { ID, ISODate, Minutes } from '../shared/types'
+import type { Draft, ID, ISODate, Minutes } from '../shared/types'
+import { nextCaseNumber } from './caseNumber'
 import type { ActionPlan } from '../plans/ActionPlan'
-import type { CaseStatus, Hearing } from './LegalCase'
+import type { CaseStatus, Hearing, LegalCase } from './LegalCase'
 
 export interface HearingRecord {
   /** What happened at the hearing. */
@@ -32,6 +33,17 @@ export class CaseUseCases {
     private readonly hearings: CrudUseCases<'hearing'>,
     private readonly plans: PlanUseCases,
   ) {}
+
+  /**
+   * Opens a case and gives it the next case number for its organization. The year in the number is
+   * the year it was filed (or today's, when no filing date is given).
+   */
+  async open(userId: ID, draft: Omit<Draft<LegalCase>, 'reference'>): Promise<LegalCase> {
+    const year = draft.filedOn ? Number(draft.filedOn.slice(0, 4)) : this.env.clock.now().getFullYear()
+    const existing = await this.env.repos.case.list(userId)
+    const reference = nextCaseNumber(draft.organization, year, existing)
+    return this.cases.create(userId, { ...draft, reference })
+  }
 
   /**
    * Writes up a hearing in one step: its summary and outcome, the next date, an action plan for the

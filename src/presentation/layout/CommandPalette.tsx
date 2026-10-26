@@ -64,7 +64,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           <CommandSeparator />
           <CommandGroup heading="Cases">
             {cases.map((c) => (
-              <CommandItem key={c.id} value={`case ${c.reference} ${c.title} ${c.client}`} onSelect={run(() => navigate(`/cases/${c.id}`))}>
+              <CommandItem key={c.id} value={`case ${c.reference} ${c.courtNumber ?? ''} ${c.title} ${c.client ?? ''} ${c.organization ?? ''}`} onSelect={run(() => navigate(`/cases/${c.id}`))}>
                 <KIND_META.case.icon /> <span className="truncate">{c.title}</span>
                 <CommandShortcut>{c.reference}</CommandShortcut>
               </CommandItem>

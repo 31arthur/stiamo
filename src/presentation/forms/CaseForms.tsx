@@ -1,50 +1,125 @@
+import { AnimatePresence, motion } from 'motion/react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { CASE_STATUS_LABELS } from '@/domain/cases/LegalCase'
+import { cn } from '@/lib/utils'
+import { nextCaseNumber } from '@/domain/cases/caseNumber'
+import { CASE_STATUS_LABELS, CASE_TYPE_ORDER, CASE_TYPES } from '@/domain/cases/LegalCase'
+import { ORGANIZATION_CODES, ORGANIZATIONS, organizationName } from '@/domain/cases/Organization'
+import type { OrganizationCode } from '@/domain/cases/Organization'
 import type { CaseStatus, Hearing, LegalCase } from '@/domain/cases/LegalCase'
 import { OPEN } from '@/domain/shared/outcome'
 import { formatDuration } from '@/domain/shared/time'
 import { DateInput, DURATION_PRESETS, Field, NativeSelect, TimeInput } from '@/presentation/components/form'
-import { useSave, useToday } from '@/presentation/data/hooks'
+import { useAction, useEntities, useSave, useToday } from '@/presentation/data/hooks'
 import { FormShell, usePatch } from './shared'
 
-export type CaseDraft = Omit<LegalCase, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+/** A case being opened: no number yet (it's generated) and the organization is still to be chosen. */
+export type CaseDraft = Omit<LegalCase, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'reference' | 'organization'> & { reference?: string; organization?: OrganizationCode }
 export type HearingDraft = Omit<Hearing, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 
-export const newCase = (): CaseDraft => ({ reference: '', title: '', client: '', court: '', status: 'active', summary: '' })
+export const newCase = (): CaseDraft => ({ type: 'full_case', title: '', status: 'active', summary: '' })
 
 export const newHearing = (caseId: string, date: string): HearingDraft => ({ caseId, date, time: 10 * 60 + 30, duration: 60, purpose: '', outcome: OPEN })
 
 export function CaseForm({ initial, onDone }: { initial: LegalCase | CaseDraft; onDone: (saved?: LegalCase) => void }) {
   const [c, patch] = usePatch(initial)
   const editing = 'createdAt' in initial
-  const save = useSave('case', editing ? 'Case updated' : 'Case opened')
+  const { data: cases } = useEntities('case')
+  const update = useSave('case', 'Case updated')
+  const open = useAction<CaseDraft, LegalCase>((s, userId, draft) => s.cases.open(userId, draft as Parameters<typeof s.cases.open>[1]), { success: (k) => `Case ${k.reference} opened` })
+
+  // Show the number the case will get, so there are no surprises after saving.
+  const year = c.filedOn ? Number(c.filedOn.slice(0, 4)) : new Date().getFullYear()
+  const preview = !editing && c.organization ? nextCaseNumber(c.organization, year, cases) : null
 
   return (
-    <FormShell submitLabel={editing ? 'Save' : 'Open case'} onCancel={() => onDone()} onSubmit={async () => onDone(await save.run(c))}>
-      <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
-        <Field label="Case number" htmlFor="case-ref">
-          <Input id="case-ref" autoFocus value={c.reference} onChange={(e) => patch({ reference: e.target.value })} placeholder="CS(COMM) 412/2025" />
+    <FormShell
+      submitLabel={editing ? 'Save' : 'Open case'}
+      onCancel={() => onDone()}
+      onSubmit={async () => onDone(editing ? await update.run(c as LegalCase) : await open.run(c))}
+    >
+      {editing ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-sm">
+          <span className="font-mono font-medium">{(c as LegalCase).reference}</span>
+          <span className="text-muted-foreground">· filed for {organizationName(c.organization)}</span>
+        </div>
+      ) : (
+        <Field label="Filed for" hint="The organization this case is filed on behalf of — its code starts the case number">
+          <div role="radiogroup" aria-label="Organization" className="grid gap-1.5 sm:grid-cols-2">
+            {ORGANIZATION_CODES.map((code) => {
+              const selected = c.organization === code
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => patch({ organization: code })}
+                  className={cn('flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors', selected ? 'border-foreground bg-muted' : 'hover:bg-muted/50')}
+                >
+                  <span className="w-14 shrink-0 font-mono text-xs font-semibold">{code}</span>
+                  <span className="text-xs leading-tight text-muted-foreground">{ORGANIZATIONS[code].name}</span>
+                </button>
+              )
+            })}
+          </div>
         </Field>
-        <Field label="Title" htmlFor="case-title">
-          <Input id="case-title" value={c.title} onChange={(e) => patch({ title: e.target.value })} placeholder="Client v. Opposing party" />
-        </Field>
-      </div>
+      )}
+
+      <AnimatePresence initial={false}>
+        {preview && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-xl border border-dashed px-3 py-2">
+              <span className="text-xs text-muted-foreground">Case number</span>
+              <span className="font-mono text-base font-semibold">{preview}</span>
+              <span className="text-xs text-muted-foreground">assigned when you open the case</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Field label="Type of case">
+        <div role="radiogroup" aria-label="Type of case" className="grid gap-1.5 sm:grid-cols-2">
+          {CASE_TYPE_ORDER.map((t) => {
+            const selected = c.type === t
+            return (
+              <button
+                key={t}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => patch({ type: t })}
+                className={cn('rounded-xl border px-3 py-2 text-left transition-colors', selected ? 'border-foreground bg-muted' : 'hover:bg-muted/50')}
+              >
+                <span className="block text-sm font-medium">{CASE_TYPES[t].label}</span>
+                <span className="block text-[11px] leading-tight text-muted-foreground">{CASE_TYPES[t].description}</span>
+              </button>
+            )
+          })}
+        </div>
+      </Field>
+
+      <Field label="Title" htmlFor="case-title">
+        <Input id="case-title" autoFocus value={c.title} onChange={(e) => patch({ title: e.target.value })} placeholder={c.type === 'pil' ? 'e.g. Unpaid wages of migrant construction workers' : 'Petitioner v. Respondent'} />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Client" htmlFor="case-client">
-          <Input id="case-client" value={c.client} onChange={(e) => patch({ client: e.target.value })} />
+        <Field label={c.type === 'pil' ? 'On behalf of (group or cause)' : 'On behalf of (client)'} htmlFor="case-client" hint="Leave blank when it's simply the organization">
+          <Input id="case-client" value={c.client ?? ''} onChange={(e) => patch({ client: e.target.value || undefined })} />
         </Field>
         <Field label="Opposing party" htmlFor="case-opp">
           <Input id="case-opp" value={c.opposingParty ?? ''} onChange={(e) => patch({ opposingParty: e.target.value || undefined })} />
         </Field>
         <Field label="Court / forum" htmlFor="case-court">
-          <Input id="case-court" value={c.court} onChange={(e) => patch({ court: e.target.value })} />
+          <Input id="case-court" value={c.court ?? ''} onChange={(e) => patch({ court: e.target.value || undefined })} />
+        </Field>
+        <Field label="Court’s case number" htmlFor="case-court-no" hint="Once the court gives it one">
+          <Input id="case-court-no" value={c.courtNumber ?? ''} onChange={(e) => patch({ courtNumber: e.target.value || undefined })} placeholder="e.g. WP 1290/2026" />
         </Field>
         <Field label="Practice area" htmlFor="case-area">
-          <Input id="case-area" value={c.practiceArea ?? ''} onChange={(e) => patch({ practiceArea: e.target.value || undefined })} />
+          <Input id="case-area" value={c.practiceArea ?? ''} onChange={(e) => patch({ practiceArea: e.target.value || undefined })} placeholder="Labour, Commercial, Tax…" />
         </Field>
         <Field label="Stage" htmlFor="case-stage">
-          <Input id="case-stage" value={c.stage ?? ''} onChange={(e) => patch({ stage: e.target.value || undefined })} placeholder="Pleadings, Evidence, Arguments…" />
+          <Input id="case-stage" value={c.stage ?? ''} onChange={(e) => patch({ stage: e.target.value || undefined })} placeholder="Notice, Pleadings, Evidence, Arguments…" />
         </Field>
         <Field label="Status" htmlFor="case-status">
           <NativeSelect id="case-status" value={c.status} onChange={(e) => patch({ status: e.target.value as CaseStatus })}>
@@ -55,7 +130,7 @@ export function CaseForm({ initial, onDone }: { initial: LegalCase | CaseDraft; 
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Filed on" htmlFor="case-filed">
+        <Field label="Filed on" htmlFor="case-filed" hint={editing ? undefined : 'The year goes in the case number'}>
           <DateInput id="case-filed" value={c.filedOn} onChange={(filedOn) => patch({ filedOn })} />
         </Field>
       </div>

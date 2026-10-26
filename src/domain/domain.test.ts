@@ -111,7 +111,7 @@ describe('agenda & planner', () => {
     meetings: [meeting()],
     followUps: [],
     hearings: [{ id: 'h1', ...stamp, caseId: 'c1', date: '2026-10-27', time: at(10, 30), duration: 60, purpose: 'Arguments', outcome: { status: 'open' as const } }],
-    cases: [{ id: 'c1', ...stamp, reference: 'CS 1/2026', title: 'A v. B', client: 'A', court: 'HC', status: 'active' as const, summary: '' }],
+    cases: [{ id: 'c1', ...stamp, reference: 'SA-2026-001', title: 'A v. B', organization: 'SA' as const, type: 'full_case' as const, court: 'HC', status: 'active' as const, summary: '' }],
   }
 
   it('unifies tasks, meetings and hearings for a day, timed first', () => {
@@ -182,7 +182,7 @@ describe('progress', () => {
 describe('use cases', () => {
   it('records a hearing: summary, next listing, action plan with steps', async () => {
     const app = freshApp()
-    const c = await app.crud.case.create('u', { reference: 'OP 1', title: 'Trust', client: 'R', court: 'DC', status: 'active', summary: '' })
+    const c = await app.crud.case.create('u', { reference: 'OP 1', title: 'Trust', organization: 'SA', type: 'full_case', court: 'DC', status: 'active', summary: '' })
     const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-10-20', duration: 60, purpose: 'Reply', outcome: { status: 'open' } })
 
     const result = await app.cases.recordHearing('u', h.id, {
@@ -242,7 +242,7 @@ describe('use cases', () => {
       app.crud.goal.list(DEMO_ACCOUNT.id),
       app.crud.followUp.list(DEMO_ACCOUNT.id),
     ])
-    expect(cases).toHaveLength(3)
+    expect(cases).toHaveLength(4)
     expect(goals).toHaveLength(3)
     expect(followUps.filter((f) => f.trigger).length).toBe(4) // two appointments × two confirmations
     expect((await app.crud.link.list(DEMO_ACCOUNT.id)).length).toBeGreaterThan(0)
@@ -252,7 +252,7 @@ describe('use cases', () => {
 describe('relationships & history', () => {
   it('builds a case thread and records its history', async () => {
     const app = freshApp()
-    const c = await app.crud.case.create('u', { reference: 'CS 9', title: 'A v. B', client: 'A', court: 'HC', status: 'active', summary: '' })
+    const c = await app.crud.case.create('u', { reference: 'CS 9', title: 'A v. B', organization: 'SA', type: 'full_case', court: 'HC', status: 'active', summary: '' })
     const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-10-20', duration: 60, purpose: 'Evidence', outcome: { status: 'open' } })
     const { plan, nextHearing } = await app.cases.recordHearing('u', h.id, {
       summary: 'Part heard',
@@ -296,7 +296,7 @@ describe('relationships & history', () => {
 describe('attachments', () => {
   it('attaches files to any record, records it in history, and enforces the size limit', async () => {
     const app = freshApp()
-    const c = await app.crud.case.create('u', { reference: 'CS 10', title: 'X v. Y', client: 'X', court: 'HC', status: 'active', summary: '' })
+    const c = await app.crud.case.create('u', { reference: 'CS 10', title: 'X v. Y', organization: 'SA', type: 'full_case', court: 'HC', status: 'active', summary: '' })
     const file = new File(['order text'], 'order.txt', { type: 'text/plain' })
     const a = await app.attachments.attach('u', { kind: 'case', id: c.id }, c.title, file)
     expect(a).toMatchObject({ name: 'order.txt', size: 10, owner: { kind: 'case', id: c.id } })
@@ -316,5 +316,28 @@ describe('sign-up switch', () => {
     await expect(off.auth.register.execute({ name: 'A', email: 'a@b.co', password: 'longenough1' })).rejects.toThrow(/turned off/)
     const on = createContainer({ ...localBackend(new MemoryStorage()), allowSignUp: true })
     await expect(on.auth.register.execute({ name: 'A', email: 'a@b.co', password: 'longenough1' })).resolves.toMatchObject({ email: 'a@b.co' })
+  })
+})
+
+describe('case numbers', () => {
+  it('numbers cases per organization and year, counting on from the highest used', async () => {
+    const app = freshApp()
+    const open = (organization: 'SA' | 'TUMWU', filedOn?: string) =>
+      app.cases.open('u', { organization, type: 'full_case', title: 'T', status: 'active', summary: '', filedOn })
+
+    const a = await open('TUMWU', '2026-03-01')
+    const b = await open('TUMWU', '2026-05-09')
+    const other = await open('SA', '2026-05-09')
+    const nextYear = await open('TUMWU', '2027-01-04')
+    expect([a, b, other, nextYear].map((c) => c.reference)).toEqual(['TUMWU-2026-001', 'TUMWU-2026-002', 'SA-2026-001', 'TUMWU-2027-001'])
+
+    // Deleting the middle one doesn't hand its number out again.
+    await app.cases.remove('u', a.id)
+    expect((await open('TUMWU', '2026-08-01')).reference).toBe('TUMWU-2026-003')
+  })
+
+  it('requires an organization', async () => {
+    const app = freshApp()
+    await expect(app.cases.open('u', { type: 'pil', title: 'T', status: 'active', summary: '' } as never)).rejects.toThrow(/Organization/)
   })
 })
