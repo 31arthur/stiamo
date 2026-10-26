@@ -199,21 +199,19 @@ function DayPlanner({ date }: { date: ISODate }) {
       <div className="flex min-h-[600px] flex-col gap-4 xl:h-[calc(100vh-3rem)]">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-end gap-5">
+            {/* Enter-only: the new day slides in as the old one is replaced, so the heading can never be left showing the previous day. */}
             <div className="relative h-[4.5rem] min-w-60 overflow-hidden">
-              <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-                <motion.div
-                  key={date}
-                  initial={{ y: direction * 50, opacity: 0, filter: 'blur(6px)' }}
-                  animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
-                  exit={{ y: direction * -50, opacity: 0, filter: 'blur(6px)' }}
-                  transition={{ duration: 0.45, ease: easeOutExpo }}
-                >
-                  <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">{isToday ? 'Today' : friendlyDate(date, today)}</div>
-                  <h1 className="font-display text-5xl leading-none tracking-tight">
-                    {format(day, 'EEEE')} <span className="text-muted-foreground italic">{format(day, 'd MMM')}</span>
-                  </h1>
-                </motion.div>
-              </AnimatePresence>
+              <motion.div
+                key={date}
+                initial={{ y: direction * 40, opacity: 0, filter: 'blur(6px)' }}
+                animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
+                transition={{ duration: 0.4, ease: easeOutExpo }}
+              >
+                <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">{isToday ? 'Today' : friendlyDate(date, today)}</div>
+                <h1 className="font-display text-5xl leading-none tracking-tight">
+                  {format(day, 'EEEE')} <span className="text-muted-foreground italic">{format(day, 'd MMM')}</span>
+                </h1>
+              </motion.div>
             </div>
             <ProgressRing value={visible.length ? closed / visible.length : 0} label={`${closed}/${visible.length}`} />
             <div className="hidden text-xs text-muted-foreground md:block">
