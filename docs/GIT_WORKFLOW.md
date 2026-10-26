@@ -17,4 +17,9 @@ The repository's default branch is `dev`; it acts as the trunk.
 | `docs/project-documentation` | These documents |
 | `feature/ui-motion-polish` | Motion system, app shell, animated login and calendar |
 | `feature/day-planner` | Day planner with drag and drop, reflow, undo; Vitest |
+| `feature/firebase-backend` | Firebase Auth, Firestore live sync, rules |
+| `feature/relationships-threads` | Links, activity history, thread views, flexible follow-ups |
+| `feature/attachments` | Files on every record with preview |
+| `feature/plan-block-editor` | Notion-style plan pages and drawings |
+| `feature/mobile-and-meta` | Mobile layouts, icons, manifest |
 | `feature/v2-practice-model` | Domain rebuilt: workspaces, outcomes, appointments/meetings, follow-ups, cases & hearings, action plans, goals; new shell and every screen |

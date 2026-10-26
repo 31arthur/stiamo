@@ -8,7 +8,7 @@ A personal operating system for a practitioner working across **S&B Consultants 
 - **Action plans** that roll up into **goals** with key results and health tracked against time
 - A **day planner** to drag the day into shape, reflow it, and undo; a month **calendar** of everything
 
-**Stack:** React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui (Base UI), TanStack Query, Motion, dnd-kit, React Router, date-fns, sonner, Vitest. Clean Architecture (domain / data / presentation) with SOLID use cases.
+**Stack:** React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui (Base UI), Firebase (Auth, Firestore, Storage), TanStack Query, BlockNote, Excalidraw, Motion, dnd-kit, React Router, date-fns, Vitest. Clean Architecture (domain / data / presentation) with SOLID use cases.
 
 ## Getting started
 
@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Sign in with `demo@stiamo.app` / `password123`. A demo practice is seeded on first run.
+Without Firebase config the app runs offline on this device: sign in with `demo@stiamo.app` / `password123` (a demo practice is seeded on first run). To use your cloud project, copy `.env.example` to `.env.local` and follow [docs/FIREBASE.md](docs/FIREBASE.md).
 
 | Script | Purpose |
 | --- | --- |
@@ -28,7 +28,8 @@ Sign in with `demo@stiamo.app` / `password123`. A demo practice is seeded on fir
 
 ## Documentation
 
-- [Domain model](docs/DOMAIN.md) — workspaces, outcomes, aggregates, how they link
+- [Domain model](docs/DOMAIN.md) — workspaces, outcomes, aggregates, links, history, files
+- [Firebase setup](docs/FIREBASE.md) — accounts, live sync, rules, hosting
 - [Architecture](docs/ARCHITECTURE.md) — layers, use cases, SOLID mapping, state and motion
 - [Features](docs/FEATURES.md) — every screen and interaction
 - [Git workflow](docs/GIT_WORKFLOW.md) — branching and merge conventions

@@ -93,9 +93,9 @@ export function EditorHost({ children }: { children: ReactNode }) {
     [navigate, services, userId],
   )
 
-  // Opening is deferred a frame: when triggered from a menu item, the menu's own close (and the
+  // Opening is deferred a beat (a timer, not a frame, so it still fires in background tabs): when triggered from a menu item, the menu's own close (and the
   // tail of that pointer gesture) would otherwise land on the new dialog and dismiss it.
-  const open = useCallback((r: EditorRequest) => requestAnimationFrame(() => setRequest(r)), [])
+  const open = useCallback((r: EditorRequest) => void setTimeout(() => setRequest(r), 30), [])
   const api = useMemo(() => ({ open, openRef }), [open, openRef])
   const editing = !!request?.value && 'createdAt' in request.value
   const [createTitle, editTitle, description] = request ? TITLES[request.kind] : ['', '', '']

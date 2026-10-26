@@ -20,6 +20,23 @@ erDiagram
     TASK }o--o| ANY : related
 ```
 
+## Connections, history and files
+
+Records are connected in two ways, and both feed a **thread** you can open from any record:
+
+- **Structural** relations the system creates: plan → steps, case → hearings, hearing → next hearing, case/hearing/meeting → action plan, meeting → preparation plan, goal → plans, any record → the task or follow-up spawned as its further action.
+- **Links** you make by hand between any two records (`Link`), e.g. one case with every meeting held about it.
+
+`RelationGraph.thread(ref)` returns the ancestors ("part of"), the descendant tree, and the hand-linked peers. Deleting a record removes its links.
+
+Every create, update, outcome, rescheduling, link and file change writes an **Activity** (with a field-by-field change set). A record's history is the merged activity of its whole thread, plus notes you add. Free-form notes are Activity too.
+
+**Attachments** belong to any record (`owner`) — tasks, follow-ups, meetings, cases, individual hearings, plans, goals. Metadata lives with the data; bytes go through the `FileStore` port (Cloud Storage, chunked Firestore, or IndexedDB offline).
+
+**Follow-ups** don't need a date: `due` is optional (anytime / on a day / at a time).
+
+**Plan pages** keep a `doc` (block-editor JSON) alongside the tracked steps; drawings inside it are stored as attachments.
+
 ## Outcome — the core idea
 
 Nothing is just "completed". Tasks, follow-ups, meetings, hearings and agenda items all carry an **Outcome**:
