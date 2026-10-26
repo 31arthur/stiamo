@@ -6,6 +6,7 @@ import { LogoutUseCase } from '@/domain/auth/usecases/LogoutUseCase'
 import { RegisterUseCase, ResetPasswordUseCase } from '@/domain/auth/usecases/RegisterUseCase'
 import { ActivityLog } from '@/domain/activity/ActivityLog'
 import { AttachmentUseCases } from '@/domain/attachments/AttachmentUseCases'
+import { ValidationError } from '@/domain/auth/errors'
 import { CaseUseCases } from '@/domain/cases/CaseUseCases'
 import { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import { PlanUseCases } from '@/domain/plans/PlanUseCases'
@@ -52,9 +53,10 @@ export function createContainer(backend: Backend) {
 
   const container = {
     backend: backend.kind,
+    allowSignUp: backend.allowSignUp,
     auth: {
       login: new LoginUseCase(backend.auth),
-      register: new RegisterUseCase(backend.auth),
+      register: backend.allowSignUp ? new RegisterUseCase(backend.auth) : { execute: () => Promise.reject(new ValidationError('Account creation is turned off. Ask the owner to add you.')) },
       resetPassword: new ResetPasswordUseCase(backend.auth),
       logout: new LogoutUseCase(backend.auth),
       getCurrentUser: new GetCurrentUserUseCase(backend.auth),

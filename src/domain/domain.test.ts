@@ -309,3 +309,12 @@ describe('attachments', () => {
     expect(await app.crud.attachment.list('u')).toEqual([])
   })
 })
+
+describe('sign-up switch', () => {
+  it('rejects registration unless it has been switched on', async () => {
+    const off = createContainer(localBackend(new MemoryStorage()))
+    await expect(off.auth.register.execute({ name: 'A', email: 'a@b.co', password: 'longenough1' })).rejects.toThrow(/turned off/)
+    const on = createContainer({ ...localBackend(new MemoryStorage()), allowSignUp: true })
+    await expect(on.auth.register.execute({ name: 'A', email: 'a@b.co', password: 'longenough1' })).resolves.toMatchObject({ email: 'a@b.co' })
+  })
+})

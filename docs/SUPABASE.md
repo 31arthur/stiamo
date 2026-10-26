@@ -35,7 +35,13 @@ It creates, for each collection, a table of JSON documents (`id`, `user_id`, `da
 | `links`, `activity` | hand-made links and the history trail |
 | `attachments` | file metadata (bytes are in Storage) |
 
-## 3. Authentication settings
+## 3. Add your account (sign-up is off)
+
+The app does not show account creation by default, so nobody can register themselves. Add yourself in the dashboard instead: **Authentication → Users → Add user → Create new user**, enter your email and a password, and tick **Auto Confirm User** (no email needed). Then sign in with those details on the login page.
+
+To make this airtight, also turn off **Authentication → Sign In / Providers → Allow new users to sign up** — hiding the form only hides the form; this setting is what stops anyone calling the sign-up API directly. To bring the form back, set `VITE_ALLOW_SIGNUP=true` in `.env.local` (and re-enable sign-ups in the dashboard).
+
+## 4. Authentication settings
 
 Dashboard → **Authentication**:
 

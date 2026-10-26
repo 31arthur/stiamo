@@ -29,7 +29,7 @@ const COPY: Record<Mode, { title: string; cta: string }> = {
 
 export function LoginPage() {
   const { user, login, register, resetPassword } = useAuth()
-  const { backend } = useServices()
+  const { backend, allowSignUp } = useServices()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/'
@@ -135,7 +135,7 @@ export function LoginPage() {
               </p>
             </motion.div>
 
-            {mode !== 'reset' && (
+            {mode !== 'reset' && allowSignUp && (
               <motion.div variants={fadeUp} role="tablist" aria-label="Account" className="grid grid-cols-2 rounded-lg bg-muted p-0.5 text-sm">
                 {(['signin', 'signup'] as const).map((m) => (
                   <button key={m} role="tab" aria-selected={mode === m} onClick={() => switchMode(m)} className={cn('relative rounded-md py-1.5 font-medium', mode === m ? 'text-foreground' : 'text-muted-foreground')}>
