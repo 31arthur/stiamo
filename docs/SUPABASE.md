@@ -60,3 +60,14 @@ Dashboard → **Authentication**:
 ## Moving data in
 
 Rows are `(user_id, id, data jsonb)`. To import existing records, insert them with the owner's `user_id` (find it under Authentication → Users) and the record JSON in `data` — the JSON shape is the domain model described in [DOMAIN.md](DOMAIN.md). Dates are `yyyy-MM-dd` strings and times are minutes from midnight.
+
+## Deploying to Netlify
+
+`netlify.toml` at the repo root holds the build (`npm run build` → `dist`) and a catch-all redirect to `index.html`, so deep links such as `/plans/<id>` and page reloads work.
+
+In Netlify → Site configuration → Environment variables, add:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+They are read at build time, so redeploy after changing them. Never add the `service_role` key.

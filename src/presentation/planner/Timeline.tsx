@@ -38,7 +38,10 @@ export function Timeline({ plan, now, preview, isDragging, instantKey, reflowing
     contentRef.current = el
   }
 
-  const minuteFromPointer = (e: MouseEvent<HTMLDivElement>) =>
+  /** An hour label this close to the "now" label would print over it, so it steps aside. */
+  const nearNow = (m: number) => now !== null && Math.abs(minuteToY(m) - minuteToY(now)) < 18
+
+  const minuteFromPointer =(e: MouseEvent<HTMLDivElement>) =>
     Math.floor(yToMinute(e.clientY - e.currentTarget.getBoundingClientRect().top) / SLOT_MINUTES) * SLOT_MINUTES
   const onBackground = (e: MouseEvent<HTMLDivElement>) => e.target === e.currentTarget
 
@@ -50,7 +53,11 @@ export function Timeline({ plan, now, preview, isDragging, instantKey, reflowing
       <div className="relative flex" style={{ height: (DAY_END - DAY_START) * PX_PER_MINUTE + 16 }}>
         <div className="relative w-14 shrink-0 select-none" aria-hidden>
           {HOURS.map((m) => (
-            <span key={m} className="absolute right-3 -translate-y-1/2 text-[11px] text-muted-foreground tabular-nums" style={{ top: minuteToY(m) + 8 }}>
+            <span
+              key={m}
+              className={cn('absolute right-3 -translate-y-1/2 text-[11px] text-muted-foreground tabular-nums transition-opacity', nearNow(m) && 'opacity-0')}
+              style={{ top: minuteToY(m) + 8 }}
+            >
               {m === DAY_START ? '' : formatClock(m)}
             </span>
           ))}
@@ -126,7 +133,7 @@ export function Timeline({ plan, now, preview, isDragging, instantKey, reflowing
                   <span className="relative size-3 rounded-full bg-now ring-2 ring-background" />
                 </span>
                 <span className="h-0.5 flex-1 bg-now" />
-                <span className="absolute -top-5 -left-14 w-12 text-right text-[11px] font-semibold text-now tabular-nums">{formatClock(Math.floor(now))}</span>
+                <span className="absolute top-1/2 -left-14 w-12 -translate-y-1/2 pr-3 text-right text-[11px] font-semibold text-now tabular-nums">{formatClock(Math.floor(now))}</span>
               </motion.div>
             )}
           </div>
