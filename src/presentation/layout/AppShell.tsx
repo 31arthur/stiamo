@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { CalendarDays, CalendarRange, Menu, NotebookPen, Plus, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -13,7 +14,9 @@ import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { KIND_META } from '@/presentation/components/kinds'
+import { PageLoader } from '@/presentation/components/loading'
 import { WorkspaceDot } from '@/presentation/components/workspace'
+import { useSync } from '@/presentation/data/live'
 import { easeOutExpo, spring } from '@/presentation/motion/presets'
 import { AccountCard, SyncBanner } from './AccountCard'
 import { CommandPalette } from './CommandPalette'
@@ -30,6 +33,23 @@ interface NavItem {
   tone?: 'danger' | 'default'
 }
 
+
+/**
+ * Holds the page back until the first snapshot of every collection has arrived, so a list never
+ * flashes "nothing here" while its data is on the way. If a collection never answers (a missing
+ * table, say) the page shows after a few seconds anyway, with the sync banner saying what's wrong.
+ */
+function SyncGate({ children }: { children: ReactNode }) {
+  const { ready, error } = useSync()
+  const [gaveUp, setGaveUp] = useState(false)
+  useEffect(() => {
+    if (ready) return
+    const id = setTimeout(() => setGaveUp(true), 8000)
+    return () => clearTimeout(id)
+  }, [ready])
+  if (!ready && !error && !gaveUp) return <PageLoader label="Loading your practice…" />
+  return <>{children}</>
+}
 
 export function AppShell() {
   const location = useLocation()
@@ -86,7 +106,9 @@ export function AppShell() {
             className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-5 px-4 pt-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:gap-6 sm:px-8 sm:pt-6 lg:pb-8"
           >
             <SyncBanner />
-            <Suspense fallback={null}>{outlet}</Suspense>
+            <SyncGate>
+              <Suspense fallback={<PageLoader />}>{outlet}</Suspense>
+            </SyncGate>
           </motion.main>
         </AnimatePresence>
       </div>

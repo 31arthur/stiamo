@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { format, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { ChevronLeft, ChevronRight, Download, ExternalLink, Loader2, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, ExternalLink, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -106,7 +107,7 @@ function PreviewBody({ file }: { file: Attachment }) {
   const category = categoryOf(file)
   // A link needs no download, so it can show before (or without) its address resolving.
   if (file.link) return <LinkViewer link={file.link} name={file.name} />
-  if (isLoading) return <Centered><Loader2 className="size-6 animate-spin text-muted-foreground" /></Centered>
+  if (isLoading) return <Centered><Spinner label="Opening the file" /></Centered>
   if (error || !url) return <Centered><p className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load this file'}</p></Centered>
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
 

@@ -41,7 +41,7 @@ export function FormShell({ onSubmit, submitLabel, onCancel, children, danger }:
           <Button type="button" variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" loading={busy}>
             {submitLabel}
           </Button>
         </div>

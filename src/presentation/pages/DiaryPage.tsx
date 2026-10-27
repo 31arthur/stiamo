@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { motion } from 'motion/react'
-import { Search } from 'lucide-react'
+import { Pencil, Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useEditor } from '@/presentation/app/create'
 import { Link } from 'react-router-dom'
 import { diaryOf, pendingActions, searchDiary, touchesCase } from '@/domain/cases/hearingDiary'
 import { hearingCaseIds } from '@/domain/cases/LegalCase'
@@ -17,6 +19,7 @@ import { spring } from '@/presentation/motion/presets'
  */
 export function DiaryPage() {
   const today = useToday()
+  const { open } = useEditor()
   const { data: hearings } = useEntities('hearing')
   const { data: cases } = useEntities('case')
   const { data: tasks } = useEntities('task')
@@ -67,6 +70,9 @@ export function DiaryPage() {
           {rows.map((h) => (
             <motion.li key={h.id} layout transition={spring.soft} className="rounded-xl border bg-card p-3">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Button variant="ghost" size="icon-sm" className="order-last ml-auto" aria-label="Edit hearing" title="Edit the hearing, or the cases it was heard with" onClick={() => open({ kind: 'hearing', value: h })}>
+                  <Pencil />
+                </Button>
                 <span className="text-sm font-semibold tabular-nums">{format(parseISO(h.date), 'EEE d MMM yyyy')}</span>
                 {hearingCaseIds(h).map((id) => {
                   const c = cases.find((x) => x.id === id)

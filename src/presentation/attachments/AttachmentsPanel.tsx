@@ -16,6 +16,7 @@ import { useRecordLookup } from '@/presentation/components/records'
 import { useAction, useUserId } from '@/presentation/data/hooks'
 import { spring } from '@/presentation/motion/presets'
 import { Field } from '@/presentation/components/form'
+import { Skeleton } from '@/presentation/components/loading'
 import { FileIcon, LinkTile } from './FileIcon'
 import { FilePreview } from './FilePreview'
 import { formatBytes, useAttachments, useFileUrl } from './useAttachments'
@@ -212,7 +213,7 @@ function LinkDialog({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
 
 function FileCard({ file, onOpen, onRemove }: { file: Attachment; onOpen: () => void; onRemove: () => void }) {
   const category = categoryOf(file)
-  const { data: url } = useFileUrl(category === 'image' ? file : undefined)
+  const { data: url, isLoading: loadingThumb } = useFileUrl(category === 'image' ? file : undefined)
   const [confirming, setConfirming] = useState(false)
   return (
     <motion.li layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={spring.soft} className="group relative overflow-hidden rounded-xl border bg-card">
@@ -220,6 +221,8 @@ function FileCard({ file, onOpen, onRemove }: { file: Attachment; onOpen: () => 
         <div className="aspect-[4/3] overflow-hidden bg-muted/50">
           {url ? (
             <img src={url} alt="" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          ) : loadingThumb ? (
+            <Skeleton className="size-full rounded-none" />
           ) : file.link ? (
             <LinkTile provider={file.link.provider} className="size-full" />
           ) : (

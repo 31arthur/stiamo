@@ -50,4 +50,14 @@ export function searchDiary(hearings: Hearing[], cases: LegalCase[], query: stri
   return words.length ? hearings.filter((h) => words.every((w) => text(h, cases).includes(w))) : hearings
 }
 
+/**
+ * Listings that would be folded into `hearing` if `caseIds` were added to it: another case's listing
+ * on the same day that hasn't been written up. (One that has been written up is left alone — it
+ * already has its own record.)
+ */
+export const mergeCandidates = (hearing: Pick<Hearing, 'id' | 'caseId' | 'date'>, caseIds: ID[], hearings: Hearing[]): Hearing[] =>
+  hearings.filter(
+    (o) => o.id !== hearing.id && o.date === hearing.date && o.outcome.status === 'open' && !isDiaryEntry(o) && hearingCaseIds(o).some((id) => id !== hearing.caseId && caseIds.includes(id)),
+  )
+
 export const touchesCase = (h: Hearing, caseId: ID) => hearingCaseIds(h).includes(caseId)

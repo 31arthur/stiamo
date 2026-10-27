@@ -1,4 +1,5 @@
 import { format, parseISO } from 'date-fns'
+import { DetailSkeleton } from '@/presentation/components/loading'
 import { HeartHandshake, Mail, MapPin, Pencil, Phone, Scale } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { BackButton } from '@/presentation/components/BackButton'
@@ -22,7 +23,7 @@ export function CounselDetailPage() {
   const { id } = useParams<{ id: string }>()
   const counsel = useEntity('counsel', id)
   const { isLoading } = useEntities('counsel')
-  if (!counsel) return isLoading ? null : <Navigate to="/counsel" replace />
+  if (!counsel) return isLoading ? <DetailSkeleton /> : <Navigate to="/counsel" replace />
   return <CounselDetail key={counsel.id} counsel={counsel} />
 }
 

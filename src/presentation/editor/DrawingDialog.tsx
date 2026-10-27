@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Excalidraw, exportToBlob, serializeAsJSON } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI, ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types'
 import '@excalidraw/excalidraw/index.css'
-import { Loader2 } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { useColorScheme } from './useColorScheme'
@@ -58,14 +58,14 @@ export default function DrawingDialog({ open, sceneUrl, onSave, onClose }: { ope
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>
-          <Button size="sm" onClick={save} disabled={saving || initial === undefined}>
-            {saving && <Loader2 className="animate-spin" />} Save drawing
+          <Button size="sm" onClick={save} disabled={initial === undefined} loading={saving}>
+            Save drawing
           </Button>
         </header>
         <div className="relative min-h-0 flex-1">
           {initial === undefined ? (
             <div className="flex size-full items-center justify-center">
-              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              <Spinner label="Opening the drawing" />
             </div>
           ) : (
             <Excalidraw excalidrawAPI={(x) => (api.current = x)} initialData={initial} theme={scheme} UIOptions={{ canvasActions: { loadScene: false, saveToActiveFile: false, export: false } }} />

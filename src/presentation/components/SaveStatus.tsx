@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, Loader2 } from 'lucide-react'
+import { Check } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 
 /**
  * "Saving…" while a write is in flight, then "Saved" for a moment. Pages that save as you type use
@@ -25,7 +26,7 @@ export function SaveStatus({ pending }: { pending: boolean }) {
       <AnimatePresence mode="wait" initial={false}>
         {pending ? (
           <motion.span key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1">
-            <Loader2 className="size-3 animate-spin" /> Saving…
+            <Spinner size="xs" tone="current" decorative /> Saving…
           </motion.span>
         ) : saved ? (
           <motion.span key="saved" initial={{ opacity: 0, y: 2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="inline-flex items-center gap-1 text-success">

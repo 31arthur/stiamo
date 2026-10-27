@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Spinner } from '@/components/ui/spinner'
 import { motion } from 'motion/react'
 import { Cloud, CloudOff, Database, HardDrive, LogOut, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -35,7 +36,7 @@ export function AccountCard() {
           )}
           <span className="relative size-2 rounded-full bg-current" />
         </span>
-        <status.icon className="size-3" /> {status.label}
+        {sync.mode === 'supabase' && !sync.ready && !sync.error && sync.online ? <Spinner size="xs" tone="current" decorative /> : <status.icon className="size-3" />} {status.label}
       </div>
       <div className="flex items-center gap-2 rounded-xl border bg-background/60 p-2">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ws-sb to-ws-fsa text-xs font-semibold text-white">{initialsOf(user?.name)}</div>

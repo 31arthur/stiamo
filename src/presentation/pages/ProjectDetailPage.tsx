@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { DetailSkeleton } from '@/presentation/components/loading'
 import { format, parseISO } from 'date-fns'
 import { Pencil } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
@@ -20,7 +21,7 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const project = useEntity('project', id)
   const { isLoading } = useEntities('project')
-  if (!project) return isLoading ? null : <Navigate to="/projects" replace />
+  if (!project) return isLoading ? <DetailSkeleton /> : <Navigate to="/projects" replace />
   return <ProjectDetail key={project.id} project={project} />
 }
 

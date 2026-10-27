@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { DetailSkeleton } from '@/presentation/components/loading'
 import { format, parseISO } from 'date-fns'
 import { Globe, Mail, Pencil, Phone, Plus } from 'lucide-react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
@@ -23,7 +24,7 @@ export function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const client = useEntity('client', id)
   const { isLoading } = useEntities('client')
-  if (!client) return isLoading ? null : <Navigate to="/clients" replace />
+  if (!client) return isLoading ? <DetailSkeleton /> : <Navigate to="/clients" replace />
   return <ClientDetail key={client.id} client={client} />
 }
 

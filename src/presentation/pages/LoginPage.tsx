@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { AnimatePresence, motion, useAnimationControls } from 'motion/react'
-import { ArrowRight, Cloud, HardDrive, Loader2, MailCheck } from 'lucide-react'
+import { ArrowRight, Cloud, HardDrive, MailCheck } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -189,7 +190,7 @@ export function LoginPage() {
                 </motion.p>
               )}
               <Button type="submit" disabled={submitting} className="group h-10 w-full">
-                {submitting ? <Loader2 className="animate-spin" /> : COPY[mode].cta}
+                {submitting ? <Spinner size="sm" tone="current" label="Signing in" /> : COPY[mode].cta}
                 {!submitting && <ArrowRight className="transition-transform group-hover:translate-x-0.5" />}
               </Button>
               {mode === 'reset' && (

@@ -1,7 +1,8 @@
 import { lazy, Suspense, useRef, useState } from 'react'
+import { DetailSkeleton, InlineLoading, Skeleton } from '@/presentation/components/loading'
 import type { ReactNode } from 'react'
 import { motion } from 'motion/react'
-import { Calendar, CircleDot, Copy, Crosshair, Gauge, Layers, ListChecks, Loader2, Target, Waypoints } from 'lucide-react'
+import { Calendar, CircleDot, Copy, Crosshair, Gauge, Layers, ListChecks, Target, Waypoints } from 'lucide-react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -42,7 +43,7 @@ export function PlanDetailPage() {
   const { id } = useParams<{ id: string }>()
   const plan = useEntity('plan', id)
   const { isLoading } = useEntities('plan')
-  if (!plan) return isLoading ? null : <Navigate to="/plans" replace />
+  if (!plan) return isLoading ? <DetailSkeleton /> : <Navigate to="/plans" replace />
   return <PlanPage key={plan.id} plan={plan} />
 }
 
@@ -190,8 +191,10 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
         <div className="min-w-0 xl:order-1">
         <Suspense
           fallback={
-            <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Loading the page editor…
+            <div className="grid gap-2 py-2">
+              <InlineLoading>Loading the page editor…</InlineLoading>
+              <Skeleton className="h-6 w-2/3" />
+              <Skeleton className="h-6 w-1/2" />
             </div>
           }
         >
