@@ -53,7 +53,7 @@ export function createContainer(backend: Backend) {
     attachment: new CrudUseCases('attachment', env),
   }
   const meetings = new MeetingUseCases(env, crud.meeting, crud.followUp)
-  const plans = new PlanUseCases(env, crud.plan, crud.task, crud.goal, log)
+  const plans = new PlanUseCases(env, crud.plan, crud.task, crud.followUp, meetings, crud.goal, log)
   const cases = new CaseUseCases(env, crud.case, crud.hearing, plans, log)
   const hearingActions = new HearingActionUseCases(env, crud.hearing, crud.task, plans)
   const counsel = new CounselUseCases(env, crud.counsel, crud.case, log)

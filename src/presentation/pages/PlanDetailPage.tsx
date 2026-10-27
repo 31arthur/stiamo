@@ -6,7 +6,7 @@ import { Calendar, CircleDot, Copy, Crosshair, Gauge, Layers, ListChecks, Target
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { PLAN_STATUS_LABELS, planProgress } from '@/domain/plans/ActionPlan'
+import { PLAN_STATUS_LABELS, planProgress, planSteps } from '@/domain/plans/ActionPlan'
 import type { ActionPlan, PlanStatus } from '@/domain/plans/ActionPlan'
 import type { ID, RichDoc } from '@/domain/shared/types'
 import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
@@ -18,7 +18,7 @@ import { ProgressBar } from '@/presentation/components/progress'
 import { RefChip } from '@/presentation/components/RefChip'
 import { Tabs } from '@/presentation/components/tabs'
 import { WS_STYLE, WorkspacePicker } from '@/presentation/components/workspace'
-import { useAction, useEntities, useEntity, useSave, useToday } from '@/presentation/data/hooks'
+import { useAction, useEntities, useEntity, useSave, useStepPool, useToday } from '@/presentation/data/hooks'
 import { easeOutExpo } from '@/presentation/motion/presets'
 import { BackButton } from '@/presentation/components/BackButton'
 import { ErrorBoundary } from '@/presentation/components/ErrorBoundary'
@@ -53,7 +53,7 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
   const today = useToday()
   const navigate = useNavigate()
   const fresh = !!(useLocation().state as { fresh?: boolean } | null)?.fresh
-  const { data: tasks } = useEntities('task')
+  const pool = useStepPool()
   const { data: goals } = useEntities('goal')
   const save = useSave('plan')
   const remove = useAction<ID, void>((s, userId, id) => s.plans.remove(userId, id), { success: 'Plan deleted — its steps were kept as tasks' })
@@ -68,7 +68,7 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
   const files = useAttachments({ kind: 'plan', id: p.id })
   const addStep = useAction<string, unknown>((s, userId, text) => s.plans.addStep(userId, p.id, text), { success: 'Added as a step' })
 
-  const prog = planProgress(p.id, tasks)
+  const prog = planProgress(p.id, pool)
   const linkedGoals = goals.filter((g) => g.planIds.includes(p.id))
   const overdue = p.dueDate && p.dueDate < today && p.status === 'active'
 
@@ -184,7 +184,7 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
       <section className="mt-8 grid gap-6 border-t pt-6 xl:grid-cols-[minmax(0,1fr)_17.5rem]">
         <PlanDigestPanel
           doc={p.doc}
-          stepTitles={tasks.filter((t) => t.planId === p.id).map((t) => t.title)}
+          stepTitles={planSteps(p.id, pool).map((s) => s.title)}
           onAddStep={(text) => addStep.run(text)}
           className="xl:sticky xl:top-4 xl:order-2 xl:self-start"
         />

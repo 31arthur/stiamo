@@ -117,9 +117,13 @@ export class RelationGraph {
         this.add({ parent: t.related, child: ref('task', t.id), kind: ABOUT_KINDS.has(t.related.kind) ? 'about' : 'spawned' })
       }
     }
-    for (const f of src.followUps) if (f.subject) this.add({ parent: f.subject, child: ref('followUp', f.id), kind: ABOUT_KINDS.has(f.subject.kind) || f.subject.kind === 'meeting' ? 'about' : 'spawned' })
+    for (const f of src.followUps) {
+      if (f.planId) this.add({ parent: ref('plan', f.planId), child: ref('followUp', f.id), kind: 'step' })
+      else if (f.subject) this.add({ parent: f.subject, child: ref('followUp', f.id), kind: ABOUT_KINDS.has(f.subject.kind) || f.subject.kind === 'meeting' ? 'about' : 'spawned' })
+    }
     for (const m of src.meetings) {
-      if (m.related) this.add({ parent: m.related, child: ref('meeting', m.id), kind: 'about' })
+      if (m.planId) this.add({ parent: ref('plan', m.planId), child: ref('meeting', m.id), kind: 'step' })
+      else if (m.related) this.add({ parent: m.related, child: ref('meeting', m.id), kind: 'about' })
       if (m.prepPlanId) this.add({ parent: ref('meeting', m.id), child: ref('plan', m.prepPlanId), kind: 'prep' })
     }
     for (const h of src.hearings) {

@@ -16,7 +16,7 @@ import { actionClosed, diaryOf, mergeCandidates, pendingActions, searchDiary } f
 import { hearingCaseIds, hearingsOf } from './cases/LegalCase'
 import { categoryOf, defaultLinkName, describeLink } from './attachments/Attachment'
 import { RelationGraph } from './relations/graph'
-import { planCaseIds, planHearingIds, planProgress, planScope } from './plans/ActionPlan'
+import { planCaseIds, planHearingIds, planProgress, planScope, planSteps } from './plans/ActionPlan'
 import { digestOf } from './plans/planDoc'
 import { progressOf } from './shared/outcome'
 import type { Task } from './tasks/Task'
@@ -869,5 +869,115 @@ describe('adding other cases to a hearing', () => {
     expect(mergeCandidates(ha, [b.id], all).map((h) => h.id)).toEqual([hb.id])
     expect(mergeCandidates(ha, [c.id], all)).toEqual([])
     expect(mergeCandidates(ha, [], all)).toEqual([])
+  })
+})
+
+describe('plan steps: tasks, follow-ups and appointments', () => {
+  const planOf = (app: ReturnType<typeof freshApp>, over = {}) =>
+    app.plans.createWithSteps('u', { title: 'Prepare', objective: '', workspace: 'sb', status: 'active', dueDate: '2026-11-10', ...over }, [])
+  const pool = async (app: ReturnType<typeof freshApp>) => ({ tasks: await app.crud.task.list('u'), followUps: await app.crud.followUp.list('u'), meetings: await app.crud.meeting.list('u') })
+
+  it('adds steps of each kind, each due on its own day', async () => {
+    const app = freshApp()
+    const plan = await planOf(app)
+    await app.plans.addStep('u', plan.id, { title: 'Draft the reply', dueDate: '2026-11-03' })
+    await app.plans.addStep('u', plan.id, { title: 'Call the registry', kind: 'followUp', dueDate: '2026-11-05' })
+    await app.plans.addStep('u', plan.id, { title: 'Meet the witness', kind: 'appointment', dueDate: '2026-11-07', time: at(15) })
+    await app.plans.addStep('u', plan.id, 'Whenever')
+
+    const steps = planSteps(plan.id, await pool(app))
+    expect(steps.map((s) => [s.kind, s.date])).toEqual([
+      ['task', '2026-11-03'],
+      ['followUp', '2026-11-05'],
+      ['appointment', '2026-11-07'],
+      ['task', '2026-11-10'],
+    ])
+    expect(steps[2].time).toBe(at(15))
+    // They are real records, so they show up where they should.
+    expect((await app.crud.followUp.list('u')).find((f) => f.title === 'Call the registry')).toMatchObject({ planId: plan.id, due: { date: '2026-11-05' } })
+    expect((await app.crud.meeting.list('u')).find((m) => m.title === 'Meet the witness')).toMatchObject({ kind: 'appointment', slot: { date: '2026-11-07', start: at(15) } })
+  })
+
+  it('changes a step own day without touching the plan one', async () => {
+    const app = freshApp()
+    const plan = await planOf(app)
+    const task = await app.plans.addStep('u', plan.id, { title: 'A', dueDate: '2026-11-03' })
+    const call = await app.plans.addStep('u', plan.id, { title: 'B', kind: 'followUp', dueDate: '2026-11-04' })
+    const appt = await app.plans.addStep('u', plan.id, { title: 'C', kind: 'appointment', dueDate: '2026-11-05', time: at(11) })
+    await app.plans.setStepDate('u', task, '2026-11-08')
+    await app.plans.setStepDate('u', call, '2026-11-09')
+    await app.plans.setStepDate('u', appt, '2026-11-06')
+    await expect(app.plans.setStepDate('u', appt, undefined)).rejects.toThrow(/needs a day/)
+
+    expect(planSteps(plan.id, await pool(app)).map((s) => s.date)).toEqual(['2026-11-08', '2026-11-09', '2026-11-06'])
+    expect((await app.crud.meeting.get('u', appt.id))!.slot.start).toBe(at(11))
+    expect((await app.crud.plan.get('u', plan.id))!.dueDate).toBe('2026-11-10')
+  })
+
+  it('turns a step into another kind and keeps what it was', async () => {
+    const app = freshApp()
+    const plan = await planOf(app)
+    const first = await app.plans.addStep('u', plan.id, { title: 'First', dueDate: '2026-11-03' })
+    const second = await app.plans.addStep('u', plan.id, { title: 'Chase the clerk', dueDate: '2026-11-04' })
+    await app.crud.task.update({ ...(await app.crud.task.get('u', second.id))!, outcome: { status: 'done', comment: 'Spoke to him' } })
+
+    const call = await app.plans.convertStep('u', second, 'followUp')
+    expect(call).toEqual({ kind: 'followUp', id: second.id })
+    expect(await app.crud.task.get('u', second.id)).toBeNull()
+    expect(await app.crud.followUp.get('u', second.id)).toMatchObject({ title: 'Chase the clerk', planId: plan.id, due: { date: '2026-11-04' }, outcome: { status: 'done', comment: 'Spoke to him' } })
+
+    const appt = await app.plans.convertStep('u', call, 'appointment')
+    expect(await app.crud.followUp.get('u', second.id)).toBeNull()
+    expect(await app.crud.meeting.get('u', second.id)).toMatchObject({ kind: 'appointment', title: 'Chase the clerk', planId: plan.id, slot: { date: '2026-11-04' } })
+
+    await app.plans.convertStep('u', appt, 'task')
+    expect(await app.crud.meeting.get('u', second.id)).toBeNull()
+    // Same place in the plan throughout, and the first step is untouched.
+    const steps = planSteps(plan.id, await pool(app))
+    expect(steps.map((s) => [s.id, s.kind])).toEqual([[first.id, 'task'], [second.id, 'task']])
+    expect(await app.plans.convertStep('u', first, 'task')).toEqual(first)
+  })
+
+  it('keeps a hearing action following its step through a change of kind', async () => {
+    const app = freshApp()
+    const c = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'A', status: 'active', summary: '' })
+    const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-10-27', duration: 60, purpose: 'Hearing', outcome: { status: 'open' } })
+    await app.cases.recordHearing('u', h.id, { summary: 'Heard.', outcome: { status: 'done' }, notes: { actions: [{ text: 'File the memo' }] }, next: { date: '2026-11-10', purpose: 'Arguments' }, plan: { title: 'P', objective: '', steps: [] } })
+    const stored = (await app.crud.hearing.get('u', h.id))!
+    const action = stored.actions![0]
+    expect(action.taskId).toBeTruthy()
+
+    const made = await app.plans.convertStep('u', { kind: 'task', id: action.taskId! }, 'followUp')
+    expect(made.id).toBe(action.taskId)
+    expect(pendingActions(stored, await pool(app))).toHaveLength(1)
+    await app.crud.followUp.update({ ...(await app.crud.followUp.get('u', made.id))!, outcome: { status: 'done' } })
+    expect(actionClosed(action, await pool(app))).toBe(true)
+  })
+
+  it('counts follow-ups and appointments in a plan progress, and frees them with the plan', async () => {
+    const app = freshApp()
+    const plan = await planOf(app)
+    await app.plans.addStep('u', plan.id, { title: 'A' })
+    const call = await app.plans.addStep('u', plan.id, { title: 'B', kind: 'followUp' })
+    await app.plans.addStep('u', plan.id, { title: 'C', kind: 'appointment' })
+    await app.crud.followUp.update({ ...(await app.crud.followUp.get('u', call.id))!, outcome: { status: 'done' } })
+    expect(planProgress(plan.id, await pool(app))).toMatchObject({ total: 3, done: 1 })
+
+    const copy = await app.plans.duplicate('u', plan.id)
+    expect(planSteps(copy.id, await pool(app)).map((s) => [s.kind, s.outcome.status])).toEqual([['task', 'open'], ['followUp', 'open'], ['appointment', 'open']])
+
+    await app.plans.remove('u', plan.id)
+    expect(planSteps(plan.id, await pool(app))).toEqual([])
+    expect(await app.crud.followUp.get('u', call.id)).not.toBeNull()
+  })
+
+  it('reorders across kinds', async () => {
+    const app = freshApp()
+    const plan = await planOf(app)
+    const a = await app.plans.addStep('u', plan.id, { title: 'A' })
+    const b = await app.plans.addStep('u', plan.id, { title: 'B', kind: 'followUp' })
+    const c = await app.plans.addStep('u', plan.id, { title: 'C', kind: 'appointment' })
+    await app.plans.reorderSteps('u', plan.id, [c.id, a.id, b.id])
+    expect(planSteps(plan.id, await pool(app)).map((s) => s.title)).toEqual(['C', 'A', 'B'])
   })
 })

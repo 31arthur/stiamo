@@ -1,3 +1,5 @@
+import { stepById } from '../plans/ActionPlan'
+import type { StepPool } from '../plans/ActionPlan'
 import type { ID } from '../shared/types'
 import type { Task } from '../tasks/Task'
 import { hearingCaseIds } from './LegalCase'
@@ -14,14 +16,14 @@ export const isDiaryEntry = (h: Hearing) => h.outcome.status !== 'open' || !!(h.
 export const diaryOf = (hearings: Hearing[]): Hearing[] =>
   hearings.filter(isDiaryEntry).sort((a, b) => `${b.date}${b.time ?? 0}`.localeCompare(`${a.date}${a.time ?? 0}`))
 
-/** True when an action's task has been closed (done, or deliberately dropped). */
-export const actionClosed = (a: HearingAction, tasks: Task[]) => {
-  const t = a.taskId ? tasks.find((x) => x.id === a.taskId) : undefined
-  return !!t && t.outcome.status !== 'open'
+/** True when an action's step (its task, follow-up or appointment) has been closed: done, or deliberately dropped. */
+export const actionClosed = (a: HearingAction, pool: StepPool | Task[]) => {
+  const s = a.taskId ? stepById(a.taskId, pool) : undefined
+  return !!s && s.outcome.status !== 'open'
 }
 
-/** Actions that still need doing: with no task yet, or whose task is open. */
-export const pendingActions = (h: Hearing, tasks: Task[]) => (h.actions ?? []).filter((a) => !actionClosed(a, tasks))
+/** Actions that still need doing: with nothing made for them yet, or whose step is open. */
+export const pendingActions = (h: Hearing, pool: StepPool | Task[]) => (h.actions ?? []).filter((a) => !actionClosed(a, pool))
 
 const text = (h: Hearing, cases: LegalCase[]) =>
   [

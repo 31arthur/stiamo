@@ -16,7 +16,7 @@ import { Segmented } from '@/presentation/components/form'
 import { EmptyState, PageHeader, Section, Stat } from '@/presentation/components/layout'
 import { OutcomeBadge } from '@/presentation/components/outcome'
 import { ProgressBar } from '@/presentation/components/progress'
-import { useEntities, useToday } from '@/presentation/data/hooks'
+import { useEntities, useStepPool, useToday } from '@/presentation/data/hooks'
 import { stagger } from '@/presentation/motion/presets'
 
 export const CASE_STATUS_TONE: Record<CaseStatus, string> = {
@@ -33,6 +33,7 @@ export function CasesPage() {
   const { data: hearings } = useEntities('hearing')
   const { data: plans } = useEntities('plan')
   const { data: tasks } = useEntities('task')
+  const pool = useStepPool()
   const { data: counsel } = useEntities('counsel')
   const counselNames = useMemo(() => new Map(counsel.map((k) => [k.id, counselLabel(k)])), [counsel])
   const [filter, setFilter] = useState<'active' | 'all'>('active')
@@ -47,7 +48,7 @@ export function CasesPage() {
           const last = [...list].reverse().find((h) => h.date < today)
           const unrecorded = list.filter((h) => h.date < today && h.outcome.status === 'open')
           const casePlans = plans.filter((p) => coversCase(p, c.id) && p.status === 'active')
-          const prog = casePlans.map((p) => planProgress(p.id, tasks))
+          const prog = casePlans.map((p) => planProgress(p.id, pool))
           const openSteps = prog.reduce((s, p) => s + (p.total - p.closed), 0)
           const totalSteps = prog.reduce((s, p) => s + p.total, 0)
           return { c, next, last, unrecorded, openSteps, totalSteps, progress: totalSteps ? 1 - openSteps / totalSteps : null }

@@ -1,7 +1,7 @@
 import type { ConfirmationTiming } from '../meetings/Meeting'
 import type { Outcome } from '../shared/outcome'
 import { instantKey } from '../shared/time'
-import type { Entity, EntityRef, ISODate, Minutes } from '../shared/types'
+import type { Entity, EntityRef, ID, ISODate, Minutes } from '../shared/types'
 import type { WorkspaceId } from '../shared/workspace'
 
 export type FollowUpChannel = 'call' | 'message' | 'email' | 'visit'
@@ -29,6 +29,9 @@ export interface FollowUp extends Entity {
   /** Set when generated automatically as an appointment confirmation. */
   trigger?: ConfirmationTiming
   notes?: string
+  /** The action plan this follow-up is a step of, and its place there. */
+  planId?: ID
+  order?: number
   outcome: Outcome
 }
 

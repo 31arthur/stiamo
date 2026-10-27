@@ -9,7 +9,7 @@ import { diaryOf, pendingActions, searchDiary, touchesCase } from '@/domain/case
 import { hearingCaseIds } from '@/domain/cases/LegalCase'
 import { NativeSelect } from '@/presentation/components/form'
 import { EmptyState, PageHeader, Section, Stat } from '@/presentation/components/layout'
-import { useEntities, useToday } from '@/presentation/data/hooks'
+import { useEntities, useStepPool, useToday } from '@/presentation/data/hooks'
 import { HearingRecordDetails } from '@/presentation/diary/HearingRecordDetails'
 import { spring } from '@/presentation/motion/presets'
 
@@ -22,13 +22,13 @@ export function DiaryPage() {
   const { open } = useEditor()
   const { data: hearings } = useEntities('hearing')
   const { data: cases } = useEntities('case')
-  const { data: tasks } = useEntities('task')
+  const pool = useStepPool()
   const [query, setQuery] = useState('')
   const [caseId, setCaseId] = useState('')
 
   const entries = useMemo(() => diaryOf(hearings), [hearings])
   const rows = useMemo(() => searchDiary(entries.filter((h) => !caseId || touchesCase(h, caseId)), cases, query), [entries, cases, caseId, query])
-  const withOpenWork = entries.filter((h) => pendingActions(h, tasks).length > 0).length
+  const withOpenWork = entries.filter((h) => pendingActions(h, pool).length > 0).length
   const month = today.slice(0, 7)
 
   return (
@@ -90,7 +90,7 @@ export function DiaryPage() {
                   .filter(Boolean)
                   .join(' · ')}
               </div>
-              <HearingRecordDetails hearing={h} next={hearings.find((x) => x.id === h.nextHearingId)} tasks={tasks} today={today} />
+              <HearingRecordDetails hearing={h} next={hearings.find((x) => x.id === h.nextHearingId)} today={today} />
             </motion.li>
           ))}
         </ul>

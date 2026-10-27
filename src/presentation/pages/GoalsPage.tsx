@@ -11,7 +11,7 @@ import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { EmptyState, PageHeader, Section, Stat } from '@/presentation/components/layout'
 import { ProgressBar, ProgressRing } from '@/presentation/components/progress'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
-import { useEntities, useToday } from '@/presentation/data/hooks'
+import { useEntities, useStepPool, useToday } from '@/presentation/data/hooks'
 import { HEALTH_STYLE } from '@/presentation/goals/health'
 import { stagger } from '@/presentation/motion/presets'
 
@@ -20,15 +20,15 @@ export function GoalsPage() {
   const { open } = useEditor()
   const { matches } = useWorkspaceFilter()
   const { data: goals } = useEntities('goal')
-  const { data: tasks } = useEntities('task')
+  const pool = useStepPool()
 
   const rows = useMemo(
     () =>
       goals
         .filter((g) => matches(g.workspace))
-        .map((g) => ({ g, gp: goalProgress(g, tasks, today) }))
+        .map((g) => ({ g, gp: goalProgress(g, pool, today) }))
         .sort((a, b) => Number(a.g.status !== 'active') - Number(b.g.status !== 'active') || a.g.targetDate.localeCompare(b.g.targetDate)),
-    [goals, tasks, matches, today],
+    [goals, pool, matches, today],
   )
   const count = (h: GoalHealth) => rows.filter((r) => r.gp.health === h).length
 

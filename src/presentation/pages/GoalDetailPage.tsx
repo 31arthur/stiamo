@@ -20,7 +20,7 @@ import { NativeSelect } from '@/presentation/components/form'
 import { Meta, Section } from '@/presentation/components/layout'
 import { ProgressBar, ProgressRing } from '@/presentation/components/progress'
 import { WS_STYLE, WorkspaceBadge } from '@/presentation/components/workspace'
-import { useAction, useEntities, useEntity, useRemove, useSave, useToday } from '@/presentation/data/hooks'
+import { useAction, useEntities, useEntity, useRemove, useSave, useStepPool, useToday } from '@/presentation/data/hooks'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { HEALTH_STYLE } from '@/presentation/goals/health'
 import { spring } from '@/presentation/motion/presets'
@@ -43,14 +43,14 @@ function GoalDetail({ goal: g }: { goal: Goal }) {
   const today = useToday()
   const navigate = useNavigate()
   const editor = useEditor()
-  const { data: tasks } = useEntities('task')
+  const pool = useStepPool()
   const { data: plans } = useEntities('plan')
   const save = useSave('goal')
   const remove = useRemove('goal', 'Goal deleted')
   const link = useAction<{ planId: ID; on: boolean }, void>((s, userId, a) => (a.on ? s.plans.link(userId, a.planId, g.id) : s.plans.unlink(userId, a.planId, g.id)), {
     success: (_r) => 'Plans updated',
   })
-  const gp = goalProgress(g, tasks, today)
+  const gp = goalProgress(g, pool, today)
   const linked = plans.filter((p) => g.planIds.includes(p.id))
   const available = plans.filter((p) => !g.planIds.includes(p.id) && p.status !== 'abandoned')
 
@@ -169,7 +169,7 @@ function GoalDetail({ goal: g }: { goal: Goal }) {
         >
           <AnimatePresence initial={false}>
             {linked.map((p) => {
-              const prog = planProgress(p.id, tasks)
+              const prog = planProgress(p.id, pool)
               return (
                 <motion.div key={p.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={spring.soft} className="group flex items-center gap-3 rounded-xl border p-3">
                   <div className={cn('h-10 w-1 rounded-full', WS_STYLE[p.workspace].bar)} />

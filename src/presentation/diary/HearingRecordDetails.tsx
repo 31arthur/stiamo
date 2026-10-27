@@ -5,23 +5,24 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Hearing } from '@/domain/cases/LegalCase'
 import type { ID } from '@/domain/shared/types'
-import type { Task } from '@/domain/tasks/Task'
+import { stepById } from '@/domain/plans/ActionPlan'
 import { friendlyDate } from '@/presentation/components/dates'
-import { useAction } from '@/presentation/data/hooks'
+import { useAction, useStepPool } from '@/presentation/data/hooks'
 
 /**
  * What was written up about a hearing — its case diary entry. The order and the work due come
  * first, since that's what gets looked up; the rest of the write-up opens on demand. Each action
- * follows its task, so the record shows what has since been done.
+ * follows its step (task, follow-up or appointment), so the record shows what has since been done.
  */
-export function HearingRecordDetails({ hearing: h, next, tasks, today }: { hearing: Hearing; next?: Hearing; tasks: Task[]; today: string }) {
+export function HearingRecordDetails({ hearing: h, next, today }: { hearing: Hearing; next?: Hearing; today: string }) {
   const navigate = useNavigate()
+  const pool = useStepPool()
   const [expanded, setExpanded] = useState(false)
   const toTasks = useAction<ID, unknown>((s, userId, id) => s.hearingActions.toTasks(userId, id), { success: 'Tasks created' })
   const toPlan = useAction<ID, { id: ID }>((s, userId, id) => s.hearingActions.toPlan(userId, id), { success: 'Action plan created' })
 
   const actions = h.actions ?? []
-  const taskOf = (taskId?: ID) => (taskId ? tasks.find((t) => t.id === taskId) : undefined)
+  const taskOf = (taskId?: ID) => (taskId ? stepById(taskId, pool) : undefined)
   const unlinked = actions.filter((a) => !taskOf(a.taskId))
   const more = [
     ['Bench', h.bench],
@@ -94,7 +95,7 @@ export function HearingRecordDetails({ hearing: h, next, tasks, today }: { heari
               const t = taskOf(a.taskId)
               const done = t?.outcome.status === 'done'
               const closed = !!t && t.outcome.status !== 'open'
-              const due = t?.dueDate ?? a.due
+              const due = t?.date ?? a.due
               return (
                 <li key={a.id} className="flex items-start gap-2 text-sm">
                   {done ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" /> : <Circle className={cn('mt-0.5 size-4 shrink-0', t ? 'text-muted-foreground' : 'text-muted-foreground/40')} />}
