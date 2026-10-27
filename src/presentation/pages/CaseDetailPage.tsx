@@ -11,7 +11,7 @@ import { CASE_STATUS_LABELS, CASE_TYPES, caseTypeOf, hearingsOf } from '@/domain
 import { organizationName } from '@/domain/cases/Organization'
 import type { Hearing, LegalCase } from '@/domain/cases/LegalCase'
 import type { ActionPlan } from '@/domain/plans/ActionPlan'
-import { planProgress } from '@/domain/plans/ActionPlan'
+import { coversCase, coversHearing, planCaseIds, planHearingIds, planProgress } from '@/domain/plans/ActionPlan'
 import { formatClock, instantKey } from '@/domain/shared/time'
 import { useEditor } from '@/presentation/app/create'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
@@ -33,6 +33,7 @@ import { newHearing } from '@/presentation/forms/CaseForms'
 import { MeetingCard } from '@/presentation/meetings/MeetingCard'
 import { FollowUpRow } from '@/presentation/pages/FollowUpsPage'
 import { CASE_STATUS_TONE } from '@/presentation/pages/CasesPage'
+import { UseExistingPlan } from '@/presentation/plans/PlanScopeEditor'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
 import { TaskRow } from '@/presentation/tasks/TaskRow'
 import { spring } from '@/presentation/motion/presets'
@@ -60,7 +61,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
 
   const list = hearingsOf(c.id, hearings)
   const unrecorded = list.filter((h) => h.date < today && h.outcome.status === 'open')
-  const casePlans = plans.filter((p) => p.caseId === c.id).sort((a, b) => (a.status === 'active' ? -1 : 1) - (b.status === 'active' ? -1 : 1))
+  const casePlans = plans.filter((p) => coversCase(p, c.id)).sort((a, b) => (a.status === 'active' ? -1 : 1) - (b.status === 'active' ? -1 : 1))
   const isAboutCase = (r?: { kind: string; id: string }) => r?.kind === 'case' && r.id === c.id
   // Every meeting connected to the case — held about it or linked to it by hand.
   const graph = useGraph()
@@ -141,7 +142,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
             ) : (
               <ol className="relative grid gap-4 pl-6 before:absolute before:top-2 before:bottom-2 before:left-[7px] before:w-px before:bg-border">
                 {[...list].reverse().map((h) => (
-                  <HearingItem key={h.id} hearing={h} plans={plans.filter((x) => x.hearingId === h.id)} today={today} onRecord={() => setRecording(h)} onEdit={() => editor.open({ kind: 'hearing', value: h })} />
+                  <HearingItem key={h.id} hearing={h} plans={plans.filter((x) => coversHearing(x, h.id))} today={today} onRecord={() => setRecording(h)} onEdit={() => editor.open({ kind: 'hearing', value: h })} />
                 ))}
               </ol>
             )}
@@ -156,9 +157,12 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
           <Section
             title="Action plans"
             actions={
-              <Button variant="ghost" size="sm" onClick={() => editor.open({ kind: 'plan', value: { caseId: c.id, workspace: 'sb', origin: { kind: 'case', id: c.id } } })}>
-                <ListChecks /> New
-              </Button>
+              <>
+                <UseExistingPlan target={{ kind: 'case', id: c.id }} label="Reuse" />
+                <Button variant="ghost" size="sm" onClick={() => editor.open({ kind: 'plan', value: { caseIds: [c.id], workspace: 'sb', origin: { kind: 'case', id: c.id } } })}>
+                  <ListChecks /> New
+                </Button>
+              </>
             }
             bodyClassName="grid gap-4 p-2"
           >
@@ -177,6 +181,11 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
                     </span>
                   </div>
                   {p.objective && <p className="px-1.5 text-xs text-muted-foreground">{p.objective}</p>}
+                  {(planCaseIds(p).length > 1 || planHearingIds(p).length > 1) && (
+                    <p className="px-1.5 pt-1 text-[11px] text-muted-foreground">
+                      Shared with {planCaseIds(p).length > 1 ? `${planCaseIds(p).length - 1} other case${planCaseIds(p).length === 2 ? '' : 's'}` : `${planHearingIds(p).length} hearings`} — one page, one set of steps
+                    </p>
+                  )}
                   <ProgressBar value={prog.progress ?? 0} className="mx-1.5 my-2 w-auto" />
                   <PlanSteps planId={p.id} compact />
                 </div>
@@ -275,14 +284,13 @@ function HearingItem({ hearing: h, plans, today, onRecord, onEdit }: { hearing: 
         </div>
         {h.summary && <p className="mt-2 text-sm whitespace-pre-line text-muted-foreground">{h.summary}</p>}
         {h.outcome.comment && <p className="mt-1 text-xs text-muted-foreground italic">{h.outcome.comment}</p>}
-        {plans.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            Plan for this hearing:
-            {plans.map((x) => (
-              <RefChip key={x.id} refTo={{ kind: 'plan', id: x.id }} />
-            ))}
-          </div>
-        )}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          {plans.length > 0 && <span>Plan for this hearing:</span>}
+          {plans.map((x) => (
+            <RefChip key={x.id} refTo={{ kind: 'plan', id: x.id }} />
+          ))}
+          {h.outcome.status === 'open' && <UseExistingPlan target={{ kind: 'hearing', id: h.id }} label={plans.length ? 'Add another plan' : 'Use a plan for this hearing'} className="-ml-1 text-muted-foreground" />}
+        </div>
         <button type="button" onClick={() => setShowFiles(!showFiles)} className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <Paperclip className="size-3" /> {fileCount ? `${fileCount} file${fileCount === 1 ? '' : 's'}` : 'Attach order sheet / documents'}
         </button>

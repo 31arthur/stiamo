@@ -15,6 +15,7 @@ import { ProgressBar } from '@/presentation/components/progress'
 import { RefChip } from '@/presentation/components/RefChip'
 import { WS_STYLE, WorkspaceBadge } from '@/presentation/components/workspace'
 import { useEntities, useToday } from '@/presentation/data/hooks'
+import { PlanCoverageChips } from '@/presentation/plans/PlanScopeEditor'
 import { stagger } from '@/presentation/motion/presets'
 
 export function PlansPage() {
@@ -84,9 +85,7 @@ export function PlansPage() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {p.origin && <RefChip refTo={p.origin} />}
-                    {p.hearingId && <RefChip refTo={{ kind: 'hearing', id: p.hearingId }} />}
-                    {p.taskId && <RefChip refTo={{ kind: 'task', id: p.taskId }} />}
-                    {p.caseId && !p.hearingId && p.origin?.kind !== 'case' && <RefChip refTo={{ kind: 'case', id: p.caseId }} />}
+                    <PlanCoverageChips plan={p} />
                     {linked.map((g) => (
                       <span key={g.id} className="inline-flex max-w-48 items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px]">
                         <Target className="size-3 shrink-0" /> <span className="truncate">{g.title}</span>

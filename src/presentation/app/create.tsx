@@ -25,6 +25,9 @@ import type { TaskDraft } from '@/presentation/forms/TaskForm'
 import { CounselForm, newCounsel } from '@/presentation/forms/CounselForm'
 import type { CounselDraft } from '@/presentation/forms/CounselForm'
 import type { Counsel } from '@/domain/counsel/Counsel'
+import type { Client, Project } from '@/domain/clients/Client'
+import { ClientForm, newClient, newProject, ProjectForm } from '@/presentation/forms/ClientForms'
+import type { ClientDraft, ProjectDraft } from '@/presentation/forms/ClientForms'
 import { RecordSheet } from './RecordSheet'
 import { useWorkspaceFilter } from './workspaceFilter'
 
@@ -46,6 +49,8 @@ export type EditorRequest =
   | { kind: 'plan'; value?: PlanDraft; extras?: PlanExtras }
   | { kind: 'goal'; value?: Goal | Partial<GoalDraft> }
   | { kind: 'counsel'; value?: Counsel | Partial<CounselDraft> }
+  | { kind: 'client'; value?: Client | Partial<ClientDraft> }
+  | { kind: 'project'; value?: Project | Partial<ProjectDraft> }
 
 export type EditorKind = EditorRequest['kind']
 
@@ -58,6 +63,8 @@ const TITLES: Record<EditorKind, [create: string, edit: string, description: str
   hearing: ['List a hearing', 'Edit hearing', 'A date before the court'],
   plan: ['New action plan', 'Edit action plan', 'Steps towards an objective'],
   counsel: ['Add counsel', 'Edit counsel', 'An outside advocate or law firm you work with'],
+  client: ['Add a client', 'Edit client', 'Someone FSA does work for'],
+  project: ['New project', 'Edit project', 'A piece of work for a client'],
   goal: ['Set a goal', 'Edit goal', 'Something to achieve over time'],
 }
 
@@ -103,6 +110,10 @@ export function EditorHost({ children }: { children: ReactNode }) {
           return navigate(`/goals/${ref.id}`)
         case 'counsel':
           return navigate(`/counsel/${ref.id}`)
+        case 'client':
+          return navigate(`/clients/${ref.id}`)
+        case 'project':
+          return navigate(`/projects/${ref.id}`)
       }
     },
     [navigate, services, userId],
@@ -170,6 +181,8 @@ export function EditorHost({ children }: { children: ReactNode }) {
           {request?.kind === 'case' && <CaseForm initial={editing ? (request.value as LegalCase) : { ...newCase(), ...request.value }} onDone={done('/cases')} />}
           {request?.kind === 'hearing' && <HearingForm initial={request.value} onDone={done()} />}
           {request?.kind === 'counsel' && <CounselForm initial={editing ? (request.value as Counsel) : newCounsel(request.value as Partial<CounselDraft>)} onDone={done('/counsel')} />}
+          {request?.kind === 'client' && <ClientForm initial={editing ? (request.value as Client) : newClient(request.value as Partial<ClientDraft>)} onDone={done('/clients')} />}
+          {request?.kind === 'project' && <ProjectForm initial={editing ? (request.value as Project) : newProject(request.value as Partial<ProjectDraft>)} onDone={done('/projects')} />}
           {request?.kind === 'goal' && (
             <GoalForm initial={editing ? (request.value as Goal) : { ...newGoal(today), workspace, ...request.value }} onDone={done('/goals')} />
           )}

@@ -1,10 +1,10 @@
 import type { CrudUseCases } from '../shared/CrudUseCases'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import type { DomainEnv } from '../shared/registry'
-import type { Draft, ID, RichDoc } from '../shared/types'
+import type { Draft, EntityRef, ID, RichDoc } from '../shared/types'
 import type { ActivityLog } from '../activity/ActivityLog'
-import { stepsOf } from './ActionPlan'
-import type { ActionPlan, PlanScope } from './ActionPlan'
+import { planCaseIds, planHearingIds, stepsOf } from './ActionPlan'
+import type { ActionPlan } from './ActionPlan'
 import type { Task } from '../tasks/Task'
 
 export class PlanUseCases {
@@ -56,34 +56,93 @@ export class PlanUseCases {
   }
 
   /**
-   * Says what the plan covers. A hearing's plan belongs to that hearing's case; a task's plan takes
-   * the task's workspace (and its case, when the task came from one). Anything not chosen is cleared.
+   * Makes the plan apply to one more case, hearing or task. A plan can cover several cases and
+   * hearings at once — the same approach reused across a batch of matters or across dates — and
+   * stays one page with one set of steps. A hearing brings its case along; a task is exclusive
+   * (a plan is either about one task or about cases/hearings).
    */
-  async setScope(userId: ID, planId: ID, scope: { kind: PlanScope; caseId?: ID; hearingId?: ID; taskId?: ID }): Promise<ActionPlan> {
+  async cover(userId: ID, planId: ID, target: EntityRef): Promise<ActionPlan> {
     const plan = await this.env.repos.plan.get(userId, planId)
     if (!plan) throw new NotFoundError('Action plan')
-    const cleared = { ...plan, caseId: undefined, hearingId: undefined, taskId: undefined }
+    const caseIds = planCaseIds(plan)
+    const hearingIds = planHearingIds(plan)
 
-    switch (scope.kind) {
-      case 'general':
-        return this.plans.update(cleared)
+    switch (target.kind) {
       case 'case': {
-        if (!scope.caseId || !(await this.env.repos.case.get(userId, scope.caseId))) throw new ValidationError('Choose the case')
-        return this.plans.update({ ...cleared, caseId: scope.caseId, workspace: 'sb' })
+        if (!(await this.env.repos.case.get(userId, target.id))) throw new ValidationError('That case no longer exists')
+        return this.save(plan, { caseIds: [...caseIds, target.id], hearingIds, taskId: undefined, workspace: 'sb' })
       }
       case 'hearing': {
-        const hearing = scope.hearingId ? await this.env.repos.hearing.get(userId, scope.hearingId) : null
-        if (!hearing) throw new ValidationError('Choose the hearing')
-        return this.plans.update({ ...cleared, caseId: hearing.caseId, hearingId: hearing.id, workspace: 'sb' })
+        const hearing = await this.env.repos.hearing.get(userId, target.id)
+        if (!hearing) throw new ValidationError('That hearing no longer exists')
+        return this.save(plan, { caseIds: [...caseIds, hearing.caseId], hearingIds: [...hearingIds, hearing.id], taskId: undefined, workspace: 'sb' })
       }
       case 'task': {
-        const task = scope.taskId ? await this.env.repos.task.get(userId, scope.taskId) : null
-        if (!task) throw new ValidationError('Choose the task')
+        const task = await this.env.repos.task.get(userId, target.id)
+        if (!task) throw new ValidationError('That task no longer exists')
         if (task.planId === planId) throw new ValidationError('A plan can’t be about one of its own steps')
         const caseId = task.related?.kind === 'case' ? task.related.id : undefined
-        return this.plans.update({ ...cleared, taskId: task.id, caseId, workspace: task.workspace })
+        return this.save(plan, { caseIds: caseId ? [caseId] : [], hearingIds: [], taskId: task.id, workspace: task.workspace })
       }
+      default:
+        throw new ValidationError('A plan can cover cases, hearings or a task')
     }
+  }
+
+  /**
+   * Stops the plan applying to a case, hearing or its task. Dropping a case also drops that case's
+   * hearings; dropping a hearing leaves the plan on the case.
+   */
+  async uncover(userId: ID, planId: ID, target: EntityRef): Promise<ActionPlan> {
+    const plan = await this.env.repos.plan.get(userId, planId)
+    if (!plan) throw new NotFoundError('Action plan')
+    const caseIds = planCaseIds(plan)
+    const hearingIds = planHearingIds(plan)
+
+    if (target.kind === 'task') return this.save(plan, { caseIds, hearingIds, taskId: undefined })
+    if (target.kind === 'hearing') return this.save(plan, { caseIds, hearingIds: hearingIds.filter((id) => id !== target.id) })
+    if (target.kind === 'case') {
+      const theirs = new Set((await this.env.repos.hearing.list(userId)).filter((h) => h.caseId === target.id).map((h) => h.id))
+      return this.save(plan, { caseIds: caseIds.filter((id) => id !== target.id), hearingIds: hearingIds.filter((id) => !theirs.has(id)) })
+    }
+    return plan
+  }
+
+  /**
+   * An independent copy: the same page and objective, with every step reset to open. For when a
+   * hearing or case needs the same approach but its own progress. Starts covering nothing.
+   */
+  async duplicate(userId: ID, planId: ID): Promise<ActionPlan> {
+    const plan = await this.env.repos.plan.get(userId, planId)
+    if (!plan) throw new NotFoundError('Action plan')
+    const copy = await this.plans.create(userId, {
+      title: `${plan.title} (copy)`,
+      objective: plan.objective,
+      workspace: plan.workspace,
+      status: 'draft',
+      doc: plan.doc,
+    })
+    let order = 0
+    for (const step of stepsOf(planId, await this.env.repos.task.list(userId))) {
+      await this.tasks.create(userId, {
+        title: step.title,
+        notes: step.notes,
+        workspace: step.workspace,
+        priority: step.priority,
+        estimate: step.estimate,
+        planId: copy.id,
+        order: order++,
+        outcome: { status: 'open' },
+      })
+    }
+    return copy
+  }
+
+  private save(plan: ActionPlan, change: Partial<ActionPlan>): Promise<ActionPlan> {
+    const unique = (ids?: ID[]) => (ids?.length ? [...new Set(ids)] : undefined)
+    const caseIds = unique(change.caseIds)
+    const hearingIds = unique(change.hearingIds)
+    return this.plans.update({ ...plan, ...change, caseIds, hearingIds, caseId: undefined, hearingId: undefined })
   }
 
   /**

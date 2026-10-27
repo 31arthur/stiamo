@@ -16,6 +16,8 @@ export function useRefInfo(ref: EntityRef | undefined) {
   const { data: plans } = useEntities('plan')
   const { data: goals } = useEntities('goal')
   const { data: counsel } = useEntities('counsel')
+  const { data: clients } = useEntities('client')
+  const { data: projects } = useEntities('project')
 
   return useMemo(() => {
     if (!ref) return null
@@ -46,8 +48,15 @@ export function useRefInfo(ref: EntityRef | undefined) {
       }
       case 'goal':
         return label(KIND_META.goal.icon, 'Goal', find(goals)?.title)
+      case 'client':
+        return label(KIND_META.client.icon, 'Client', find(clients)?.name)
+      case 'project': {
+        const p = find(projects)
+        const c = p && clients.find((x) => x.id === p.clientId)
+        return label(KIND_META.project.icon, 'Project', p && (c ? `${c.name} · ${p.title}` : p.title))
+      }
     }
-  }, [ref, tasks, meetings, followUps, cases, hearings, plans, goals, counsel])
+  }, [ref, tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients, projects])
 }
 
 function label(icon: (typeof KIND_META)['task']['icon'], kindLabel: string, title: string | undefined) {

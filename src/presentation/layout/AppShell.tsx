@@ -126,6 +126,10 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
       ],
     },
     {
+      label: 'FSA',
+      items: [{ to: '/clients', label: 'Clients & projects', icon: KIND_META.client.icon }],
+    },
+    {
       label: 'Direction',
       items: [
         { to: '/plans', label: 'Action plans', icon: KIND_META.plan.icon },

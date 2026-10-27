@@ -6,9 +6,10 @@ import { ChevronLeft, ChevronRight, Download, ExternalLink, Loader2, X, ZoomIn, 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { categorize } from '@/domain/attachments/Attachment'
+import { categoryOf, PROVIDER_LABELS } from '@/domain/attachments/Attachment'
 import type { Attachment } from '@/domain/attachments/Attachment'
 import { FileIcon } from './FileIcon'
+import { Centered, CsvViewer, DocxViewer, LinkViewer, OnlineViewerOffer, WorkbookViewer } from './FileViewers'
 import { formatBytes, useFileUrl } from './useAttachments'
 
 /** Full-screen previewer with keyboard/arrow navigation across a record's files. */
@@ -37,7 +38,7 @@ export function FilePreview({ files, index, onIndexChange, onClose }: { files: A
               <div className="min-w-0 flex-1">
                 <DialogTitle className="truncate text-sm font-medium">{file.name}</DialogTitle>
                 <DialogDescription className="text-xs">
-                  {formatBytes(file.size)} · {format(parseISO(file.createdAt), 'd MMM yyyy, HH:mm')}
+                  {file.link ? PROVIDER_LABELS[file.link.provider] : formatBytes(file.size)} · {format(parseISO(file.createdAt), 'd MMM yyyy, HH:mm')}
                   {files.length > 1 && ` · ${index! + 1} of ${files.length}`}
                 </DialogDescription>
               </div>
@@ -88,21 +89,26 @@ function FileActions({ file }: { file: Attachment }) {
   if (!url) return null
   return (
     <>
-      <Button variant="ghost" size="icon-sm" aria-label="Open in new tab" render={<a href={url} target="_blank" rel="noreferrer" />}>
+      <Button variant="ghost" size="icon-sm" aria-label={file.link ? 'Open the original' : 'Open in new tab'} render={<a href={url} target="_blank" rel="noreferrer" />}>
         <ExternalLink />
       </Button>
-      <Button variant="ghost" size="icon-sm" aria-label="Download" render={<a href={url} download={file.name} />}>
-        <Download />
-      </Button>
+      {!file.link && (
+        <Button variant="ghost" size="icon-sm" aria-label="Download" render={<a href={url} download={file.name} />}>
+          <Download />
+        </Button>
+      )}
     </>
   )
 }
 
 function PreviewBody({ file }: { file: Attachment }) {
   const { data: url, isLoading, error } = useFileUrl(file)
-  const category = categorize(file.mime, file.name)
+  const category = categoryOf(file)
+  // A link needs no download, so it can show before (or without) its address resolving.
+  if (file.link) return <LinkViewer link={file.link} name={file.name} />
   if (isLoading) return <Centered><Loader2 className="size-6 animate-spin text-muted-foreground" /></Centered>
   if (error || !url) return <Centered><p className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load this file'}</p></Centered>
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
 
   switch (category) {
     case 'image':
@@ -125,7 +131,13 @@ function PreviewBody({ file }: { file: Attachment }) {
         </Centered>
       )
     case 'text':
-      return <TextViewer url={url} />
+      return ext === 'csv' || ext === 'tsv' ? <CsvViewer url={url} /> : <TextViewer url={url} />
+    case 'document':
+      return ext === 'docx' ? <DocxViewer url={url} /> : <OnlineViewerOffer file={file} url={url} />
+    case 'spreadsheet':
+      return ext === 'xlsx' ? <WorkbookViewer url={url} /> : <OnlineViewerOffer file={file} url={url} />
+    case 'presentation':
+      return <OnlineViewerOffer file={file} url={url} />
     default:
       return (
         <Centered>
@@ -176,8 +188,4 @@ function TextViewer({ url }: { url: string }) {
     }
   }, [url])
   return <pre className="size-full overflow-auto bg-background p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap sm:p-6">{text ?? 'Loading…'}</pre>
-}
-
-function Centered({ children }: { children: ReactNode }) {
-  return <div className="flex size-full items-center justify-center p-4">{children}</div>
 }

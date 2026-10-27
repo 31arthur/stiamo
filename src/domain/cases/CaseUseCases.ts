@@ -5,6 +5,7 @@ import type { Outcome } from '../shared/outcome'
 import type { DomainEnv } from '../shared/registry'
 import type { Draft, ID, ISODate, Minutes } from '../shared/types'
 import { nextCaseNumber } from './caseNumber'
+import { coversCase, planCaseIds, planHearingIds } from '../plans/ActionPlan'
 import type { ActionPlan } from '../plans/ActionPlan'
 import type { CaseStatus, Engagement, Hearing, LegalCase } from './LegalCase'
 import { counselLabel } from '../counsel/Counsel'
@@ -129,9 +130,9 @@ export class CaseUseCases {
           status: 'active',
           dueDate: record.plan.dueDate ?? nextHearing?.date,
           origin: { kind: 'hearing', id: hearing.id },
-          caseId: hearing.caseId,
+          caseIds: [hearing.caseId],
           // The plan is for getting ready for the next date, when there is one.
-          hearingId: nextHearing?.id,
+          hearingIds: nextHearing ? [nextHearing.id] : undefined,
         },
         record.plan.steps,
       )
@@ -148,14 +149,20 @@ export class CaseUseCases {
     return { hearing: updated, nextHearing, plan }
   }
 
-  /** Deletes a case with its hearings; its plans are kept but detached. */
+  /** Deletes a case with its hearings; its plans are kept but no longer cover it (a plan shared with other cases stays on them). */
   async remove(userId: ID, caseId: ID): Promise<void> {
-    for (const h of await this.env.repos.hearing.list(userId)) {
-      if (h.caseId === caseId) await this.env.repos.hearing.remove(userId, h.id)
-    }
+    const mine = (await this.env.repos.hearing.list(userId)).filter((h) => h.caseId === caseId)
+    const gone = new Set(mine.map((h) => h.id))
+    for (const h of mine) await this.env.repos.hearing.remove(userId, h.id)
     const now = this.env.clock.now().toISOString()
-    const plans = (await this.env.repos.plan.list(userId)).filter((p) => p.caseId === caseId)
-    await this.env.repos.plan.saveMany(plans.map((p) => ({ ...p, caseId: undefined, updatedAt: now })))
+    const plans = (await this.env.repos.plan.list(userId)).filter((p) => coversCase(p, caseId))
+    await this.env.repos.plan.saveMany(
+      plans.map((p) => {
+        const caseIds = planCaseIds(p).filter((id) => id !== caseId)
+        const hearingIds = planHearingIds(p).filter((id) => !gone.has(id))
+        return { ...p, caseIds: caseIds.length ? caseIds : undefined, hearingIds: hearingIds.length ? hearingIds : undefined, caseId: undefined, hearingId: undefined, updatedAt: now }
+      }),
+    )
     await this.cases.remove(userId, caseId)
   }
 }

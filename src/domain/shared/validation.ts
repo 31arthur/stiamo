@@ -2,9 +2,11 @@ import type { LegalCase, Hearing } from '../cases/LegalCase'
 import type { FollowUp } from '../followups/FollowUp'
 import type { Goal } from '../goals/Goal'
 import type { Meeting } from '../meetings/Meeting'
+import { planCaseIds, planHearingIds } from '../plans/ActionPlan'
 import type { ActionPlan } from '../plans/ActionPlan'
 import type { Task } from '../tasks/Task'
 import type { Counsel } from '../counsel/Counsel'
+import type { Client, Project } from '../clients/Client'
 import { required, ValidationError } from './errors'
 import type { Draft } from './types'
 
@@ -69,7 +71,31 @@ export function normalizeHearing(h: Draft<Hearing>): Draft<Hearing> {
 
 export function normalizePlan(p: Draft<ActionPlan>): Draft<ActionPlan> {
   checkDate(p.dueDate, 'Due date')
-  return { ...p, title: required(p.title, 'Title'), objective: p.objective?.trim() ?? '' }
+  // Plans saved before they could cover several cases carry single-valued fields; fold them in.
+  const caseIds = planCaseIds(p)
+  const hearingIds = planHearingIds(p)
+  return {
+    ...p,
+    title: required(p.title, 'Title'),
+    objective: p.objective?.trim() ?? '',
+    caseIds: caseIds.length ? caseIds : undefined,
+    hearingIds: hearingIds.length ? hearingIds : undefined,
+    caseId: undefined,
+    hearingId: undefined,
+  }
+}
+
+export function normalizeClient(c: Draft<Client>): Draft<Client> {
+  const email = c.email?.trim()
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ValidationError('Enter a valid email address')
+  return { ...c, name: required(c.name, 'Name'), email: email || undefined }
+}
+
+export function normalizeProject(p: Draft<Project>): Draft<Project> {
+  checkDate(p.startDate, 'Start date')
+  checkDate(p.dueDate, 'Due date')
+  if (p.startDate && p.dueDate && p.dueDate < p.startDate) throw new ValidationError('The due date can’t be before the start date')
+  return { ...p, title: required(p.title, 'Title'), clientId: required(p.clientId, 'Client') }
 }
 
 export function normalizeGoal(g: Draft<Goal>): Draft<Goal> {

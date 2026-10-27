@@ -22,6 +22,8 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const { data: plans } = useEntities('plan')
   const { data: goals } = useEntities('goal')
   const { data: counsel } = useEntities('counsel')
+  const { data: clients } = useEntities('client')
+  const { data: projects } = useEntities('project')
   const { data: tasks } = useEntities('task')
 
   const run = (fn: () => void) => () => {
@@ -38,6 +40,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       { label: 'Meetings & appointments', to: '/meetings', icon: KIND_META.meeting.icon },
       { label: 'Cases', to: '/cases', icon: KIND_META.case.icon },
       { label: 'Counsel', to: '/counsel', icon: KIND_META.counsel.icon },
+      { label: 'Clients & projects', to: '/clients', icon: KIND_META.client.icon },
       { label: 'Action plans', to: '/plans', icon: KIND_META.plan.icon },
       { label: 'Goals', to: '/goals', icon: KIND_META.goal.icon },
     ],
@@ -78,6 +81,20 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               <CommandItem key={c.id} value={`counsel ${c.name} ${c.firm ?? ''} ${c.city ?? ''}`} onSelect={run(() => navigate(`/counsel/${c.id}`))}>
                 <KIND_META.counsel.icon /> <span className="truncate">{counselLabel(c)}</span>
                 {c.city && <CommandShortcut>{c.city}</CommandShortcut>}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          <CommandGroup heading="Clients & projects">
+            {clients.map((c) => (
+              <CommandItem key={c.id} value={`client ${c.name} ${c.contactName ?? ''}`} onSelect={run(() => navigate(`/clients/${c.id}`))}>
+                <KIND_META.client.icon /> <span className="truncate">{c.name}</span>
+                {c.contactName && <CommandShortcut>{c.contactName}</CommandShortcut>}
+              </CommandItem>
+            ))}
+            {projects.map((p) => (
+              <CommandItem key={p.id} value={`project ${p.title} ${clients.find((c) => c.id === p.clientId)?.name ?? ''}`} onSelect={run(() => navigate(`/projects/${p.id}`))}>
+                <KIND_META.project.icon /> <span className="truncate">{p.title}</span>
+                <CommandShortcut>{clients.find((c) => c.id === p.clientId)?.name}</CommandShortcut>
               </CommandItem>
             ))}
           </CommandGroup>

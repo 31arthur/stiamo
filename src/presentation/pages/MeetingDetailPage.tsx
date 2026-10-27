@@ -302,7 +302,7 @@ function PrepSection({ meeting: m }: { meeting: Meeting }) {
       const steps = m.agenda.length ? m.agenda.map((a) => `Prepare: ${a.topic}`) : ['Gather documents', 'Draft talking points']
       const p = await s.plans.createWithSteps(
         userId,
-        { title: `Prepare — ${m.title}`, objective: m.purpose ?? '', workspace: m.workspace, status: 'active', dueDate: m.slot.date, origin: { kind: 'meeting', id: m.id }, caseId: m.related?.kind === 'case' ? m.related.id : undefined },
+        { title: `Prepare — ${m.title}`, objective: m.purpose ?? '', workspace: m.workspace, status: 'active', dueDate: m.slot.date, origin: { kind: 'meeting', id: m.id }, caseIds: m.related?.kind === 'case' ? [m.related.id] : undefined },
         steps,
       )
       await s.meetings.save(userId, { ...m, prepPlanId: p.id })

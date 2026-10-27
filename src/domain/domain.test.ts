@@ -11,8 +11,10 @@ import { confirmationDue, syncConfirmations } from './meetings/confirmations'
 import type { Meeting } from './meetings/Meeting'
 import { buildDayPlan, packDay } from './planner/dayPlan'
 import { caseTypeOf } from './cases/LegalCase'
+import { clientRefKeys, clientOf, meetingsFor, tasksFor } from './clients/Client'
+import { categoryOf, defaultLinkName, describeLink } from './attachments/Attachment'
 import { RelationGraph } from './relations/graph'
-import { planProgress, planScope } from './plans/ActionPlan'
+import { planCaseIds, planHearingIds, planProgress, planScope } from './plans/ActionPlan'
 import { digestOf } from './plans/planDoc'
 import { progressOf } from './shared/outcome'
 import type { Task } from './tasks/Task'
@@ -196,7 +198,7 @@ describe('use cases', () => {
     })
 
     expect(result.hearing).toMatchObject({ summary: 'Adjourned at request of the other side', nextHearingId: result.nextHearing!.id })
-    expect(result.plan).toMatchObject({ caseId: c.id, dueDate: '2026-11-10', origin: { kind: 'hearing', id: h.id } })
+    expect(result.plan).toMatchObject({ caseIds: [c.id], dueDate: '2026-11-10', origin: { kind: 'hearing', id: h.id } })
     const steps = (await app.crud.task.list('u')).filter((t) => t.planId === result.plan!.id)
     expect(steps.map((t) => t.title)).toEqual(['Draft rejoinder', 'File and serve'])
     expect((await app.crud.case.get('u', c.id))!.stage).toBe('Pleadings')
@@ -239,14 +241,21 @@ describe('use cases', () => {
     const storage = new MemoryStorage()
     const app = createContainer(localBackend(storage))
     await app.ready
-    const [cases, goals, followUps] = await Promise.all([
+    const [cases, goals, followUps, clients, projects, meetings] = await Promise.all([
       app.crud.case.list(DEMO_ACCOUNT.id),
       app.crud.goal.list(DEMO_ACCOUNT.id),
       app.crud.followUp.list(DEMO_ACCOUNT.id),
+      app.crud.client.list(DEMO_ACCOUNT.id),
+      app.crud.project.list(DEMO_ACCOUNT.id),
+      app.crud.meeting.list(DEMO_ACCOUNT.id),
     ])
     expect(cases).toHaveLength(5)
     expect(goals).toHaveLength(3)
-    expect(followUps.filter((f) => f.trigger).length).toBe(4) // two appointments × two confirmations
+    expect(followUps.filter((f) => f.trigger).length).toBe(6) // legal appointments × two, FSA client appointments × two and one
+    expect(clients).toHaveLength(2)
+    expect(projects.every((p) => clients.some((c) => c.id === p.clientId))).toBe(true)
+    // The FSA appointments are tied to a client or project.
+    expect(meetings.filter((m) => m.workspace === 'fsa' && m.related).length).toBe(2)
     expect((await app.crud.link.list(DEMO_ACCOUNT.id)).length).toBeGreaterThan(0)
   })
 })
@@ -271,7 +280,7 @@ describe('relationships & history', () => {
       app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'),
       app.crud.hearing.list('u'), app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.link.list('u'),
     ])
-    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel: [], links })
+    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel: [], clients: [], projects: [], links })
     const thread = graph.thread({ kind: 'case', id: c.id })
     const ids = new Set(thread.members.map((r) => r.id))
     const expected = { hearing: h.id, next: nextHearing!.id, plan: plan!.id, step: step.id, spawned: spawned!.id, meeting: m.id }
@@ -369,7 +378,7 @@ describe('counsel', () => {
       app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'),
       app.crud.hearing.list('u'), app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.counsel.list('u'), app.crud.link.list('u'),
     ])
-    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links })
+    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients: [], projects: [], links })
     expect(graph.thread({ kind: 'counsel', id: rao.id }).members.map((m) => m.id)).toContain(c.id)
     expect(graph.thread({ kind: 'case', id: c.id }).ancestors.map((a) => a.ref.id)).toContain(rao.id)
 
@@ -428,27 +437,89 @@ describe('plan thinking & scope', () => {
     expect(digestOf(undefined)).toMatchObject({ questions: [], insights: [], open: 0 })
   })
 
-  it('scopes a plan to a case, one hearing or one task, and clears what no longer applies', async () => {
+  it('lets one plan cover several hearings and cases, and keeps it from a task', async () => {
     const app = freshApp()
-    const c = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'Wages', status: 'active', summary: '' })
-    const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-11-03', duration: 60, purpose: 'Evidence', outcome: { status: 'open' } })
+    const c1 = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'Wages 1', status: 'active', summary: '' })
+    const c2 = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'Wages 2', status: 'active', summary: '' })
+    const h1 = await app.crud.hearing.create('u', { caseId: c1.id, date: '2026-11-03', duration: 60, purpose: 'Evidence', outcome: { status: 'open' } })
+    const h2 = await app.crud.hearing.create('u', { caseId: c1.id, date: '2026-12-03', duration: 60, purpose: 'Arguments', outcome: { status: 'open' } })
     const t = await app.crud.task.create('u', { title: 'Get ledger certified', notes: '', workspace: 'fsa', priority: 'normal', estimate: 30, outcome: { status: 'open' } })
     const plan = await app.plans.createWithSteps('u', { title: 'Prep', objective: '', workspace: 'personal', status: 'active' }, ['Draft'])
     expect(planScope(plan)).toBe('general')
 
-    expect(planScope(await app.plans.setScope('u', plan.id, { kind: 'case', caseId: c.id }))).toBe('case')
-    const forHearing = await app.plans.setScope('u', plan.id, { kind: 'hearing', hearingId: h.id })
-    expect(forHearing).toMatchObject({ hearingId: h.id, caseId: c.id, workspace: 'sb' })
-    const forTask = await app.plans.setScope('u', plan.id, { kind: 'task', taskId: t.id })
-    expect(forTask).toMatchObject({ taskId: t.id, hearingId: undefined, caseId: undefined, workspace: 'fsa' })
-    expect(planScope(await app.plans.setScope('u', plan.id, { kind: 'general' }))).toBe('general')
+    // A hearing brings its case along; a second hearing and a second case join the same plan.
+    let p = await app.plans.cover('u', plan.id, { kind: 'hearing', id: h1.id })
+    expect(p).toMatchObject({ caseIds: [c1.id], hearingIds: [h1.id], workspace: 'sb' })
+    p = await app.plans.cover('u', plan.id, { kind: 'hearing', id: h2.id })
+    p = await app.plans.cover('u', plan.id, { kind: 'case', id: c2.id })
+    expect(planCaseIds(p)).toEqual([c1.id, c2.id])
+    expect(planHearingIds(p)).toEqual([h1.id, h2.id])
+    expect(planScope(p)).toBe('hearing')
+    // Covering the same thing twice changes nothing.
+    expect(planHearingIds(await app.plans.cover('u', plan.id, { kind: 'hearing', id: h1.id }))).toEqual([h1.id, h2.id])
+    expect((await app.crud.plan.list('u')).length).toBe(1)
 
-    await expect(app.plans.setScope('u', plan.id, { kind: 'hearing' })).rejects.toThrow(/Choose the hearing/)
+    // Dropping a hearing keeps the case; dropping a case drops its hearings.
+    p = await app.plans.uncover('u', plan.id, { kind: 'hearing', id: h2.id })
+    expect(planHearingIds(p)).toEqual([h1.id])
+    p = await app.plans.uncover('u', plan.id, { kind: 'case', id: c1.id })
+    expect(planCaseIds(p)).toEqual([c2.id])
+    expect(planHearingIds(p)).toEqual([])
+    expect(planScope(p)).toBe('case')
+
+    // A task is exclusive: it replaces cases and hearings, and takes the task's workspace.
+    p = await app.plans.cover('u', plan.id, { kind: 'task', id: t.id })
+    expect(p).toMatchObject({ taskId: t.id, workspace: 'fsa' })
+    expect(planCaseIds(p)).toEqual([])
+    expect(planScope(p)).toBe('task')
+    // And choosing a case again lets go of the task.
+    p = await app.plans.cover('u', plan.id, { kind: 'case', id: c1.id })
+    expect(p.taskId).toBeUndefined()
+
     const step = (await app.crud.task.list('u')).find((x) => x.title === 'Draft')!
-    await expect(app.plans.setScope('u', plan.id, { kind: 'task', taskId: step.id })).rejects.toThrow(/own steps/)
+    await expect(app.plans.cover('u', plan.id, { kind: 'task', id: step.id })).rejects.toThrow(/own steps/)
+    await expect(app.plans.cover('u', plan.id, { kind: 'hearing', id: 'nope' })).rejects.toThrow(/no longer exists/)
 
-    // Scope changes show up in the plan's history.
-    expect((await app.crud.activity.list('u')).some((a) => a.ref.id === plan.id && a.summary.includes('Scope'))).toBe(true)
+    expect((await app.crud.activity.list('u')).some((a) => a.ref.id === plan.id && /scope/i.test(a.summary))).toBe(true)
+  })
+
+  it('reads plans saved with the old single case/hearing fields, and rewrites them on save', async () => {
+    const app = freshApp()
+    const plan = await app.crud.plan.create('u', { title: 'Old', objective: '', workspace: 'sb', status: 'active', caseId: 'c1', hearingId: 'h1' })
+    expect(plan).toMatchObject({ caseIds: ['c1'], hearingIds: ['h1'], caseId: undefined, hearingId: undefined })
+    expect(planCaseIds({ caseId: 'c9' })).toEqual(['c9'])
+    expect(planHearingIds({ hearingIds: ['h2'], hearingId: 'h2' })).toEqual(['h2'])
+  })
+
+  it('shares a plan across cases in the thread, and deleting a case only detaches that case', async () => {
+    const app = freshApp()
+    const c1 = await app.cases.open('u', { organization: 'SA', type: 'other', title: 'One', status: 'active', summary: '' })
+    const c2 = await app.cases.open('u', { organization: 'SA', type: 'other', title: 'Two', status: 'active', summary: '' })
+    const plan = await app.plans.createWithSteps('u', { title: 'Shared approach', objective: '', workspace: 'sb', status: 'active', caseIds: [c1.id, c2.id] }, ['Draft'])
+
+    const load = async () => {
+      const [tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients, projects, links] = await Promise.all([
+        app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'), app.crud.hearing.list('u'),
+        app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.counsel.list('u'), app.crud.client.list('u'), app.crud.project.list('u'), app.crud.link.list('u'),
+      ])
+      return new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients, projects, links })
+    }
+    const parents = (await load()).thread({ kind: 'plan', id: plan.id }).ancestors.map((a) => a.ref.id)
+    expect(parents).toEqual(expect.arrayContaining([c1.id, c2.id]))
+
+    await app.cases.remove('u', c1.id)
+    const after = await app.crud.plan.get('u', plan.id)
+    expect(after).toMatchObject({ caseIds: [c2.id] })
+    expect(planScope(after!)).toBe('case')
+
+    // An independent copy keeps the page and steps, starts uncovered, with every step open.
+    const step = (await app.crud.task.list('u')).find((t) => t.planId === plan.id)!
+    await app.crud.task.update({ ...step, outcome: { status: 'done' } })
+    const copy = await app.plans.duplicate('u', plan.id)
+    expect(copy).toMatchObject({ title: 'Shared approach (copy)', status: 'draft' })
+    expect(planScope(copy)).toBe('general')
+    const copied = (await app.crud.task.list('u')).filter((t) => t.planId === copy.id)
+    expect(copied.map((t) => [t.title, t.outcome.status])).toEqual([['Draft', 'open']])
   })
 
   it('puts a plan under its hearing in the thread, and the post-hearing plan targets the next hearing', async () => {
@@ -458,13 +529,89 @@ describe('plan thinking & scope', () => {
     const { plan, nextHearing } = await app.cases.recordHearing('u', h.id, {
       summary: 'Adjourned', outcome: { status: 'not_done' }, next: { date: '2026-11-10', purpose: 'Reply (contd.)' }, plan: { title: 'Prep', objective: '', steps: [] },
     })
-    expect(plan!.hearingId).toBe(nextHearing!.id)
+    expect(plan!.hearingIds).toEqual([nextHearing!.id])
 
     const [tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links] = await Promise.all([
       app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'),
       app.crud.hearing.list('u'), app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.counsel.list('u'), app.crud.link.list('u'),
     ])
-    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links })
+    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients: [], projects: [], links })
     expect(graph.thread({ kind: 'plan', id: plan!.id }).ancestors.map((a) => a.ref.id)).toEqual(expect.arrayContaining([nextHearing!.id, h.id, c.id]))
+  })
+})
+
+describe('clients and projects', () => {
+  it('ties meetings and tasks to a client or one of its projects, and finds them again', async () => {
+    const app = freshApp()
+    const acme = await app.crud.client.create('u', { kind: 'company', name: ' Acme Ltd ', status: 'active', notes: '' })
+    const other = await app.crud.client.create('u', { kind: 'individual', name: 'Priya', status: 'prospect', notes: '' })
+    const portal = await app.crud.project.create('u', { title: 'Customer portal', clientId: acme.id, status: 'active', description: '' })
+    expect(acme.name).toBe('Acme Ltd')
+
+    const kickoff = await app.meetings.save('u', meetingDraft({ workspace: 'fsa', title: 'Kickoff', related: { kind: 'project', id: portal.id } }))
+    const intro = await app.meetings.save('u', meetingDraft({ workspace: 'fsa', title: 'Intro call', related: { kind: 'client', id: acme.id } }))
+    await app.meetings.save('u', meetingDraft({ workspace: 'fsa', title: 'Someone else', related: { kind: 'client', id: other.id } }))
+    const t = await app.crud.task.create('u', { title: 'Send proposal', notes: '', workspace: 'fsa', priority: 'normal', estimate: 30, outcome: { status: 'open' }, related: { kind: 'project', id: portal.id } })
+
+    const projects = await app.crud.project.list('u')
+    const keys = clientRefKeys(acme.id, projects)
+    expect(meetingsFor(keys, await app.crud.meeting.list('u')).map((m) => m.title).sort()).toEqual(['Intro call', 'Kickoff'])
+    expect(tasksFor(keys, await app.crud.task.list('u')).map((x) => x.id)).toEqual([t.id])
+    expect(clientOf(kickoff.related, projects)).toBe(acme.id)
+    expect(clientOf(intro.related, projects)).toBe(acme.id)
+    expect(clientOf(undefined, projects)).toBeUndefined()
+  })
+
+  it('validates, and deleting a client removes its projects but not the work', async () => {
+    const app = freshApp()
+    await expect(app.crud.client.create('u', { kind: 'company', name: '  ', status: 'active', notes: '' })).rejects.toThrow(/Name is required/)
+    await expect(app.crud.client.create('u', { kind: 'company', name: 'X', email: 'nope', status: 'active', notes: '' })).rejects.toThrow(/valid email/)
+    const c = await app.crud.client.create('u', { kind: 'company', name: 'Acme', status: 'active', notes: '' })
+    await expect(app.crud.project.create('u', { title: 'P', clientId: '', status: 'active', description: '' })).rejects.toThrow(/Client is required/)
+    await expect(app.crud.project.create('u', { title: 'P', clientId: c.id, status: 'active', description: '', startDate: '2026-10-10', dueDate: '2026-10-01' })).rejects.toThrow(/before the start/)
+    const p = await app.crud.project.create('u', { title: 'P', clientId: c.id, status: 'active', description: '' })
+    const m = await app.meetings.save('u', meetingDraft({ workspace: 'fsa', related: { kind: 'project', id: p.id } }))
+
+    await app.clients.remove('u', c.id)
+    expect(await app.crud.client.list('u')).toEqual([])
+    expect(await app.crud.project.list('u')).toEqual([])
+    expect((await app.crud.meeting.list('u')).map((x) => x.id)).toEqual([m.id])
+  })
+})
+
+describe('linked documents', () => {
+  it('turns Google addresses into addresses that can be shown in place', () => {
+    const id = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789'
+    expect(describeLink(`https://docs.google.com/document/d/${id}/edit?usp=sharing`)).toMatchObject({ provider: 'google-doc', embedUrl: `https://docs.google.com/document/d/${id}/preview` })
+    expect(describeLink(`https://docs.google.com/spreadsheets/d/${id}/edit#gid=0`)).toMatchObject({ provider: 'google-sheet', embedUrl: `https://docs.google.com/spreadsheets/d/${id}/preview` })
+    expect(describeLink(`https://docs.google.com/presentation/d/${id}/edit`)).toMatchObject({ provider: 'google-slides', embedUrl: `https://docs.google.com/presentation/d/${id}/preview` })
+    expect(describeLink(`https://drive.google.com/file/d/${id}/view?usp=drive_link`)).toMatchObject({ provider: 'google-drive', embedUrl: `https://drive.google.com/file/d/${id}/preview` })
+    expect(describeLink(`https://drive.google.com/open?id=${id}`)).toMatchObject({ provider: 'google-drive' })
+    expect(describeLink(`https://drive.google.com/drive/folders/${id}`)).toMatchObject({ provider: 'google-folder', embedUrl: `https://drive.google.com/embeddedfolderview?id=${id}#list` })
+    expect(describeLink(`https://docs.google.com/forms/d/e/${id}/viewform`)).toEqual({ url: `https://docs.google.com/forms/d/e/${id}/viewform`, provider: 'google-form' })
+  })
+
+  it('opens other addresses in a new tab, frames only secure PDFs, and refuses what is not a web address', () => {
+    expect(describeLink('https://example.com/report')).toEqual({ url: 'https://example.com/report', provider: 'web' })
+    expect(describeLink('https://example.com/files/Order.pdf')).toMatchObject({ provider: 'web', embedUrl: 'https://example.com/files/Order.pdf' })
+    expect(describeLink('http://example.com/files/Order.pdf')?.embedUrl).toBeUndefined()
+    expect(describeLink('javascript:alert(1)')).toBeNull()
+    expect(describeLink('not a link')).toBeNull()
+    expect(describeLink('https://evil.example/docs.google.com/document/d/AAAAAAAAAAAAAAAAAAAA/edit')?.provider).toBe('web')
+    expect(defaultLinkName(describeLink('https://example.com/files/Order.pdf')!)).toBe('Order.pdf')
+  })
+
+  it('attaches a link to a record without storing any bytes, and records it in the history', async () => {
+    const app = freshApp()
+    const c = await app.crud.client.create('u', { kind: 'company', name: 'Acme', status: 'active', notes: '' })
+    const owner = { kind: 'client' as const, id: c.id }
+    const a = await app.attachments.attachLink('u', owner, 'Acme', 'https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit', ' Statement of work ')
+    expect(a).toMatchObject({ name: 'Statement of work', backend: 'link', size: 0, link: { provider: 'google-doc' } })
+    expect(categoryOf(a)).toBe('link')
+    expect(await app.attachments.url(a)).toBe(a.link!.url)
+    await expect(app.attachments.attachLink('u', owner, 'Acme', 'nope')).rejects.toThrow(/web address/)
+    expect((await app.crud.activity.list('u')).some((x) => x.ref.id === c.id && x.summary.includes('Statement of work'))).toBe(true)
+    await app.attachments.remove('u', a, 'Acme')
+    expect(await app.crud.attachment.list('u')).toEqual([])
   })
 })

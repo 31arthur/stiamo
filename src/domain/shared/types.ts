@@ -25,7 +25,7 @@ export interface Entity {
 /** Fields the system manages; drafts omit them. */
 export type Draft<T extends Entity> = Omit<T, keyof Entity> & Partial<Pick<T, 'id'>>
 
-export type EntityKind = 'task' | 'meeting' | 'followUp' | 'case' | 'hearing' | 'plan' | 'goal' | 'counsel'
+export type EntityKind = 'task' | 'meeting' | 'followUp' | 'case' | 'hearing' | 'plan' | 'goal' | 'counsel' | 'client' | 'project'
 
 /** A typed pointer to another record, used for cross-entity links. */
 export interface EntityRef {

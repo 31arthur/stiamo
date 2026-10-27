@@ -8,6 +8,7 @@ import { ActivityLog } from '@/domain/activity/ActivityLog'
 import { AttachmentUseCases } from '@/domain/attachments/AttachmentUseCases'
 import { ValidationError } from '@/domain/auth/errors'
 import { CaseUseCases } from '@/domain/cases/CaseUseCases'
+import { ClientUseCases } from '@/domain/clients/ClientUseCases'
 import { CounselUseCases } from '@/domain/counsel/CounselUseCases'
 import { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import { PlanUseCases } from '@/domain/plans/PlanUseCases'
@@ -18,12 +19,14 @@ import type { DomainEnv, EntityMap, StoreKind } from '@/domain/shared/registry'
 import type { ID } from '@/domain/shared/types'
 import {
   normalizeCase,
+  normalizeClient,
   normalizeCounsel,
   normalizeFollowUp,
   normalizeGoal,
   normalizeHearing,
   normalizeMeeting,
   normalizePlan,
+  normalizeProject,
   normalizeTask,
 } from '@/domain/shared/validation'
 import type { Backend } from './backends'
@@ -42,6 +45,8 @@ export function createContainer(backend: Backend) {
     plan: new CrudUseCases('plan', env, normalizePlan, log),
     goal: new CrudUseCases('goal', env, normalizeGoal, log),
     counsel: new CrudUseCases('counsel', env, normalizeCounsel, log),
+    client: new CrudUseCases('client', env, normalizeClient, log),
+    project: new CrudUseCases('project', env, normalizeProject, log),
     link: new CrudUseCases('link', env),
     activity: new CrudUseCases('activity', env),
     attachment: new CrudUseCases('attachment', env),
@@ -50,6 +55,7 @@ export function createContainer(backend: Backend) {
   const plans = new PlanUseCases(env, crud.plan, crud.task, crud.goal, log)
   const cases = new CaseUseCases(env, crud.case, crud.hearing, plans, log)
   const counsel = new CounselUseCases(env, crud.counsel, crud.case, log)
+  const clients = new ClientUseCases(env, crud.client, crud.project)
   const outcomes = new RecordOutcomeUseCase(env, crud.task, crud.followUp, meetings, log)
   const agenda = new AgendaUseCases(env, meetings, log)
   const links = new LinkUseCases(env, log)
@@ -71,6 +77,7 @@ export function createContainer(backend: Backend) {
     plans,
     cases,
     counsel,
+    clients,
     outcomes,
     agenda,
     links,

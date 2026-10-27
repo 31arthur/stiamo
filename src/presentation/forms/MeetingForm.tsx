@@ -10,6 +10,7 @@ import { DateInput, DURATION_PRESETS, Field, NativeSelect, Segmented, TimeInput,
 import { MEETING_KIND_ICON } from '@/presentation/components/kinds'
 import { WorkspacePicker } from '@/presentation/components/workspace'
 import { useAction, useEntities, useToday } from '@/presentation/data/hooks'
+import { ClientProjectField } from './ClientProjectField'
 import { FormShell, lines, usePatch } from './shared'
 
 export type MeetingDraft = Omit<Meeting, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
@@ -151,6 +152,13 @@ export function MeetingForm({ initial, onDone }: { initial: Meeting | MeetingDra
             ))}
           </NativeSelect>
         </Field>
+      )}
+      {m.workspace === 'fsa' && (
+        <ClientProjectField
+          id="mt-client"
+          value={m.related}
+          onChange={(related, clientName) => patch({ related, counterpart: m.counterpart || clientName })}
+        />
       )}
       <Field label="Purpose" htmlFor="mt-purpose">
         <Textarea id="mt-purpose" value={m.purpose ?? ''} onChange={(e) => patch({ purpose: e.target.value })} className="min-h-14" />

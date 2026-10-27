@@ -17,6 +17,8 @@ interface SeedTarget {
     counsel: CrudUseCases<'counsel'>
     hearing: CrudUseCases<'hearing'>
     goal: CrudUseCases<'goal'>
+    client: CrudUseCases<'client'>
+    project: CrudUseCases<'project'>
   }
   meetings: MeetingUseCases
   plans: PlanUseCases
@@ -202,6 +204,44 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
   if (dayBefore) {
     await app.outcomes.execute(userId, { kind: 'followUp', id: dayBefore.id }, { status: 'done', comment: 'Confirmed; they’ll bring the termination letters.' })
   }
+
+  // FSA: clients, their projects, and the meetings and tasks that hang off them.
+  const northwind = await crud.client.create(userId, { kind: 'company', name: 'Northwind Logistics', contactName: 'Meera Rao', phone: '+91 98450 22110', email: 'meera@northwind.example', website: 'northwind.example', status: 'active', notes: 'Weekly check-in on Thursdays. Invoices go to accounts@northwind.example.' })
+  const kaveri = await crud.client.create(userId, { kind: 'individual', name: 'Kaveri Textiles', contactName: 'Suresh Kaveri', phone: '+91 99000 41234', status: 'prospect', notes: 'Referred by Northwind. Wants a quote for an inventory app.' })
+  const portal = await crud.project.create(userId, { title: 'Dispatch portal rebuild', clientId: northwind.id, status: 'active', description: 'Replace the dispatcher spreadsheet with a web portal: orders, routes, driver app.', startDate: day(-30), dueDate: day(60) })
+  await crud.project.create(userId, { title: 'Billing integration', clientId: northwind.id, status: 'planned', description: 'Sync invoices with their accounting system.', dueDate: day(120) })
+  await app.meetings.save(userId, {
+    kind: 'appointment',
+    title: 'Northwind — portal demo',
+    workspace: 'fsa',
+    slot: { date: day(2), start: h(15), duration: 60 },
+    mode: 'virtual',
+    link: 'https://meet.example.com/northwind-demo',
+    counterpart: 'Meera Rao',
+    contact: 'meera@northwind.example',
+    attendees: ['Meera Rao', 'Dispatch team'],
+    purpose: 'Walk through the order screens and agree what’s needed for sign-off.',
+    agenda: [{ id: 'n1', topic: 'Order entry flow', outcome: open }, { id: 'n2', topic: 'Driver app timeline', outcome: open }],
+    confirmations: ['day_before'],
+    related: { kind: 'project', id: portal.id },
+    outcome: open,
+  })
+  await app.meetings.save(userId, {
+    kind: 'appointment',
+    title: 'Kaveri Textiles — discovery call',
+    workspace: 'fsa',
+    slot: { date: day(4), start: h(12), duration: 30 },
+    mode: 'phone',
+    counterpart: 'Suresh Kaveri',
+    contact: '+91 99000 41234',
+    attendees: [],
+    agenda: [],
+    confirmations: ['hour_before'],
+    related: { kind: 'client', id: kaveri.id },
+    outcome: open,
+  })
+  await crud.task.create(userId, { title: 'Draft statement of work — Dispatch portal', notes: '', workspace: 'fsa', priority: 'high', estimate: 90, dueDate: day(1), outcome: open, related: { kind: 'project', id: portal.id } })
+  await crud.task.create(userId, { title: 'Prepare quote for Kaveri Textiles', notes: '', workspace: 'fsa', priority: 'normal', estimate: 60, dueDate: day(5), outcome: open, related: { kind: 'client', id: kaveri.id } })
 
   const sprint = await app.meetings.save(userId, {
     kind: 'meeting',

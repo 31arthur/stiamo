@@ -7,6 +7,7 @@ import type { Task, TaskPriority } from '@/domain/tasks/Task'
 import { DateInput, DURATION_PRESETS, Field, NativeSelect, Segmented } from '@/presentation/components/form'
 import { WorkspacePicker } from '@/presentation/components/workspace'
 import { useEntities, useSave } from '@/presentation/data/hooks'
+import { ClientProjectField } from './ClientProjectField'
 import { FormShell, usePatch } from './shared'
 
 export type TaskDraft = Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
@@ -34,6 +35,7 @@ export function TaskForm({ initial, onDone }: { initial: Task | TaskDraft; onDon
       <Field label="Workspace">
         <WorkspacePicker id="task-ws" value={t.workspace} onChange={(workspace) => patch({ workspace })} />
       </Field>
+      {t.workspace === 'fsa' && <ClientProjectField id="task-client" value={t.related} onChange={(related) => patch({ related })} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Priority">
           <Segmented<TaskPriority>

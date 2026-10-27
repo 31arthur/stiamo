@@ -101,9 +101,11 @@ export function useGraph() {
   const plans = useEntities('plan').data
   const goals = useEntities('goal').data
   const counsel = useEntities('counsel').data
+  const clients = useEntities('client').data
+  const projects = useEntities('project').data
   const links = useEntities('link').data
   return useMemo(
-    () => new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links }),
-    [tasks, meetings, followUps, cases, hearings, plans, goals, counsel, links],
+    () => new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients, projects, links }),
+    [tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients, projects, links],
   )
 }
