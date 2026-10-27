@@ -5,7 +5,6 @@ import type { Container } from '@/di/container'
 import { buildAgenda } from '@/domain/agenda/agenda'
 import { RelationGraph } from '@/domain/relations/graph'
 import type { EntityMap, StoreKind } from '@/domain/shared/registry'
-import { toISODate } from '@/domain/shared/time'
 import type { EntityKind, ID, ISODate } from '@/domain/shared/types'
 import { useServices } from '@/presentation/app/services'
 import { useAuth } from '@/presentation/auth/AuthProvider'
@@ -17,7 +16,7 @@ export function useUserId(): ID {
   return user.id
 }
 
-export const useToday = (): ISODate => toISODate(new Date())
+export { useToday } from './clock'
 
 const EMPTY: never[] = []
 
