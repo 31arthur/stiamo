@@ -981,3 +981,34 @@ describe('plan steps: tasks, follow-ups and appointments', () => {
     expect(planSteps(plan.id, await pool(app)).map((s) => s.title)).toEqual(['C', 'A', 'B'])
   })
 })
+
+describe('step dates and the plan date', () => {
+  const setup = async () => {
+    const app = freshApp()
+    const plan = await app.plans.createWithSteps('u', { title: 'P', objective: '', workspace: 'sb', status: 'active', dueDate: '2026-11-10' }, [])
+    const pool = async () => ({ tasks: await app.crud.task.list('u'), followUps: await app.crud.followUp.list('u'), meetings: await app.crud.meeting.list('u') })
+    return { app, plan, pool }
+  }
+
+  it('starts from the plan date, or has none when asked for none', async () => {
+    const { app, plan, pool } = await setup()
+    await app.plans.addStep('u', plan.id, 'inherits')
+    await app.plans.addStep('u', plan.id, { title: 'own', dueDate: '2026-11-04' })
+    await app.plans.addStep('u', plan.id, { title: 'none', dueDate: null })
+    expect(planSteps(plan.id, await pool()).map((s) => s.date)).toEqual(['2026-11-10', '2026-11-04', undefined])
+  })
+
+  it('moves steps that were on the plan date when it changes, and leaves the rest', async () => {
+    const { app, plan, pool } = await setup()
+    await app.plans.addStep('u', plan.id, 'inherits')
+    await app.plans.addStep('u', plan.id, { title: 'own', dueDate: '2026-11-04' })
+    const done = await app.plans.addStep('u', plan.id, 'finished')
+    await app.crud.task.update({ ...(await app.crud.task.get('u', done.id))!, outcome: { status: 'done' } })
+
+    const result = await app.plans.setDueDate('u', plan.id, '2026-11-20')
+    expect(result.moved).toBe(1)
+    expect(result.plan.dueDate).toBe('2026-11-20')
+    expect(planSteps(plan.id, await pool()).map((s) => s.date)).toEqual(['2026-11-20', '2026-11-04', '2026-11-10'])
+    expect((await app.plans.setDueDate('u', plan.id, undefined)).moved).toBe(0)
+  })
+})

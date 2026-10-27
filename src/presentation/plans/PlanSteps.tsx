@@ -29,7 +29,9 @@ export function PlanSteps({ planId, compact = false }: { planId: ID; compact?: b
   const [order, setOrder] = useState<PlanStep[]>([])
   const [title, setTitle] = useState('')
   const [kind, setKind] = useState<StepKind>('task')
-  const [date, setDate] = useState<ISODate | undefined>(undefined)
+  // undefined: take the plan's day; null: deliberately none; otherwise its own.
+  const [date, setDate] = useState<ISODate | null | undefined>(undefined)
+  const shown = date === undefined ? plan?.dueDate : (date ?? undefined)
   const reorder = useAction<ID[], void>((s, userId, ids) => s.plans.reorderSteps(userId, planId, ids))
   const addStep = useAction<StepDraft, EntityRef>((s, userId, draft) => s.plans.addStep(userId, planId, draft))
 
@@ -38,7 +40,7 @@ export function PlanSteps({ planId, compact = false }: { planId: ID; compact?: b
   async function add(e: FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-    await addStep.run({ title: title.trim(), kind, dueDate: date ?? plan?.dueDate })
+    await addStep.run({ title: title.trim(), kind, dueDate: shown ?? null })
     setTitle('')
   }
 
@@ -77,8 +79,19 @@ export function PlanSteps({ planId, compact = false }: { planId: ID; compact?: b
           </div>
           <label className="inline-flex items-center gap-1 text-xs">
             <span className="sr-only">Due</span>
-            <DueDate value={date ?? plan?.dueDate} onChange={setDate} placeholder="Due" />
+            <DueDate value={shown} onChange={(d) => setDate(d ?? null)} placeholder="Due date of the new step" />
           </label>
+          {plan?.dueDate && shown === plan.dueDate && date === undefined && <span className="text-[11px]">plan’s date</span>}
+          {plan?.dueDate && shown !== plan.dueDate && (
+            <button type="button" onClick={() => setDate(undefined)} className="text-[11px] underline-offset-2 hover:text-foreground hover:underline">
+              use plan’s date
+            </button>
+          )}
+          {shown && (
+            <button type="button" onClick={() => setDate(null)} className="text-[11px] underline-offset-2 hover:text-foreground hover:underline">
+              no date
+            </button>
+          )}
           {title.trim() && (
             <Button type="submit" size="xs" loading={addStep.pending}>
               Add
@@ -156,6 +169,12 @@ function Step({ step, index, today, planDue, onDrop }: { step: PlanStep; index: 
           )}
           {step.time !== undefined && !closed && step.date && <span className="text-[11px] text-muted-foreground">{friendlyDateTime(step.date, step.time, today).split(', ')[1]}</span>}
           {overdue && <span className="text-[11px] text-destructive">overdue</span>}
+          {!closed && planDue && step.date === planDue && <span className="text-[11px] text-muted-foreground">plan’s date</span>}
+          {!closed && planDue && step.date !== planDue && (
+            <button type="button" onClick={() => void reschedule.run(planDue)} className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+              use plan’s date
+            </button>
+          )}
           {pastPlan && !closed && <span className="text-[11px] text-muted-foreground" title="This step is due after the plan’s own deadline">after the plan’s deadline</span>}
         </div>
         {closed && (step.outcome.comment || step.outcome.nextAction) && (

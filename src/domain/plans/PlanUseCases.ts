@@ -20,7 +20,8 @@ import type { Task } from '../tasks/Task'
 export interface StepDraft {
   title: string
   kind?: StepKind
-  dueDate?: ISODate
+  /** Its own day. Left out, it starts from the plan's; `null` is deliberately no day. */
+  dueDate?: ISODate | null
   time?: Minutes
   notes?: string
 }
@@ -80,6 +81,27 @@ export class PlanUseCases {
     if (!title) throw new ValidationError('A step needs a title')
     const steps = planSteps(planId, await this.pool(userId))
     return this.createStep(userId, plan, { ...draft, title }, steps.length ? Math.max(...steps.map((s) => s.order ?? 0)) + 1 : 0)
+  }
+
+  /**
+   * Changes the plan's due date. Open steps that were still on the old date — the ones that simply
+   * took the plan's — move with it; steps with a day of their own stay where they are.
+   */
+  async setDueDate(userId: ID, planId: ID, date: ISODate | undefined): Promise<{ plan: ActionPlan; moved: number }> {
+    const plan = await this.env.repos.plan.get(userId, planId)
+    if (!plan) throw new NotFoundError('Action plan')
+    const before = plan.dueDate
+    const saved = await this.plans.update({ ...plan, dueDate: date })
+    let moved = 0
+    if (before && date && before !== date) {
+      for (const step of planSteps(planId, await this.pool(userId))) {
+        if (step.outcome.status === 'open' && step.date === before) {
+          await this.setStepDate(userId, step.ref, date)
+          moved++
+        }
+      }
+    }
+    return { plan: saved, moved }
   }
 
   /** Moves a step to another day. A task's planned slot moves with it; an appointment keeps its time. */
@@ -144,7 +166,7 @@ export class PlanUseCases {
       workspace: plan.workspace,
       planId: plan.id,
       order,
-      date: d.dueDate ?? plan.dueDate,
+      date: d.dueDate === null ? undefined : (d.dueDate ?? plan.dueDate),
       time: d.time,
       duration: 0,
       about: plan.origin,
