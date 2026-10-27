@@ -80,10 +80,10 @@ export function HearingRecordDetails({ hearing: h, next, tasks, today }: { heari
             <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Work due before the next date</span>
             {unlinked.length > 0 && (
               <div className="flex gap-1">
-                <Button variant="ghost" size="xs" onClick={() => toTasks.run(h.id)} disabled={toTasks.pending}>
+                <Button variant="ghost" size="xs" onClick={() => toTasks.run(h.id)} loading={toTasks.pending} disabled={toPlan.pending}>
                   <ListPlus /> Make tasks
                 </Button>
-                <Button variant="ghost" size="xs" onClick={async () => navigate(`/plans/${(await toPlan.run(h.id)).id}`)} disabled={toPlan.pending}>
+                <Button variant="ghost" size="xs" onClick={async () => navigate(`/plans/${(await toPlan.run(h.id)).id}`)} loading={toPlan.pending} disabled={toTasks.pending}>
                   <ListChecks /> Start a plan
                 </Button>
               </div>

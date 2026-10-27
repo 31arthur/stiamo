@@ -1,4 +1,5 @@
 import { createContext, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Spinner } from '@/components/ui/spinner'
 import { BlockNoteSchema, defaultBlockSpecs, filterSuggestionItems, insertOrUpdateBlockForSlashMenu } from '@blocknote/core'
 import type { PartialBlock } from '@blocknote/core'
 import '@blocknote/core/fonts/inter.css'
@@ -90,7 +91,7 @@ function DrawingView({ scene, preview, onChange }: { scene: string; preview: str
         </button>
       )}
       {open && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-background/60 backdrop-blur-sm"><Spinner label="Opening the drawing board" /></div>}>
           <DrawingDialog open={open} sceneUrl={sceneFile ? sceneUrl : undefined} onSave={save} onClose={() => setOpen(false)} />
         </Suspense>
       )}

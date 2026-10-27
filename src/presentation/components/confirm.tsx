@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 /** A destructive action that asks once, in place. */
 export function ConfirmDelete({ what, onConfirm, children }: { what: string; onConfirm: () => Promise<unknown> | void; children?: ReactNode }) {
   const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" />}>
@@ -27,9 +28,15 @@ export function ConfirmDelete({ what, onConfirm, children }: { what: string; onC
           <Button
             variant="destructive"
             size="sm"
+            loading={busy}
             onClick={async () => {
-              await onConfirm()
-              setOpen(false)
+              setBusy(true)
+              try {
+                await onConfirm()
+                setOpen(false)
+              } finally {
+                setBusy(false)
+              }
             }}
           >
             Delete

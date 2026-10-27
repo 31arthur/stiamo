@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DetailSkeleton } from '@/presentation/components/loading'
 import type { FormEvent } from 'react'
 import { format, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
@@ -31,7 +32,7 @@ export function GoalDetailPage() {
   const { id } = useParams<{ id: string }>()
   const goal = useEntity('goal', id)
   const { isLoading } = useEntities('goal')
-  if (!goal) return isLoading ? null : <Navigate to="/goals" replace />
+  if (!goal) return isLoading ? <DetailSkeleton /> : <Navigate to="/goals" replace />
   return <GoalDetail key={goal.id} goal={goal} />
 }
 

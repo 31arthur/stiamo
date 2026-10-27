@@ -11,6 +11,8 @@ import { OPEN } from '@/domain/shared/outcome'
 import { formatDuration } from '@/domain/shared/time'
 import { ValidationError } from '@/domain/shared/errors'
 import { emptyEngagement, EngagementFields } from '@/presentation/cases/EngagementFields'
+import { HeardTogetherField } from '@/presentation/cases/HeardTogetherField'
+import type { HearingSaveResult } from '@/domain/cases/CaseUseCases'
 import { DateInput, DURATION_PRESETS, Field, NativeSelect, Segmented, TimeInput } from '@/presentation/components/form'
 import { useAction, useEntities, useSave, useToday } from '@/presentation/data/hooks'
 import { FormShell, usePatch } from './shared'
@@ -168,11 +170,12 @@ export function HearingForm({ initial, onDone }: { initial: Hearing | HearingDra
   const today = useToday()
   const [h, patch] = usePatch(initial)
   const editing = 'createdAt' in initial
-  const save = useSave('hearing', editing ? 'Hearing updated' : 'Hearing listed')
-  const { data: cases } = useEntities('case')
+  const save = useAction<Hearing | HearingDraft, HearingSaveResult>((s, userId, input) => s.cases.saveHearing(userId, input), {
+    success: (r) => (r.merged.length ? `Hearing saved — folded in ${r.merged.length} same-day listing${r.merged.length === 1 ? '' : 's'}` : editing ? 'Hearing updated' : 'Hearing listed'),
+  })
 
   return (
-    <FormShell submitLabel={editing ? 'Save' : 'Add hearing'} onCancel={() => onDone()} onSubmit={async () => onDone(await save.run(h))}>
+    <FormShell submitLabel={editing ? 'Save' : 'Add hearing'} onCancel={() => onDone()} onSubmit={async () => onDone((await save.run(h)).hearing)}>
       <Field label="Listed for" htmlFor="hr-purpose">
         <Input id="hr-purpose" autoFocus value={h.purpose} onChange={(e) => patch({ purpose: e.target.value })} placeholder="e.g. Cross-examination of PW-2" />
       </Field>
@@ -196,28 +199,7 @@ export function HearingForm({ initial, onDone }: { initial: Hearing | HearingDra
       <Field label="Court room / bench" htmlFor="hr-forum">
         <Input id="hr-forum" value={h.forum ?? ''} onChange={(e) => patch({ forum: e.target.value || undefined })} />
       </Field>
-      <Field label="Heard together with" hint="Connected cases taken up in the same listing share this hearing and one record">
-        <div className="flex flex-wrap gap-1.5">
-          {cases
-            .filter((c) => c.id !== h.caseId)
-            .map((c) => {
-              const on = (h.alsoCaseIds ?? []).includes(c.id)
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  aria-pressed={on}
-                  title={c.title}
-                  onClick={() => patch({ alsoCaseIds: on ? (h.alsoCaseIds ?? []).filter((id) => id !== c.id) : [...(h.alsoCaseIds ?? []), c.id] })}
-                  className={cn('rounded-full border px-3 py-1 text-xs font-medium transition-colors', on ? 'border-foreground bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}
-                >
-                  {c.reference}
-                </button>
-              )
-            })}
-          {cases.length <= 1 && <span className="text-xs text-muted-foreground">No other cases yet</span>}
-        </div>
-      </Field>
+      <HeardTogetherField hearing={{ id: 'id' in h && h.id ? h.id : '', caseId: h.caseId, date: h.date }} value={h.alsoCaseIds ?? []} onChange={(alsoCaseIds) => patch({ alsoCaseIds })} />
     </FormShell>
   )
 }

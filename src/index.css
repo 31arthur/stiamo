@@ -286,3 +286,31 @@
 @media (max-width: 640px) {
   .stiamo-editor .qa-answer { margin-left: 0.5rem; }
 }
+
+/* Loading: the logo's three bars filling in turn, and shimmering placeholders. */
+.loader-bar {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: loader-bar 1.15s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+@keyframes loader-bar {
+  0%, 100% { transform: scaleX(0.3); opacity: 0.45; }
+  50% { transform: scaleX(1); opacity: 1; }
+}
+.skeleton {
+  background: linear-gradient(100deg, color-mix(in oklch, var(--muted), var(--foreground) 6%) 30%, var(--muted) 50%, color-mix(in oklch, var(--muted), var(--foreground) 6%) 70%);
+  background-size: 220% 100%;
+  animation: skeleton 1.5s ease-in-out infinite;
+}
+@keyframes skeleton {
+  from { background-position: 220% 0; }
+  to { background-position: -120% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader-bar { animation: loader-pulse 1.6s ease-in-out infinite; }
+  .skeleton { animation: none; }
+}
+@keyframes loader-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}

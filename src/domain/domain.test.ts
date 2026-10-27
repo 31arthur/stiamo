@@ -12,7 +12,7 @@ import type { Meeting } from './meetings/Meeting'
 import { buildDayPlan, packDay } from './planner/dayPlan'
 import { caseTypeOf } from './cases/LegalCase'
 import { clientRefKeys, clientOf, meetingsFor, tasksFor } from './clients/Client'
-import { actionClosed, diaryOf, pendingActions, searchDiary } from './cases/hearingDiary'
+import { actionClosed, diaryOf, mergeCandidates, pendingActions, searchDiary } from './cases/hearingDiary'
 import { hearingCaseIds, hearingsOf } from './cases/LegalCase'
 import { categoryOf, defaultLinkName, describeLink } from './attachments/Attachment'
 import { RelationGraph } from './relations/graph'
@@ -792,3 +792,82 @@ describe('one hearing for several cases', () => {
   })
 })
 
+describe('adding other cases to a hearing', () => {
+  const setup = async (app: ReturnType<typeof freshApp>) => {
+    const a = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'A', status: 'active', summary: '' })
+    const b = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'B', status: 'active', summary: '' })
+    const c = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'C', status: 'active', summary: '' })
+    const ha = await app.crud.hearing.create('u', { caseId: a.id, date: '2026-10-27', duration: 60, purpose: 'Hearing at Kurnool', outcome: { status: 'open' } })
+    const hb = await app.crud.hearing.create('u', { caseId: b.id, date: '2026-10-27', duration: 60, purpose: 'Evidence', outcome: { status: 'open' } })
+    return { a, b, c, ha, hb }
+  }
+
+  it('folds another case’s unrecorded listing for the same day into this hearing', async () => {
+    const app = freshApp()
+    const { a, b, ha, hb } = await setup(app)
+    const plan = await app.plans.createWithSteps('u', { title: 'Prep B', objective: '', workspace: 'sb', status: 'active', caseIds: [b.id], hearingIds: [hb.id] }, [])
+    const nextOfB = await app.crud.hearing.create('u', { caseId: b.id, date: '2026-11-10', duration: 30, purpose: 'Next', outcome: { status: 'open' } })
+    await app.crud.hearing.update({ ...nextOfB })
+    const earlier = await app.crud.hearing.create('u', { caseId: b.id, date: '2026-10-01', duration: 30, purpose: 'Earlier', outcome: { status: 'done' }, nextHearingId: hb.id })
+    const task = await app.crud.task.create('u', { title: 'Bring originals', notes: '', workspace: 'sb', priority: 'normal', estimate: 30, outcome: { status: 'open' }, related: { kind: 'hearing', id: hb.id } })
+
+    const { hearing, merged } = await app.cases.joinCases('u', ha.id, [b.id])
+    expect(merged.map((m) => m.id)).toEqual([hb.id])
+    expect(hearingCaseIds(hearing)).toEqual([a.id, b.id])
+    // The absorbed listing is gone, and what pointed at it points here now.
+    expect(await app.crud.hearing.get('u', hb.id)).toBeNull()
+    expect(planHearingIds((await app.crud.plan.get('u', plan.id))!)).toEqual([ha.id])
+    expect((await app.crud.hearing.get('u', earlier.id))!.nextHearingId).toBe(ha.id)
+    expect((await app.crud.task.get('u', task.id))!.related).toEqual({ kind: 'hearing', id: ha.id })
+    expect(hearingsOf(b.id, await app.crud.hearing.list('u')).map((h) => h.id).sort()).toEqual([earlier.id, nextOfB.id, ha.id].sort())
+  })
+
+  it('leaves a same-day listing that was already written up on its own', async () => {
+    const app = freshApp()
+    const { b, ha, hb } = await setup(app)
+    await app.cases.recordHearing('u', hb.id, { summary: 'Written up separately', outcome: { status: 'done' } })
+    const { hearing, merged } = await app.cases.joinCases('u', ha.id, [b.id])
+    expect(merged).toEqual([])
+    expect(hearingCaseIds(hearing)).toContain(b.id)
+    expect(await app.crud.hearing.get('u', hb.id)).not.toBeNull()
+  })
+
+  it('records a hearing with the cases picked in the dialog, and takes cases back off', async () => {
+    const app = freshApp()
+    const { a, b, c, ha, hb } = await setup(app)
+    const result = await app.cases.recordHearing('u', ha.id, {
+      summary: 'Both taken up.', outcome: { status: 'done' }, alsoCaseIds: [b.id, c.id], next: { date: '2026-11-10', purpose: 'Arguments' }, plan: { title: 'P', objective: '', steps: [] },
+    })
+    expect(hearingCaseIds(result.hearing)).toEqual([a.id, b.id, c.id])
+    expect(await app.crud.hearing.get('u', hb.id)).toBeNull()
+    expect(hearingCaseIds(result.nextHearing!)).toEqual([a.id, b.id, c.id])
+    expect(result.plan!.caseIds).toEqual([a.id, b.id, c.id])
+
+    // Revising without the cases leaves them; passing a shorter list removes the ones left out.
+    await app.cases.recordHearing('u', ha.id, { summary: 'Again', outcome: { status: 'done' } })
+    expect(hearingCaseIds((await app.crud.hearing.get('u', ha.id))!)).toEqual([a.id, b.id, c.id])
+    await app.cases.recordHearing('u', ha.id, { summary: 'Again', outcome: { status: 'done' }, alsoCaseIds: [b.id] })
+    expect(hearingCaseIds((await app.crud.hearing.get('u', ha.id))!)).toEqual([a.id, b.id])
+    await expect(app.cases.joinCases('u', ha.id, ['nope'])).rejects.toThrow(/no longer exists/)
+  })
+
+  it('lists a hearing together with other cases in one step', async () => {
+    const app = freshApp()
+    const { a, c } = await setup(app)
+    const { hearing, merged } = await app.cases.saveHearing('u', { caseId: a.id, alsoCaseIds: [c.id, c.id], date: '2026-12-01', duration: 60, purpose: 'Joint', outcome: { status: 'open' } })
+    expect(merged).toEqual([])
+    expect(hearingCaseIds(hearing)).toEqual([a.id, c.id])
+    const edited = await app.cases.saveHearing('u', { ...hearing, purpose: 'Joint (renamed)', alsoCaseIds: [] })
+    expect(edited.hearing.purpose).toBe('Joint (renamed)')
+    expect(hearingCaseIds(edited.hearing)).toEqual([a.id])
+  })
+
+  it('knows which listings would fold in before it happens', async () => {
+    const app = freshApp()
+    const { b, c, ha, hb } = await setup(app)
+    const all = await app.crud.hearing.list('u')
+    expect(mergeCandidates(ha, [b.id], all).map((h) => h.id)).toEqual([hb.id])
+    expect(mergeCandidates(ha, [c.id], all)).toEqual([])
+    expect(mergeCandidates(ha, [], all)).toEqual([])
+  })
+})

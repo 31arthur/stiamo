@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DetailSkeleton } from '@/presentation/components/loading'
 import { format, parseISO } from 'date-fns'
 import { motion } from 'motion/react'
 import { AlertCircle, CalendarPlus, Gavel, Link2, ListChecks, NotebookPen, Paperclip, Pencil } from 'lucide-react'
@@ -44,7 +45,7 @@ export function CaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const legalCase = useEntity('case', id)
   const { isLoading } = useEntities('case')
-  if (!legalCase) return isLoading ? null : <Navigate to="/cases" replace />
+  if (!legalCase) return isLoading ? <DetailSkeleton /> : <Navigate to="/cases" replace />
   return <CaseDetail key={legalCase.id} legalCase={legalCase} />
 }
 
@@ -278,11 +279,9 @@ function HearingItem({ hearing: h, caseId, cases, next, tasks, plans, today, onR
                 <NotebookPen /> {h.outcome.status === 'open' ? 'Record' : 'Revise'}
               </Button>
             )}
-            {upcoming && (
-              <Button size="sm" variant="ghost" onClick={onEdit}>
-                <Pencil />
-              </Button>
-            )}
+            <Button size="sm" variant="ghost" onClick={onEdit} aria-label="Edit hearing" title="Edit the hearing, or the cases it was heard with">
+              <Pencil />
+            </Button>
           </div>
         </div>
         {hearingCaseIds(h).length > 1 && (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DetailSkeleton } from '@/presentation/components/loading'
 import type { FormEvent } from 'react'
 import { AnimatePresence, Reorder } from 'motion/react'
 import { ExternalLink, GripVertical, ListChecks, Pencil, Plus, X } from 'lucide-react'
@@ -36,7 +37,7 @@ export function MeetingDetailPage() {
   const { id } = useParams<{ id: string }>()
   const meeting = useEntity('meeting', id)
   const { isLoading } = useEntities('meeting')
-  if (!meeting) return isLoading ? null : <Navigate to="/meetings" replace />
+  if (!meeting) return isLoading ? <DetailSkeleton /> : <Navigate to="/meetings" replace />
   return <MeetingDetail key={meeting.id} meeting={meeting} />
 }
 

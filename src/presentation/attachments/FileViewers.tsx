@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ExternalLink, Info, Loader2, ShieldQuestion } from 'lucide-react'
+import { ExternalLink, Info, ShieldQuestion } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PROVIDER_LABELS } from '@/domain/attachments/Attachment'
@@ -11,9 +12,9 @@ export function Centered({ children }: { children: ReactNode }) {
   return <div className="flex size-full items-center justify-center p-4">{children}</div>
 }
 
-const Spinner = () => (
+const Loading = () => (
   <Centered>
-    <Loader2 className="size-6 animate-spin text-muted-foreground" />
+    <Spinner label="Reading the file" />
   </Centered>
 )
 
@@ -75,7 +76,7 @@ export function LinkViewer({ link, name }: { link: DocumentLink; name: string })
       <div className="relative min-h-0 flex-1 bg-white">
         {!loaded && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            <Spinner label="Loading the document" />
           </div>
         )}
         <iframe src={link.embedUrl} title={name} onLoad={() => setLoaded(true)} className={cn('size-full border-0 transition-opacity', loaded ? 'opacity-100' : 'opacity-0')} allow="fullscreen" referrerPolicy="no-referrer-when-downgrade" />
@@ -93,7 +94,7 @@ export function DocxViewer({ url }: { url: string }) {
     return value
   })
   if (result.error) return <Unreadable message={result.error} />
-  if (result.value === undefined) return <Spinner />
+  if (result.value === undefined) return <Loading />
   const doc = `<!doctype html><meta charset="utf-8"><base target="_blank"><style>
     body{font:15px/1.65 system-ui,-apple-system,Segoe UI,sans-serif;color:#1c1917;margin:0;padding:2rem 1.25rem 4rem}
     main{max-width:46rem;margin:0 auto}img{max-width:100%;height:auto}table{border-collapse:collapse;width:100%}
@@ -114,7 +115,7 @@ export function WorkbookViewer({ url }: { url: string }) {
   })
   const [active, setActive] = useState(0)
   if (result.error) return <Unreadable message={result.error} />
-  if (!result.value) return <Spinner />
+  if (!result.value) return <Loading />
   const sheets = result.value
   const current = sheets[Math.min(active, sheets.length - 1)]
   return (
@@ -137,7 +138,7 @@ export function WorkbookViewer({ url }: { url: string }) {
 export function CsvViewer({ url }: { url: string }) {
   const result = useLoad(url, async () => parseCsv(await (await fetchBuffer(url)).text()))
   if (result.error) return <Unreadable message={result.error} />
-  if (!result.value) return <Spinner />
+  if (!result.value) return <Loading />
   return <GridTable rows={result.value} />
 }
 
