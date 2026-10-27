@@ -56,10 +56,14 @@ export function parentOf<K extends EntityKind>(kind: K, e: Records[K]): EntityRe
       const t = e as Task
       return t.planId ? { kind: 'plan', id: t.planId } : t.related
     }
-    case 'followUp':
-      return (e as FollowUp).subject
-    case 'meeting':
-      return (e as Meeting).related
+    case 'followUp': {
+      const f = e as FollowUp
+      return f.planId ? { kind: 'plan', id: f.planId } : f.subject
+    }
+    case 'meeting': {
+      const m = e as Meeting
+      return m.planId ? { kind: 'plan', id: m.planId } : m.related
+    }
     case 'hearing':
       return { kind: 'case', id: (e as Hearing).caseId }
     case 'plan': {

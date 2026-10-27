@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { Container } from '@/di/container'
 import { buildAgenda } from '@/domain/agenda/agenda'
 import { RelationGraph } from '@/domain/relations/graph'
+import type { StepPool } from '@/domain/plans/ActionPlan'
 import type { EntityMap, StoreKind } from '@/domain/shared/registry'
 import type { EntityKind, ID, ISODate } from '@/domain/shared/types'
 import { useServices } from '@/presentation/app/services'
@@ -39,6 +40,14 @@ export function useEntities<K extends StoreKind>(kind: K) {
 export function useEntity<K extends StoreKind>(kind: K, id: ID | undefined): EntityMap[K] | undefined {
   const { data } = useEntities(kind)
   return useMemo(() => data.find((e) => e.id === id), [data, id])
+}
+
+/** Every task, follow-up and appointment: where an action plan's steps live. Progress over a plan counts all three. */
+export function useStepPool(): StepPool {
+  const { data: tasks } = useEntities('task')
+  const { data: followUps } = useEntities('followUp')
+  const { data: meetings } = useEntities('meeting')
+  return useMemo(() => ({ tasks, followUps, meetings }), [tasks, followUps, meetings])
 }
 
 /** The unified agenda for a date range, derived live from the cached collections. */

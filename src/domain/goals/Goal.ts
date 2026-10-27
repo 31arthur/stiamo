@@ -1,5 +1,6 @@
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { planProgress } from '../plans/ActionPlan'
+import type { StepPool } from '../plans/ActionPlan'
 import type { Entity, ID, ISODate } from '../shared/types'
 import type { WorkspaceId } from '../shared/workspace'
 import type { Task } from '../tasks/Task'
@@ -79,7 +80,7 @@ export interface GoalProgress {
  * Progress blends key results (outcomes) and linked plans (execution) equally when both exist.
  * Health compares progress with time elapsed: you should be roughly as far along as the calendar is.
  */
-export function goalProgress(goal: Goal, tasks: Task[], today: ISODate): GoalProgress {
+export function goalProgress(goal: Goal, tasks: StepPool | Task[], today: ISODate): GoalProgress {
   const planValues = goal.planIds.map((id) => planProgress(id, tasks).progress).filter((p): p is number => p !== null)
   const plans = planValues.length ? avg(planValues) : null
   const keyResults = goal.keyResults.length ? avg(goal.keyResults.map(keyResultProgress)) : null

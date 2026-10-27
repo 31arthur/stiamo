@@ -58,6 +58,9 @@ export interface Meeting extends Entity {
   confirmations: ConfirmationTiming[]
   /** Preparation action plan. */
   prepPlanId?: ID
+  /** The action plan this appointment is a step of, and its place there. */
+  planId?: ID
+  order?: number
   /** E.g. the legal case this is about. */
   related?: EntityRef
   /** Notes taken during or after. */

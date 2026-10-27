@@ -23,7 +23,7 @@ import { OUTCOME_STYLE, OutcomeBadge, OutcomeControl, OutcomeEditor, OutcomeNote
 import { ProgressBar } from '@/presentation/components/progress'
 import { RefChip } from '@/presentation/components/RefChip'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
-import { useAction, useEntities, useEntity, useToday } from '@/presentation/data/hooks'
+import { useAction, useEntities, useEntity, useStepPool, useToday } from '@/presentation/data/hooks'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { useSaveMeeting } from '@/presentation/forms/MeetingForm'
 import { MODE_ICON } from '@/presentation/meetings/MeetingCard'
@@ -296,7 +296,7 @@ function OutcomeSection({ meeting: m }: { meeting: Meeting }) {
 }
 
 function PrepSection({ meeting: m }: { meeting: Meeting }) {
-  const { data: tasks } = useEntities('task')
+  const pool = useStepPool()
   const plan = useEntity('plan', m.prepPlanId)
   const create = useAction<void, unknown>(
     async (s, userId) => {
@@ -321,7 +321,7 @@ function PrepSection({ meeting: m }: { meeting: Meeting }) {
       </Section>
     )
   }
-  const progress = planProgress(plan.id, tasks)
+  const progress = planProgress(plan.id, pool)
   return (
     <Section
       title="Preparation"

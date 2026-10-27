@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils'
 import { CASE_STATUS_LABELS, CASE_TYPES, caseTypeOf, hearingCaseIds, hearingsOf } from '@/domain/cases/LegalCase'
 import { organizationName } from '@/domain/cases/Organization'
 import type { Hearing, LegalCase } from '@/domain/cases/LegalCase'
-import type { Task } from '@/domain/tasks/Task'
 import type { ActionPlan } from '@/domain/plans/ActionPlan'
 import { coversCase, coversHearing, planCaseIds, planHearingIds, planProgress } from '@/domain/plans/ActionPlan'
 import { formatClock, instantKey } from '@/domain/shared/time'
@@ -25,7 +24,7 @@ import { friendlyDate, relativeDays } from '@/presentation/components/dates'
 import { Meta, Section } from '@/presentation/components/layout'
 import { OutcomeBadge } from '@/presentation/components/outcome'
 import { ProgressBar } from '@/presentation/components/progress'
-import { useAction, useEntities, useEntity, useGraph, useSave, useToday } from '@/presentation/data/hooks'
+import { useAction, useEntities, useEntity, useGraph, useSave, useStepPool, useToday } from '@/presentation/data/hooks'
 import type { RecordInfo } from '@/presentation/components/records'
 import { LinkPicker } from '@/presentation/relations/LinkPicker'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
@@ -59,6 +58,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
   const { data: allCases } = useEntities('case')
   const { data: plans } = useEntities('plan')
   const { data: tasks } = useEntities('task')
+  const pool = useStepPool()
   const { data: meetings } = useEntities('meeting')
   const { data: followUps } = useEntities('followUp')
   const remove = useAction<string, void>((s, userId, id) => s.cases.remove(userId, id), { success: 'Case deleted' })
@@ -146,7 +146,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
             ) : (
               <ol className="relative grid gap-4 pl-6 before:absolute before:top-2 before:bottom-2 before:left-[7px] before:w-px before:bg-border">
                 {[...list].reverse().map((h) => (
-                  <HearingItem key={h.id} hearing={h} caseId={c.id} cases={allCases} next={hearings.find((x) => x.id === h.nextHearingId)} tasks={tasks} plans={plans.filter((x) => coversHearing(x, h.id))} today={today} onRecord={() => setRecording(h)} onEdit={() => editor.open({ kind: 'hearing', value: h })} />
+                  <HearingItem key={h.id} hearing={h} caseId={c.id} cases={allCases} next={hearings.find((x) => x.id === h.nextHearingId)} plans={plans.filter((x) => coversHearing(x, h.id))} today={today} onRecord={() => setRecording(h)} onEdit={() => editor.open({ kind: 'hearing', value: h })} />
                 ))}
               </ol>
             )}
@@ -172,7 +172,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
           >
             {casePlans.length === 0 && <p className="p-2 text-sm text-muted-foreground">Plans are created when you record a hearing, or start one here.</p>}
             {casePlans.map((p) => {
-              const prog = planProgress(p.id, tasks)
+              const prog = planProgress(p.id, pool)
               return (
                 <div key={p.id} className={cn('rounded-xl border p-2', p.status !== 'active' && 'opacity-70')}>
                   <div className="flex items-start justify-between gap-2 px-1.5 pt-1">
@@ -246,7 +246,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
   )
 }
 
-function HearingItem({ hearing: h, caseId, cases, next, tasks, plans, today, onRecord, onEdit }: { hearing: Hearing; caseId: string; cases: LegalCase[]; next?: Hearing; tasks: Task[]; plans: ActionPlan[]; today: string; onRecord: () => void; onEdit: () => void }) {
+function HearingItem({ hearing: h, caseId, cases, next, plans, today, onRecord, onEdit }: { hearing: Hearing; caseId: string; cases: LegalCase[]; next?: Hearing; plans: ActionPlan[]; today: string; onRecord: () => void; onEdit: () => void }) {
   const [showFiles, setShowFiles] = useState(false)
   const fileCount = useAttachments({ kind: 'hearing', id: h.id }).length
   const past = instantKey(h.date) < instantKey(today)
@@ -300,7 +300,7 @@ function HearingItem({ hearing: h, caseId, cases, next, tasks, plans, today, onR
             <span>· one record for all</span>
           </div>
         )}
-        <HearingRecordDetails hearing={h} next={next} tasks={tasks} today={today} />
+        <HearingRecordDetails hearing={h} next={next} today={today} />
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           {plans.length > 0 && <span>Plan for this hearing:</span>}
           {plans.map((x) => (

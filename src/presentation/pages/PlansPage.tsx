@@ -14,7 +14,7 @@ import { EmptyState, PageHeader, Section } from '@/presentation/components/layou
 import { ProgressBar } from '@/presentation/components/progress'
 import { RefChip } from '@/presentation/components/RefChip'
 import { WS_STYLE, WorkspaceBadge } from '@/presentation/components/workspace'
-import { useEntities, useToday } from '@/presentation/data/hooks'
+import { useEntities, useStepPool, useToday } from '@/presentation/data/hooks'
 import { PlanCoverageChips } from '@/presentation/plans/PlanScopeEditor'
 import { stagger } from '@/presentation/motion/presets'
 
@@ -23,7 +23,7 @@ export function PlansPage() {
   const { open } = useEditor()
   const { matches } = useWorkspaceFilter()
   const { data: plans } = useEntities('plan')
-  const { data: tasks } = useEntities('task')
+  const pool = useStepPool()
   const { data: goals } = useEntities('goal')
   const [status, setStatus] = useState<PlanStatus | 'all'>('active')
 
@@ -31,9 +31,9 @@ export function PlansPage() {
     () =>
       plans
         .filter((p) => matches(p.workspace) && (status === 'all' || p.status === status))
-        .map((p) => ({ p, prog: planProgress(p.id, tasks), goals: goals.filter((g) => g.planIds.includes(p.id)) }))
+        .map((p) => ({ p, prog: planProgress(p.id, pool), goals: goals.filter((g) => g.planIds.includes(p.id)) }))
         .sort((a, b) => (a.p.dueDate ?? '9999').localeCompare(b.p.dueDate ?? '9999')),
-    [plans, tasks, goals, matches, status],
+    [plans, pool, goals, matches, status],
   )
 
   return (
