@@ -1,4 +1,4 @@
-import { Briefcase, CalendarClock, CheckSquare, Gavel, ListChecks, PhoneCall, Scale, Target, Users } from 'lucide-react'
+import { Briefcase, Building2, CalendarClock, CheckSquare, FolderKanban, Gavel, ListChecks, PhoneCall, Scale, Target, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { AgendaEntry } from '@/domain/agenda/agenda'
 import type { MeetingKind } from '@/domain/meetings/Meeting'
@@ -13,6 +13,8 @@ export const KIND_META: Record<EntityKind, { label: string; plural: string; icon
   plan: { label: 'Action plan', plural: 'Action plans', icon: ListChecks, path: '/plans' },
   goal: { label: 'Goal', plural: 'Goals', icon: Target, path: '/goals' },
   counsel: { label: 'Counsel', plural: 'Counsel', icon: Briefcase, path: '/counsel' },
+  client: { label: 'Client', plural: 'Clients', icon: Building2, path: '/clients' },
+  project: { label: 'Project', plural: 'Projects', icon: FolderKanban, path: '/projects' },
 }
 
 export const MEETING_KIND_ICON: Record<MeetingKind, LucideIcon> = { appointment: CalendarClock, meeting: Users }

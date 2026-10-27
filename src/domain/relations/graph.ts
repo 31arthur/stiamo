@@ -1,8 +1,10 @@
 import type { Hearing, LegalCase } from '../cases/LegalCase'
 import type { FollowUp } from '../followups/FollowUp'
+import type { Client, Project } from '../clients/Client'
 import type { Counsel } from '../counsel/Counsel'
 import type { Goal } from '../goals/Goal'
 import type { Meeting } from '../meetings/Meeting'
+import { planCaseIds, planHearingIds } from '../plans/ActionPlan'
 import type { ActionPlan } from '../plans/ActionPlan'
 import type { EntityKind, EntityRef, ID } from '../shared/types'
 import type { Task } from '../tasks/Task'
@@ -19,6 +21,7 @@ export type RelationKind =
   | 'prep' // meeting → preparation plan
   | 'goal' // goal → plan it's served by
   | 'counsel' // counsel → case they're briefed on
+  | 'project' // client → project
   | 'linked'
 
 export const RELATION_LABELS: Record<RelationKind, string> = {
@@ -31,6 +34,7 @@ export const RELATION_LABELS: Record<RelationKind, string> = {
   prep: 'Preparation',
   goal: 'Serves goal',
   counsel: 'Engaged counsel',
+  project: 'Project',
   linked: 'Linked',
 }
 
@@ -51,8 +55,13 @@ export interface GraphSources {
   plans: ActionPlan[]
   goals: Goal[]
   counsel: Counsel[]
+  clients: Client[]
+  projects: Project[]
   links: Link[]
 }
+
+/** Records that other records are "about": a case, a client, a project. */
+const ABOUT_KINDS = new Set<EntityKind>(['case', 'client', 'project'])
 
 export const refKey = (r: EntityRef) => `${r.kind}:${r.id}`
 
@@ -96,16 +105,18 @@ export class RelationGraph {
     reg('plan', src.plans)
     reg('goal', src.goals)
     reg('counsel', src.counsel)
+    reg('client', src.clients)
+    reg('project', src.projects)
 
     const ref = (kind: EntityKind, id: ID): EntityRef => ({ kind, id })
     for (const t of src.tasks) {
       if (t.planId) this.add({ parent: ref('plan', t.planId), child: ref('task', t.id), kind: 'step' })
       // A step's plan is its parent; its `related` (the plan's origin) would only duplicate the path.
       if (t.related && !t.planId) {
-        this.add({ parent: t.related, child: ref('task', t.id), kind: t.related.kind === 'case' ? 'about' : 'spawned' })
+        this.add({ parent: t.related, child: ref('task', t.id), kind: ABOUT_KINDS.has(t.related.kind) ? 'about' : 'spawned' })
       }
     }
-    for (const f of src.followUps) if (f.subject) this.add({ parent: f.subject, child: ref('followUp', f.id), kind: f.subject.kind === 'case' || f.subject.kind === 'meeting' ? 'about' : 'spawned' })
+    for (const f of src.followUps) if (f.subject) this.add({ parent: f.subject, child: ref('followUp', f.id), kind: ABOUT_KINDS.has(f.subject.kind) || f.subject.kind === 'meeting' ? 'about' : 'spawned' })
     for (const m of src.meetings) {
       if (m.related) this.add({ parent: m.related, child: ref('meeting', m.id), kind: 'about' })
       if (m.prepPlanId) this.add({ parent: ref('meeting', m.id), child: ref('plan', m.prepPlanId), kind: 'prep' })
@@ -120,11 +131,20 @@ export class RelationGraph {
         this.add({ parent: origin, child: ref('plan', p.id), kind: 'plan' })
       }
       // The narrowest scope is the parent: a hearing sits under its case, a task is its own thing.
-      if (p.hearingId) this.add({ parent: ref('hearing', p.hearingId), child: ref('plan', p.id), kind: 'plan' })
-      else if (p.caseId && !(origin?.kind === 'case' && origin.id === p.caseId) && !p.taskId) this.add({ parent: ref('case', p.caseId), child: ref('plan', p.id), kind: 'plan' })
+      // A plan shared by several hearings or cases hangs under each of them.
+      const hearingIds = planHearingIds(p)
+      for (const hid of hearingIds) this.add({ parent: ref('hearing', hid), child: ref('plan', p.id), kind: 'plan' })
+      if (!p.taskId) {
+        // Cases already reached through one of the plan's hearings don't need a second path.
+        const viaHearing = new Set(src.hearings.filter((h) => hearingIds.includes(h.id)).map((h) => h.caseId))
+        for (const cid of planCaseIds(p)) {
+          if (!viaHearing.has(cid) && !(origin?.kind === 'case' && origin.id === cid)) this.add({ parent: ref('case', cid), child: ref('plan', p.id), kind: 'plan' })
+        }
+      }
       if (p.taskId) this.add({ parent: ref('task', p.taskId), child: ref('plan', p.id), kind: 'plan' })
     }
     for (const c of src.cases) if (c.engagement) this.add({ parent: ref('counsel', c.engagement.counselId), child: ref('case', c.id), kind: 'counsel' })
+    for (const pr of src.projects) this.add({ parent: ref('client', pr.clientId), child: ref('project', pr.id), kind: 'project' })
     for (const g of src.goals) for (const pid of g.planIds) this.add({ parent: ref('goal', g.id), child: ref('plan', pid), kind: 'goal' })
     for (const l of src.links) {
       const edge: Edge = { parent: l.a, child: l.b, kind: 'linked', linkId: l.id }

@@ -2,7 +2,9 @@ import { CASE_TYPES, caseTypeOf } from '../cases/LegalCase'
 import type { Hearing, LegalCase } from '../cases/LegalCase'
 import { counselLabel } from '../counsel/Counsel'
 import type { Counsel } from '../counsel/Counsel'
-import { PLAN_SCOPE_LABELS, planScope } from '../plans/ActionPlan'
+import { CLIENT_KIND_LABELS, CLIENT_STATUS_LABELS, PROJECT_STATUS_LABELS } from '../clients/Client'
+import type { Client, Project } from '../clients/Client'
+import { PLAN_SCOPE_LABELS, planCaseIds, planHearingIds, planScope } from '../plans/ActionPlan'
 import type { PlanScope } from '../plans/ActionPlan'
 import type { FollowUp } from '../followups/FollowUp'
 import type { Goal } from '../goals/Goal'
@@ -15,7 +17,7 @@ import type { EntityKind, EntityRef, Minutes } from '../shared/types'
 import type { Task } from '../tasks/Task'
 import type { ActivityAction, FieldChange } from './Activity'
 
-type Records = { task: Task; meeting: Meeting; followUp: FollowUp; case: LegalCase; hearing: Hearing; plan: ActionPlan; goal: Goal; counsel: Counsel }
+type Records = { task: Task; meeting: Meeting; followUp: FollowUp; case: LegalCase; hearing: Hearing; plan: ActionPlan; goal: Goal; counsel: Counsel; client: Client; project: Project }
 
 export const KIND_LABEL: Record<EntityKind, string> = {
   task: 'Task',
@@ -26,6 +28,8 @@ export const KIND_LABEL: Record<EntityKind, string> = {
   plan: 'Action plan',
   goal: 'Goal',
   counsel: 'Counsel',
+  client: 'Client',
+  project: 'Project',
 }
 
 export function titleOf<K extends EntityKind>(kind: K, e: Records[K]): string {
@@ -38,6 +42,8 @@ export function titleOf<K extends EntityKind>(kind: K, e: Records[K]): string {
       return `Hearing: ${(e as Hearing).purpose}`
     case 'counsel':
       return counselLabel(e as Counsel)
+    case 'client':
+      return (e as Client).name
     default:
       return (e as { title: string }).title
   }
@@ -58,8 +64,11 @@ export function parentOf<K extends EntityKind>(kind: K, e: Records[K]): EntityRe
       return { kind: 'case', id: (e as Hearing).caseId }
     case 'plan': {
       const p = e as ActionPlan
-      return p.origin ?? (p.caseId ? { kind: 'case', id: p.caseId } : undefined)
+      const firstCase = planCaseIds(p)[0]
+      return p.origin ?? (firstCase ? { kind: 'case', id: firstCase } : undefined)
     }
+    case 'project':
+      return { kind: 'client', id: (e as Project).clientId }
     default:
       return undefined
   }
@@ -154,6 +163,8 @@ export function diff<K extends EntityKind>(kind: K, before: Records[K], after: R
       add('Due', x.dueDate, y.dueDate)
       add('Objective', x.objective, y.objective, text)
       add('Scope', planScope(x), planScope(y), (v: PlanScope) => PLAN_SCOPE_LABELS[v])
+      add('Cases', planCaseIds(x).length, planCaseIds(y).length)
+      add('Hearings', planHearingIds(x).length, planHearingIds(y).length)
       break
     }
     case 'counsel': {
@@ -163,6 +174,24 @@ export function diff<K extends EntityKind>(kind: K, before: Records[K], after: R
       add('Email', x.email, y.email)
       add('Pro bono', x.proBono, y.proBono, (v: boolean) => (v ? 'yes' : 'no'))
       add('Notes', x.notes, y.notes, text)
+      break
+    }
+    case 'client': {
+      const [x, y] = [before as Client, after as Client]
+      add('Status', x.status, y.status, (v: Client['status']) => CLIENT_STATUS_LABELS[v])
+      add('Kind', x.kind, y.kind, (v: Client['kind']) => CLIENT_KIND_LABELS[v])
+      add('Contact', x.contactName, y.contactName)
+      add('Phone', x.phone, y.phone)
+      add('Email', x.email, y.email)
+      add('Notes', x.notes, y.notes, text)
+      break
+    }
+    case 'project': {
+      const [x, y] = [before as Project, after as Project]
+      add('Status', x.status, y.status, (v: Project['status']) => PROJECT_STATUS_LABELS[v])
+      add('Start', x.startDate, y.startDate)
+      add('Due', x.dueDate, y.dueDate)
+      add('Description', x.description, y.description, text)
       break
     }
     case 'goal': {

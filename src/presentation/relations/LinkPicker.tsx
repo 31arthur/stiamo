@@ -6,7 +6,7 @@ import type { RecordInfo } from '@/presentation/components/records'
 import { useRecordLookup } from '@/presentation/components/records'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 
-const ORDER: EntityKind[] = ['case', 'counsel', 'meeting', 'hearing', 'plan', 'goal', 'task', 'followUp']
+const ORDER: EntityKind[] = ['case', 'client', 'project', 'counsel', 'meeting', 'hearing', 'plan', 'goal', 'task', 'followUp']
 
 /** Search every record and pick one to link to `from`. */
 export function LinkPicker({ open, onOpenChange, from, exclude, onPick }: { open: boolean; onOpenChange: (o: boolean) => void; from: EntityRef; exclude: EntityRef[]; onPick: (target: RecordInfo) => void }) {
@@ -20,7 +20,7 @@ export function LinkPicker({ open, onOpenChange, from, exclude, onPick }: { open
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange} title="Link a record" className="sm:max-w-xl">
       <Command>
-        <CommandInput placeholder="Search cases, meetings, hearings, plans, goals, tasks…" />
+        <CommandInput placeholder="Search cases, clients, projects, meetings, hearings, plans, goals, tasks…" />
         <CommandList className="max-h-[60vh]">
           <CommandEmpty>Nothing matches.</CommandEmpty>
           {groups.map((g) => (

@@ -1,8 +1,9 @@
 import { lazy, Suspense, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { motion } from 'motion/react'
-import { Calendar, CircleDot, Crosshair, Gauge, Layers, ListChecks, Loader2, Target, Waypoints } from 'lucide-react'
+import { Calendar, CircleDot, Copy, Crosshair, Gauge, Layers, ListChecks, Loader2, Target, Waypoints } from 'lucide-react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PLAN_STATUS_LABELS, planProgress } from '@/domain/plans/ActionPlan'
 import type { ActionPlan, PlanStatus } from '@/domain/plans/ActionPlan'
@@ -56,6 +57,7 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
   const save = useSave('plan')
   const remove = useAction<ID, void>((s, userId, id) => s.plans.remove(userId, id), { success: 'Plan deleted — its steps were kept as tasks' })
   const toggleGoal = useAction<{ goalId: ID; linked: boolean }, void>((s, userId, a) => (a.linked ? s.plans.unlink(userId, p.id, a.goalId) : s.plans.link(userId, p.id, a.goalId)))
+  const duplicate = useAction<ID, ActionPlan>((s, userId, id) => s.plans.duplicate(userId, id), { success: 'Copied — link it to a hearing or case' })
   const editedThisSession = useRef(false)
   const saveDoc = useAction<RichDoc, void>((s, userId, doc) => {
     const first = !editedThisSession.current
@@ -75,6 +77,17 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
         <BackButton fallback="/plans" />
         <div className="flex items-center gap-2">
           <SaveStatus pending={save.pending || saveDoc.pending || toggleGoal.pending} />
+          <Button
+            variant="outline"
+            size="sm"
+            title="Same page and steps, but its own progress — for when another hearing or case needs the same approach separately"
+            onClick={async () => {
+              const copy = await duplicate.run(p.id)
+              navigate(`/plans/${copy.id}`, { state: { fresh: true } })
+            }}
+          >
+            <Copy /> Make a copy
+          </Button>
           <ConfirmDelete
           what={p.title}
           onConfirm={async () => {
@@ -112,7 +125,7 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
             {p.dueDate && <span className={cn('text-xs', overdue ? 'text-destructive' : 'text-muted-foreground')}>{overdue ? 'Overdue' : friendlyDate(p.dueDate, today)}</span>}
           </div>
         </Property>
-        <Property icon={Crosshair} label="Covers">
+        <Property icon={Crosshair} label="Applies to">
           <PlanScopeEditor plan={p} />
         </Property>
         <Property icon={Layers} label="Workspace">
@@ -126,11 +139,10 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
             </span>
           </div>
         </Property>
-        {(p.origin || p.caseId) && (
+        {p.origin && (
           <Property icon={Waypoints} label="From">
             <div className="flex flex-wrap gap-1.5">
-              {p.origin && <RefChip refTo={p.origin} />}
-              {p.caseId && p.origin?.kind !== 'case' && <RefChip refTo={{ kind: 'case', id: p.caseId }} />}
+              <RefChip refTo={p.origin} />
             </div>
           </Property>
         )}

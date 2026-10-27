@@ -56,6 +56,12 @@ Overdue, Today, Upcoming and Recently logged. Follow-up wording for outcomes (Re
 
 A directory of the outside **advocates and law firms** you know, with filters (advocates / firms / pro bono) and search. Each profile has contact buttons, the courts they appear before, what they're good for, notes, **every case they're briefed on with the terms** (fee or pro bono, scope, date), documents and a thread. On a case, **Handled by** shows "us" or the counsel with the terms; *Brief counsel* / *Change brief* / *Take it back* manage it, and the case list shows who is on each case.
 
+## Clients & projects (`/clients`, `/clients/:id`, `/projects/:id`) — FSA
+
+**Clients** (a company or an individual, with a contact person, phone, email, status prospect / active / past) and the **projects** done for them (planned, in progress, on hold, completed, cancelled; start and due dates). The list has a Clients / Projects toggle, search, and shows each client's projects and next meeting.
+
+A client's page gathers everything: its projects, the **meetings and appointments** with them (coming up, then earlier) with a *Schedule* button, the **tasks**, documents and a thread. A project's page is the same for that one piece of work, with a status switch. Scheduling from there files the meeting under FSA and ties it to the client or project (and fills in who it's with). Any meeting or task in the FSA workspace also has a *Client / project* field in its form.
+
 ## Action plans (`/plans`, `/plans/:id`)
 
 Cards with progress, due date, origin, case and linked goals. Detail: reorderable steps with outcomes, outcome breakdown, the further actions noted on steps, and one-click linking to any number of goals.
@@ -77,7 +83,21 @@ Email/password accounts (create account, sign in, reset password) backed by Supa
 
 ## Documents
 
-Attach files to tasks, follow-ups, meetings, cases, each hearing, plans and goals — drop, paste or browse (25 MB each). Preview images (zoom), PDFs, video, audio and text in place with arrow-key navigation; other files open or download. A paperclip count shows on rows.
+Attach to tasks, follow-ups, meetings, appointments, cases, each hearing, plans, goals, counsel, clients and projects — **upload** (drop, paste or browse, 25 MB each) or **link** a Google Doc, Sheet, Slides, Drive file or folder, or any web address (*Add link*, or paste a Google address onto the panel). A paperclip count shows on rows.
+
+Every document opens in the same previewer, with arrow-key navigation across the record's files:
+
+| What | How it shows |
+| --- | --- |
+| Google Docs / Sheets / Slides / Drive files and folders | framed in place from Google. They show for anyone Google would let open them: shared "anyone with the link", or with the Google account that's signed in. If the frame is blank or asks to sign in, the file isn't shared with you yet — *Open* goes to Google. |
+| Images | in place, click to zoom |
+| PDF | in the browser's viewer |
+| Word `.docx` | read in the browser and shown as a document (scripts blocked) |
+| Excel `.xlsx`, CSV / TSV | as tables, one tab per sheet (first 1,000 rows) |
+| Video, audio, text | in place |
+| PowerPoint, old `.doc` / `.xls`, anything else | open or download. For a stored file there is an opt-in *Preview with Microsoft Office online*, which sends them a temporary link — nothing is sent unless you choose it. |
+
+A linked document stores only the address; nothing is uploaded.
 
 ## Plan pages
 
@@ -85,7 +105,11 @@ Attach files to tasks, follow-ups, meetings, cases, each hearing, plans and goal
 
 **Working a plan out.** Plans are written the way you'd think on paper. Type `??` and a space (or `/` → Question) to ask a question; press Enter to answer it; Enter again adds another line of the answer; Enter on an empty answer starts the next question. A question marks itself **Answered** once it has an answer beneath it, or you can **park** it for later. Type `!!` (or `/` → Insight) to mark an insight once something is concrete. A **Working it out** panel beside the page (above it on a phone) counts answered questions, lists what's still open (click to jump to it) and gathers all the insights, each with *Add as a step*.
 
-**What a plan covers.** The *Covers* row sets a plan to **General**, a **whole case**, **one hearing** or **one task**, and any number of steps (tasks) can hang off it either way. A plan made when you write up a hearing is for the next hearing and shows under that hearing on the case page; a plan for a task appears in that task's thread.
+**What a plan applies to.** The *Applies to* row lists what the plan covers, and one plan can cover **several cases and several hearings** — the same approach reused across a batch of matters, or across the dates of one case. It stays *one* page with *one* set of steps, shared by all of them; hearings sit under their case, a case with no hearings listed is covered as a whole, and a plan about a single task is exclusive of cases and hearings. *Add* picks from hearings, cases and tasks; each chip has a ×.
+
+From the other side, a case's **Action plans** has *Reuse* and each open hearing has *Use a plan for this hearing*: pick an existing plan and it now covers that too (plans already on the case are offered first). When each hearing needs its own progress instead, **Make a copy** on the plan page duplicates the page and steps (all reset to open), covering nothing until you link it.
+
+A plan made when you write up a hearing is for the next hearing and shows under that hearing; a plan for a task appears in that task's thread.
 
 **Back.** Every detail page has a Back button that returns to where you came from, falling back to its list if you opened it directly.
 

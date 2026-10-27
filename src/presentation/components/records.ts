@@ -29,6 +29,8 @@ export function useRecordLookup() {
   const plans = useEntities('plan').data
   const goals = useEntities('goal').data
   const counsel = useEntities('counsel').data
+  const clients = useEntities('client').data
+  const projects = useEntities('project').data
 
   const index = useMemo(() => {
     const map = new Map<string, RecordInfo>()
@@ -46,8 +48,10 @@ export function useRecordLookup() {
     for (const p of plans) put({ ...base('plan', p.id), title: p.title, workspace: p.workspace, subtitle: p.dueDate })
     for (const g of goals) put({ ...base('goal', g.id), title: g.title, workspace: g.workspace })
     for (const c of counsel) put({ ...base('counsel', c.id), title: counselLabel(c), kindLabel: c.kind === 'firm' ? 'Law firm' : 'Advocate', workspace: 'sb', subtitle: c.city })
+    for (const c of clients) put({ ...base('client', c.id), title: c.name, workspace: 'fsa', subtitle: c.contactName })
+    for (const p of projects) put({ ...base('project', p.id), title: p.title, workspace: 'fsa', subtitle: clients.find((c) => c.id === p.clientId)?.name })
     return map
-  }, [tasks, meetings, followUps, cases, hearings, plans, goals, counsel])
+  }, [tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients, projects])
 
   const lookup = useCallback((ref: EntityRef | undefined) => (ref ? index.get(`${ref.kind}:${ref.id}`) : undefined), [index])
   return { lookup, all: index }

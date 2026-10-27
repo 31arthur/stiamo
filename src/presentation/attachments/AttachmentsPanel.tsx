@@ -1,19 +1,22 @@
 import { useRef, useState } from 'react'
-import type { ClipboardEvent, DragEvent } from 'react'
+import type { ClipboardEvent, DragEvent, FormEvent } from 'react'
 import { format, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { Paperclip, Trash2, UploadCloud } from 'lucide-react'
+import { Link2, Paperclip, Trash2, UploadCloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { categorize } from '@/domain/attachments/Attachment'
+import { categoryOf, describeLink, PROVIDER_LABELS } from '@/domain/attachments/Attachment'
 import type { Attachment } from '@/domain/attachments/Attachment'
 import type { EntityRef } from '@/domain/shared/types'
 import { useServices } from '@/presentation/app/services'
 import { useRecordLookup } from '@/presentation/components/records'
 import { useAction, useUserId } from '@/presentation/data/hooks'
 import { spring } from '@/presentation/motion/presets'
-import { FileIcon } from './FileIcon'
+import { Field } from '@/presentation/components/form'
+import { FileIcon, LinkTile } from './FileIcon'
 import { FilePreview } from './FilePreview'
 import { formatBytes, useAttachments, useFileUrl } from './useAttachments'
 
@@ -33,6 +36,7 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
   const input = useRef<HTMLInputElement>(null)
   const [uploads, setUploads] = useState<Upload[]>([])
   const [dragging, setDragging] = useState(false)
+  const [linking, setLinking] = useState(false)
   const [preview, setPreview] = useState<number | null>(null)
   const remove = useAction<Attachment, void>((s, uid, a) => s.attachments.remove(uid, a, ownerTitle), { success: 'File removed' })
 
@@ -55,10 +59,19 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
     setDragging(false)
     if (e.dataTransfer.files.length) upload(e.dataTransfer.files)
   }
+  const attachLink = useAction<{ address: string; name?: string }, unknown>((s, uid, l) => s.attachments.attachLink(uid, owner, ownerTitle, l.address, l.name), { success: 'Link added' })
   const onPaste = (e: ClipboardEvent) => {
     if (e.clipboardData.files.length) {
       e.preventDefault()
-      upload(e.clipboardData.files)
+      return void upload(e.clipboardData.files)
+    }
+    // Pasting a Google Docs address (outside a text field) attaches it, ready to preview.
+    const target = e.target as HTMLElement
+    if (target.closest('input, textarea, [contenteditable]')) return
+    const text = e.clipboardData.getData('text/plain').trim()
+    if (/^https:\/\/(docs|drive)\.google\.com\//.test(text) && describeLink(text)) {
+      e.preventDefault()
+      void attachLink.run({ address: text })
     }
   }
 
@@ -76,6 +89,7 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
       <input ref={input} type="file" multiple hidden onChange={(e) => e.target.files && upload(e.target.files).then(() => (e.target.value = ''))} />
 
       {files.length === 0 && uploads.length === 0 ? (
+        <div className="grid gap-2">
         <button
           type="button"
           onClick={() => input.current?.click()}
@@ -85,15 +99,24 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
           <span className="font-medium">Drop files, paste, or browse</span>
           <span className="text-xs">PDFs, images, documents, recordings — up to 25 MB each</span>
         </button>
+        <Button variant="ghost" size="sm" className="justify-self-center text-muted-foreground" onClick={() => setLinking(true)}>
+          <Link2 /> Or link a Google Doc, Sheet or web page
+        </Button>
+        </div>
       ) : (
         <>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Paperclip className="size-3.5" /> {files.length} file{files.length === 1 ? '' : 's'}
             </span>
-            <Button variant="ghost" size="xs" onClick={() => input.current?.click()}>
-              <UploadCloud /> Add files
-            </Button>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="xs" onClick={() => setLinking(true)}>
+                <Link2 /> Add link
+              </Button>
+              <Button variant="ghost" size="xs" onClick={() => input.current?.click()}>
+                <UploadCloud /> Add files
+              </Button>
+            </div>
           </div>
           <ul className={cn('grid gap-2', compact ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4')}>
             <AnimatePresence initial={false}>
@@ -122,12 +145,73 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
       </AnimatePresence>
 
       <FilePreview files={files} index={preview} onIndexChange={setPreview} onClose={() => setPreview(null)} />
+      <LinkDialog open={linking} onClose={() => setLinking(false)} onAdd={async (address, name) => void (await attachLink.run({ address, name }))} />
     </div>
   )
 }
 
+/** Paste an address (a Google Doc, Sheet, Slides, Drive file or any web page) and keep it with the record. */
+function LinkDialog({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (address: string, name?: string) => Promise<void> }) {
+  const [address, setAddress] = useState('')
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const link = describeLink(address)
+  const invalid = address.trim() !== '' && !link
+
+  function close() {
+    onClose()
+    setAddress('')
+    setName('')
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!link) return
+    setBusy(true)
+    try {
+      await onAdd(address, name)
+      close()
+    } catch {
+      // The action already showed what went wrong.
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display text-3xl font-normal tracking-tight">Link a document</DialogTitle>
+          <DialogDescription>Google Docs, Sheets, Slides and Drive files open right here. Anything else opens in a new tab.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <Field label="Address" htmlFor="link-url" hint={link ? PROVIDER_LABELS[link.provider] + (link.embedUrl ? ' · can be viewed here' : '') : undefined}>
+            <Input id="link-url" autoFocus value={address} onChange={(e) => setAddress(e.target.value)} placeholder="https://docs.google.com/document/d/…" inputMode="url" aria-invalid={invalid} />
+          </Field>
+          {invalid && <p className="-mt-2 text-xs text-destructive">That doesn’t look like a web address — it should start with https://</p>}
+          <Field label="Name" htmlFor="link-name" hint="Optional — shown on the card">
+            <Input id="link-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Statement of work" />
+          </Field>
+          {link?.embedUrl && link.provider.startsWith('google') && (
+            <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">For others to see it here, the file must be shared with their Google account, or set to “Anyone with the link”.</p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={close}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!link || busy}>
+              Add link
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function FileCard({ file, onOpen, onRemove }: { file: Attachment; onOpen: () => void; onRemove: () => void }) {
-  const category = categorize(file.mime, file.name)
+  const category = categoryOf(file)
   const { data: url } = useFileUrl(category === 'image' ? file : undefined)
   const [confirming, setConfirming] = useState(false)
   return (
@@ -136,6 +220,8 @@ function FileCard({ file, onOpen, onRemove }: { file: Attachment; onOpen: () => 
         <div className="aspect-[4/3] overflow-hidden bg-muted/50">
           {url ? (
             <img src={url} alt="" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          ) : file.link ? (
+            <LinkTile provider={file.link.provider} className="size-full" />
           ) : (
             <FileIcon category={category} name={file.name} className="size-full" />
           )}
@@ -143,7 +229,7 @@ function FileCard({ file, onOpen, onRemove }: { file: Attachment; onOpen: () => 
         <div className="p-2">
           <div className="truncate text-xs font-medium">{file.name}</div>
           <div className="text-[10px] text-muted-foreground">
-            {formatBytes(file.size)} · {format(parseISO(file.createdAt), 'd MMM')}
+            {file.link ? PROVIDER_LABELS[file.link.provider] : formatBytes(file.size)} · {format(parseISO(file.createdAt), 'd MMM')}
           </div>
         </div>
       </button>

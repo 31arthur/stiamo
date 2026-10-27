@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { CASE_STATUS_LABELS, CASE_TYPES, caseTypeOf, hearingsOf, nextHearing } from '@/domain/cases/LegalCase'
 import type { CaseStatus } from '@/domain/cases/LegalCase'
 import { counselLabel } from '@/domain/counsel/Counsel'
-import { planProgress } from '@/domain/plans/ActionPlan'
+import { coversCase, planProgress } from '@/domain/plans/ActionPlan'
 import { formatClock } from '@/domain/shared/time'
 import { useEditor } from '@/presentation/app/create'
 import { friendlyDate, relativeDays } from '@/presentation/components/dates'
@@ -46,7 +46,7 @@ export function CasesPage() {
           const next = nextHearing(c.id, hearings, today)
           const last = [...list].reverse().find((h) => h.date < today)
           const unrecorded = list.filter((h) => h.date < today && h.outcome.status === 'open')
-          const casePlans = plans.filter((p) => p.caseId === c.id && p.status === 'active')
+          const casePlans = plans.filter((p) => coversCase(p, c.id) && p.status === 'active')
           const prog = casePlans.map((p) => planProgress(p.id, tasks))
           const openSteps = prog.reduce((s, p) => s + (p.total - p.closed), 0)
           const totalSteps = prog.reduce((s, p) => s + p.total, 0)

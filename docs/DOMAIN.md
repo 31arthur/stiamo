@@ -102,9 +102,14 @@ Past hearings without an outcome are flagged everywhere until written up.
 ### Action plan
 An objective with ordered **steps** (tasks). Plans record their **origin** (hearing, meeting, case or goal), may belong to a case, and can contribute to **several goals**. Deleting a plan keeps its steps as standalone tasks.
 
-A plan's **scope** says what it covers: *general*, a **whole case** (`caseId`), **one hearing** (`hearingId`, which also sets the case) or **one task** (`taskId`). `PlanUseCases.setScope` moves between them and clears what no longer applies; the plan sits under its narrowest scope in the thread. The plan created when a hearing is written up is scoped to the *next* hearing.
+A plan's **coverage** says what it applies to. `caseIds` and `hearingIds` are lists: one plan can serve several cases and several hearings, as one page with one set of steps. The scope is derived — *general* (nothing), *case-wide* (cases, no hearings), *specific hearings*, or *one task* (`taskId`, exclusive of the others). `PlanUseCases.cover` adds a case, hearing (which brings its case) or task and `uncover` removes one (dropping a case drops its hearings; dropping a hearing keeps the case). In the thread the plan hangs under each of its hearings and under cases not reached through a hearing. `duplicate` makes an independent copy (same page and steps, all open, covering nothing). Deleting a case only detaches that case from shared plans.
+
+Plans saved before this carried single `caseId` / `hearingId`; `planCaseIds` / `planHearingIds` read both and `normalizePlan` rewrites them into the lists on save. The plan created when a hearing is written up covers the *next* hearing.
 
 A plan's page is written as questions, answers and insights (`question`, `answer` and `insight` blocks). `digestOf` reads them back: a question is **answered** once an answer with text follows it, **parked** if set aside, otherwise **open**; insights can each become a step.
+
+### Client & project (FSA)
+A **client** (`kind` company or individual, contact, status) and its **projects** (`clientId`, status, dates). They are tied to work through the existing `related` pointer: a meeting, appointment or task whose `related` is a client or a project belongs to it. `clientRefKeys` / `meetingsFor` / `tasksFor` gather a client's work (the client itself plus all its projects); `clientOf` finds the client behind a reference. In the thread a project sits under its client and work sits under its project or client. Deleting a client (`ClientUseCases.remove`) deletes its projects; meetings and tasks stay, untied.
 
 ### Goal
 The long view. A goal has a horizon, a start and target date, **key results** (from → target, current), **linked action plans** and periodic **check-ins** (confidence 1–5 + note).

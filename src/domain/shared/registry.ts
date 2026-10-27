@@ -8,6 +8,7 @@ import type { Activity } from '../activity/Activity'
 import type { Link } from '../relations/Link'
 import type { Counsel } from '../counsel/Counsel'
 import type { Attachment } from '../attachments/Attachment'
+import type { Client, Project } from '../clients/Client'
 import type { Clock, IdGenerator, Repository } from './Repository'
 import type { EntityKind } from './types'
 
@@ -20,6 +21,8 @@ export interface EntityMap {
   plan: ActionPlan
   goal: Goal
   counsel: Counsel
+  client: Client
+  project: Project
   link: Link
   activity: Activity
   attachment: Attachment
