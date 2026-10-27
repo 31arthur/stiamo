@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import type { EntityRef } from '@/domain/shared/types'
+import { hearingCaseIds } from '@/domain/cases/LegalCase'
 import { counselLabel } from '@/domain/counsel/Counsel'
 import { useEditor } from '@/presentation/app/create'
 import { useEntities } from '@/presentation/data/hooks'
@@ -37,8 +38,8 @@ export function useRefInfo(ref: EntityRef | undefined) {
       }
       case 'hearing': {
         const h = find(hearings)
-        const c = h && cases.find((x) => x.id === h.caseId)
-        return h ? label(KIND_META.hearing.icon, 'Hearing', `${c?.reference ?? ''} · ${h.purpose}`) : null
+        const refs = h ? hearingCaseIds(h).map((id) => cases.find((x) => x.id === id)?.reference).filter(Boolean).join(' + ') : ''
+        return h ? label(KIND_META.hearing.icon, 'Hearing', `${refs} · ${h.purpose}`) : null
       }
       case 'plan':
         return label(KIND_META.plan.icon, 'Plan', find(plans)?.title)

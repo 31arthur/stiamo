@@ -155,6 +155,8 @@ export function diff<K extends EntityKind>(kind: K, before: Records[K], after: R
       add('Date', fmtWhen(x.date, x.time), fmtWhen(y.date, y.time))
       add('Purpose', x.purpose, y.purpose)
       add('Hearing summary', x.summary, y.summary, text)
+      add('Order', x.order, y.order, text)
+      add('Also heard with', (x.alsoCaseIds ?? []).length, (y.alsoCaseIds ?? []).length, (v: number) => (v ? `${v} other case${v === 1 ? '' : 's'}` : 'none'))
       break
     }
     case 'plan': {

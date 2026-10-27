@@ -41,7 +41,8 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       { label: 'Cases', to: '/cases', icon: KIND_META.case.icon },
       { label: 'Case diary', to: '/diary', icon: NotebookPen },
       { label: 'Counsel', to: '/counsel', icon: KIND_META.counsel.icon },
-      { label: 'Clients & projects', to: '/clients', icon: KIND_META.client.icon },
+      { label: 'Clients', to: '/clients', icon: KIND_META.client.icon },
+      { label: 'Projects', to: '/projects', icon: KIND_META.project.icon },
       { label: 'Action plans', to: '/plans', icon: KIND_META.plan.icon },
       { label: 'Goals', to: '/goals', icon: KIND_META.goal.icon },
     ],
@@ -85,7 +86,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               </CommandItem>
             ))}
           </CommandGroup>
-          <CommandGroup heading="Clients & projects">
+          <CommandGroup heading="Clients and projects">
             {clients.map((c) => (
               <CommandItem key={c.id} value={`client ${c.name} ${c.contactName ?? ''}`} onSelect={run(() => navigate(`/clients/${c.id}`))}>
                 <KIND_META.client.icon /> <span className="truncate">{c.name}</span>

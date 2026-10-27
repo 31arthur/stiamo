@@ -70,8 +70,23 @@ export interface LegalCase extends Entity {
   filedOn?: ISODate
 }
 
+/** Something to do as a result of a hearing. It can be turned into a task, which it then follows. */
+export interface HearingAction {
+  id: ID
+  text: string
+  due?: ISODate
+  taskId?: ID
+}
+
+/**
+ * A listing before the court — and, once it has been recorded, the case diary entry for that date.
+ * One record serves every case heard together: `caseId` is the main one and `alsoCaseIds` are the
+ * connected matters taken up with it, so the write-up is made once and shows on each of them.
+ */
 export interface Hearing extends Entity {
   caseId: ID
+  /** Other cases heard together with this one (connected or clubbed matters). */
+  alsoCaseIds?: ID[]
   date: ISODate
   time?: Minutes
   duration: Minutes
@@ -81,6 +96,20 @@ export interface Hearing extends Entity {
   forum?: string
   /** What happened, written after the hearing. */
   summary?: string
+  /** The bench or presiding officer. */
+  bench?: string
+  /** The order passed and directions given, in a few lines. */
+  order?: string
+  /** What was argued by either side. */
+  submissions?: string
+  /** Judgments and provisions cited. */
+  authorities?: string[]
+  /** Witnesses examined or still to be examined; documents exhibited. */
+  evidence?: string
+  /** Your own read: the bench's leaning, what to do differently, what to watch. */
+  reflections?: string
+  /** Work due before the next date. */
+  actions?: HearingAction[]
   /** Done = proceeded as planned; not done = adjourned/not taken up; etc. */
   outcome: Outcome
   /** The hearing scheduled as a result of this one. */
@@ -89,8 +118,11 @@ export interface Hearing extends Entity {
 
 const hearingKey = (h: Hearing) => instantKey(h.date, h.time ?? 0)
 
+/** Every case a hearing concerns, the main one first. */
+export const hearingCaseIds = (h: Pick<Hearing, 'caseId' | 'alsoCaseIds'>): ID[] => [h.caseId, ...(h.alsoCaseIds ?? []).filter((id) => id !== h.caseId)]
+
 export function hearingsOf(caseId: ID, hearings: Hearing[]): Hearing[] {
-  return hearings.filter((h) => h.caseId === caseId).sort((a, b) => hearingKey(a).localeCompare(hearingKey(b)))
+  return hearings.filter((h) => hearingCaseIds(h).includes(caseId)).sort((a, b) => hearingKey(a).localeCompare(hearingKey(b)))
 }
 
 /** The next hearing on or after `today` that hasn't been recorded yet. */

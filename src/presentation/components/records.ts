@@ -4,6 +4,7 @@ import { KIND_LABEL } from '@/domain/activity/describe'
 import type { Outcome } from '@/domain/shared/outcome'
 import type { EntityKind, EntityRef } from '@/domain/shared/types'
 import type { WorkspaceId } from '@/domain/shared/workspace'
+import { hearingCaseIds } from '@/domain/cases/LegalCase'
 import { counselLabel } from '@/domain/counsel/Counsel'
 import { useEntities } from '@/presentation/data/hooks'
 import { KIND_META, MEETING_KIND_ICON } from './kinds'
@@ -42,8 +43,8 @@ export function useRecordLookup() {
     for (const f of followUps) put({ ...base('followUp', f.id), title: f.title, outcome: f.outcome, workspace: f.workspace, subtitle: f.due?.date })
     for (const c of cases) put({ ...base('case', c.id), title: c.title, workspace: 'sb', subtitle: c.reference })
     for (const h of hearings) {
-      const c = cases.find((x) => x.id === h.caseId)
-      put({ ...base('hearing', h.id), title: `${h.purpose}`, outcome: h.outcome, workspace: 'sb', subtitle: [c?.reference, h.date].filter(Boolean).join(' · ') })
+      const refs = hearingCaseIds(h).map((id) => cases.find((x) => x.id === id)?.reference).filter(Boolean).join(' + ')
+      put({ ...base('hearing', h.id), title: `${h.purpose}`, outcome: h.outcome, workspace: 'sb', subtitle: [refs, h.date].filter(Boolean).join(' · ') })
     }
     for (const p of plans) put({ ...base('plan', p.id), title: p.title, workspace: p.workspace, subtitle: p.dueDate })
     for (const g of goals) put({ ...base('goal', g.id), title: g.title, workspace: g.workspace })

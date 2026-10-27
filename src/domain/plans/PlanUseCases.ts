@@ -5,6 +5,7 @@ import type { Draft, EntityRef, ID, ISODate, RichDoc } from '../shared/types'
 import type { ActivityLog } from '../activity/ActivityLog'
 import { planCaseIds, planHearingIds, stepsOf } from './ActionPlan'
 import type { ActionPlan } from './ActionPlan'
+import { hearingCaseIds } from '../cases/LegalCase'
 import type { Task } from '../tasks/Task'
 
 /** A step to create with a plan: just its title, or with its own due date. */
@@ -81,7 +82,7 @@ export class PlanUseCases {
       case 'hearing': {
         const hearing = await this.env.repos.hearing.get(userId, target.id)
         if (!hearing) throw new ValidationError('That hearing no longer exists')
-        return this.save(plan, { caseIds: [...caseIds, hearing.caseId], hearingIds: [...hearingIds, hearing.id], taskId: undefined, workspace: 'sb' })
+        return this.save(plan, { caseIds: [...caseIds, ...hearingCaseIds(hearing)], hearingIds: [...hearingIds, hearing.id], taskId: undefined, workspace: 'sb' })
       }
       case 'task': {
         const task = await this.env.repos.task.get(userId, target.id)
@@ -108,8 +109,14 @@ export class PlanUseCases {
     if (target.kind === 'task') return this.save(plan, { caseIds, hearingIds, taskId: undefined })
     if (target.kind === 'hearing') return this.save(plan, { caseIds, hearingIds: hearingIds.filter((id) => id !== target.id) })
     if (target.kind === 'case') {
-      const theirs = new Set((await this.env.repos.hearing.list(userId)).filter((h) => h.caseId === target.id).map((h) => h.id))
-      return this.save(plan, { caseIds: caseIds.filter((id) => id !== target.id), hearingIds: hearingIds.filter((id) => !theirs.has(id)) })
+      const remaining = caseIds.filter((id) => id !== target.id)
+      // A hearing shared with another case the plan still covers stays on the plan.
+      const theirs = new Set(
+        (await this.env.repos.hearing.list(userId))
+          .filter((h) => hearingCaseIds(h).includes(target.id) && !hearingCaseIds(h).some((id) => remaining.includes(id)))
+          .map((h) => h.id),
+      )
+      return this.save(plan, { caseIds: remaining, hearingIds: hearingIds.filter((id) => !theirs.has(id)) })
     }
     return plan
   }

@@ -128,7 +128,10 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
     },
     {
       label: 'FSA',
-      items: [{ to: '/clients', label: 'Clients & projects', icon: KIND_META.client.icon }],
+      items: [
+        { to: '/clients', label: 'Clients', icon: KIND_META.client.icon },
+        { to: '/projects', label: 'Projects', icon: KIND_META.project.icon },
+      ],
     },
     {
       label: 'Direction',

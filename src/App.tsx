@@ -16,6 +16,7 @@ import { LoginPage } from '@/presentation/pages/LoginPage'
 const CalendarPage = lazy(() => import('@/presentation/pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
 const CaseDetailPage = lazy(() => import('@/presentation/pages/CaseDetailPage').then((m) => ({ default: m.CaseDetailPage })))
 const ClientsPage = lazy(() => import('@/presentation/pages/ClientsPage').then((m) => ({ default: m.ClientsPage })))
+const ProjectsPage = lazy(() => import('@/presentation/pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })))
 const ClientDetailPage = lazy(() => import('@/presentation/pages/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })))
 const ProjectDetailPage = lazy(() => import('@/presentation/pages/ProjectDetailPage').then((m) => ({ default: m.ProjectDetailPage })))
 const DiaryPage = lazy(() => import('@/presentation/pages/DiaryPage').then((m) => ({ default: m.DiaryPage })))
@@ -66,7 +67,7 @@ export default function App({ container }: { container: Container }) {
                   <Route path="/counsel/:id" element={<CounselDetailPage />} />
                   <Route path="/clients" element={<ClientsPage />} />
                   <Route path="/clients/:id" element={<ClientDetailPage />} />
-                  <Route path="/projects" element={<Navigate to="/clients" replace />} />
+                  <Route path="/projects" element={<ProjectsPage />} />
                   <Route path="/projects/:id" element={<ProjectDetailPage />} />
                   <Route path="/plans" element={<PlansPage />} />
                   <Route path="/plans/:id" element={<PlanDetailPage />} />

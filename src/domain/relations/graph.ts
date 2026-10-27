@@ -1,3 +1,4 @@
+import { hearingCaseIds } from '../cases/LegalCase'
 import type { Hearing, LegalCase } from '../cases/LegalCase'
 import type { FollowUp } from '../followups/FollowUp'
 import type { Client, Project } from '../clients/Client'
@@ -122,7 +123,7 @@ export class RelationGraph {
       if (m.prepPlanId) this.add({ parent: ref('meeting', m.id), child: ref('plan', m.prepPlanId), kind: 'prep' })
     }
     for (const h of src.hearings) {
-      this.add({ parent: ref('case', h.caseId), child: ref('hearing', h.id), kind: 'hearing' })
+      for (const cid of hearingCaseIds(h)) this.add({ parent: ref('case', cid), child: ref('hearing', h.id), kind: 'hearing' })
       if (h.nextHearingId) this.add({ parent: ref('hearing', h.id), child: ref('hearing', h.nextHearingId), kind: 'next_hearing' })
     }
     for (const p of src.plans) {
@@ -136,7 +137,7 @@ export class RelationGraph {
       for (const hid of hearingIds) this.add({ parent: ref('hearing', hid), child: ref('plan', p.id), kind: 'plan' })
       if (!p.taskId) {
         // Cases already reached through one of the plan's hearings don't need a second path.
-        const viaHearing = new Set(src.hearings.filter((h) => hearingIds.includes(h.id)).map((h) => h.caseId))
+        const viaHearing = new Set(src.hearings.filter((h) => hearingIds.includes(h.id)).flatMap((h) => hearingCaseIds(h)))
         for (const cid of planCaseIds(p)) {
           if (!viaHearing.has(cid) && !(origin?.kind === 'case' && origin.id === cid)) this.add({ parent: ref('case', cid), child: ref('plan', p.id), kind: 'plan' })
         }

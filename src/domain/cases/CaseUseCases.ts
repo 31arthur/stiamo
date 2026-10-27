@@ -1,33 +1,43 @@
 import type { PlanStepDraft, PlanUseCases } from '../plans/PlanUseCases'
-import type { DiaryInput } from '../diary/Diary'
-import type { DiaryUseCases } from '../diary/DiaryUseCases'
 import type { CrudUseCases } from '../shared/CrudUseCases'
 import { NotFoundError } from '../shared/errors'
 import type { Outcome } from '../shared/outcome'
 import type { DomainEnv } from '../shared/registry'
 import type { Draft, ID, ISODate, Minutes } from '../shared/types'
 import { nextCaseNumber } from './caseNumber'
-import { coversCase, planCaseIds, planHearingIds } from '../plans/ActionPlan'
+import { coversCase, planCaseIds, planHearingIds, stepsOf } from '../plans/ActionPlan'
 import type { ActionPlan } from '../plans/ActionPlan'
-import type { CaseStatus, Engagement, Hearing, LegalCase } from './LegalCase'
+import { hearingCaseIds } from './LegalCase'
+import type { CaseStatus, Engagement, Hearing, HearingAction, LegalCase } from './LegalCase'
 import { counselLabel } from '../counsel/Counsel'
 import type { ActivityLog } from '../activity/ActivityLog'
+
+/** What is written up about a hearing beyond the summary; it lives on the hearing itself. */
+export interface HearingNotes {
+  bench?: string
+  order?: string
+  submissions?: string
+  authorities?: string[]
+  evidence?: string
+  reflections?: string
+  /** Work due before the next date. Actions with no task yet become the plan's steps when no steps were typed. */
+  actions?: { id?: ID; text: string; due?: ISODate; taskId?: ID }[]
+}
 
 export interface HearingRecord {
   /** What happened at the hearing. */
   summary: string
   outcome: Outcome
-  /** The next listing, if one was given. */
+  /** The next listing, if one was given. It concerns the same cases. */
   next?: { date: ISODate; time?: Minutes; purpose: string }
   /** An action plan to prepare for what comes next. */
   plan?: { title: string; objective: string; steps: PlanStepDraft[]; dueDate?: ISODate }
   /**
-   * The case diary entry for the hearing: order, submissions, authorities and the work due before the
-   * next date. Written alongside the hearing, and revised when the hearing is revised. Actions with no
-   * task yet become the plan's steps when the plan is made and no steps were typed.
+   * The rest of the write-up: order, submissions, authorities and the work due. When given it is the
+   * whole of it (anything left out is cleared); when omitted what the hearing already has is kept.
    */
-  diary?: DiaryInput
-  /** Case-level changes resulting from the hearing. */
+  notes?: HearingNotes
+  /** Case-level changes resulting from the hearing, applied to the main case. */
   caseUpdate?: { stage?: string; status?: CaseStatus }
 }
 
@@ -35,7 +45,6 @@ export interface HearingRecordResult {
   hearing: Hearing
   nextHearing?: Hearing
   plan?: ActionPlan
-  diaryEntryId?: ID
 }
 
 export class CaseUseCases {
@@ -45,7 +54,6 @@ export class CaseUseCases {
     private readonly hearings: CrudUseCases<'hearing'>,
     private readonly plans: PlanUseCases,
     private readonly log: ActivityLog,
-    private readonly diary?: DiaryUseCases,
   ) {}
 
   /**
@@ -100,8 +108,10 @@ export class CaseUseCases {
   }
 
   /**
-   * Writes up a hearing in one step: its summary and outcome, the next date, an action plan for the
-   * next stage (with its steps as tasks) and any change to the case's stage or status.
+   * Writes up a hearing in one step. The write-up is the case diary entry, kept on the hearing itself
+   * and shared by every case the hearing concerned: summary and outcome, order and notes, the next
+   * date (listed for the same cases), an action plan whose steps are the work due, and any change to
+   * the main case's stage or status.
    */
   async recordHearing(userId: ID, hearingId: ID, record: HearingRecord): Promise<HearingRecordResult> {
     const hearing = await this.env.repos.hearing.get(userId, hearingId)
@@ -113,6 +123,7 @@ export class CaseUseCases {
     if (record.next) {
       nextHearing = await this.hearings.create(userId, {
         caseId: hearing.caseId,
+        alsoCaseIds: hearing.alsoCaseIds,
         date: record.next.date,
         time: record.next.time,
         duration: hearing.duration,
@@ -122,22 +133,14 @@ export class CaseUseCases {
       })
     }
 
-    const updated = await this.hearings.update({
-      ...hearing,
-      summary: record.summary.trim(),
-      outcome: { ...record.outcome, recordedAt: this.env.clock.now().toISOString() },
-      nextHearingId: nextHearing?.id ?? hearing.nextHearingId,
-    })
-
-    const existingEntry = await this.diary?.forHearing(userId, hearing.id)
-    const actions = record.diary?.actions ?? existingEntry?.actions ?? []
-    const pending = actions.filter((a) => !a.taskId && a.text.trim())
+    const notes: HearingNotes = record.notes ?? { bench: hearing.bench, order: hearing.order, submissions: hearing.submissions, authorities: hearing.authorities, evidence: hearing.evidence, reflections: hearing.reflections, actions: hearing.actions }
+    const actions: HearingAction[] = (notes.actions ?? []).filter((a) => a.text.trim()).map((a) => ({ id: a.id ?? this.env.ids.next(), text: a.text, due: a.due, taskId: a.taskId }))
+    const pending = actions.filter((a) => !a.taskId)
 
     let plan: ActionPlan | undefined
-    let planFromActions = false
     if (record.plan) {
       const typed = record.plan.steps
-      planFromActions = typed.length === 0 && pending.length > 0
+      const fromActions = typed.length === 0 && pending.length > 0
       plan = await this.plans.createWithSteps(
         userId,
         {
@@ -147,36 +150,34 @@ export class CaseUseCases {
           status: 'active',
           dueDate: record.plan.dueDate ?? nextHearing?.date,
           origin: { kind: 'hearing', id: hearing.id },
-          caseIds: [hearing.caseId],
+          caseIds: hearingCaseIds(hearing),
           // The plan is for getting ready for the next date, when there is one.
           hearingIds: nextHearing ? [nextHearing.id] : undefined,
         },
-        planFromActions ? pending.map((a) => ({ title: a.text, dueDate: a.due })) : typed,
+        fromActions ? pending.map((a) => ({ title: a.text, dueDate: a.due })) : typed,
       )
+      if (fromActions) {
+        // The steps were made from the actions without a task, in the same order: remember which is which.
+        const steps = stepsOf(plan.id, await this.env.repos.task.list(userId))
+        pending.forEach((a, i) => {
+          a.taskId = steps[i]?.id
+        })
+      }
     }
 
-    let diaryEntryId: ID | undefined
-    const d = record.diary ?? {}
-    const hasDiaryContent = !!(record.summary.trim() || d.order?.trim() || d.submissions?.trim() || d.evidence?.trim() || d.reflections?.trim() || d.authorities?.length || actions.some((a) => a.text.trim()))
-    if (this.diary && (hasDiaryContent || existingEntry)) {
-      const base = existingEntry ?? { caseId: hearing.caseId, hearingId: hearing.id, kind: 'court' as const, date: hearing.date, authorities: [] as string[], actions: [] }
-      const saved = await this.diary.save(userId, {
-        ...base,
-        bench: d.bench ?? existingEntry?.bench ?? hearing.forum,
-        proceedings: record.summary,
-        order: d.order ?? existingEntry?.order,
-        submissions: d.submissions ?? existingEntry?.submissions,
-        authorities: d.authorities ?? existingEntry?.authorities ?? [],
-        evidence: d.evidence ?? existingEntry?.evidence,
-        reflections: d.reflections ?? existingEntry?.reflections,
-        nextDate: record.next?.date ?? existingEntry?.nextDate,
-        nextPurpose: record.next?.purpose ?? existingEntry?.nextPurpose,
-        actions,
-      })
-      diaryEntryId = saved.id
-      // The saved actions without a task are the ones the plan's steps were made from, in the same order.
-      if (plan && planFromActions) await this.diary.attachSteps(userId, saved, plan.id, saved.actions.filter((a) => !a.taskId))
-    }
+    const updated = await this.hearings.update({
+      ...hearing,
+      summary: record.summary.trim(),
+      outcome: { ...record.outcome, recordedAt: this.env.clock.now().toISOString() },
+      nextHearingId: nextHearing?.id ?? hearing.nextHearingId,
+      bench: notes.bench,
+      order: notes.order,
+      submissions: notes.submissions,
+      authorities: notes.authorities,
+      evidence: notes.evidence,
+      reflections: notes.reflections,
+      actions,
+    })
 
     if (record.caseUpdate && (record.caseUpdate.stage !== undefined || record.caseUpdate.status !== undefined)) {
       await this.cases.update({
@@ -186,15 +187,27 @@ export class CaseUseCases {
       })
     }
 
-    return { hearing: updated, nextHearing, plan, diaryEntryId }
+    return { hearing: updated, nextHearing, plan }
   }
 
-  /** Deletes a case with its hearings; its plans are kept but no longer cover it (a plan shared with other cases stays on them). */
+  /**
+   * Deletes a case. Hearings that were only about it go with it; a hearing shared with other cases
+   * stays on them (another of its cases becomes the main one). Plans are kept but no longer cover
+   * the case — a plan shared with other cases stays on them.
+   */
   async remove(userId: ID, caseId: ID): Promise<void> {
-    const mine = (await this.env.repos.hearing.list(userId)).filter((h) => h.caseId === caseId)
-    const gone = new Set(mine.map((h) => h.id))
-    for (const h of mine) await this.env.repos.hearing.remove(userId, h.id)
-    for (const e of await this.env.repos.diary.list(userId)) if (e.caseId === caseId) await this.env.repos.diary.remove(userId, e.id)
+    const gone = new Set<ID>()
+    for (const h of await this.env.repos.hearing.list(userId)) {
+      const all = hearingCaseIds(h)
+      if (!all.includes(caseId)) continue
+      const rest = all.filter((id) => id !== caseId)
+      if (rest.length === 0) {
+        gone.add(h.id)
+        await this.env.repos.hearing.remove(userId, h.id)
+      } else {
+        await this.hearings.update({ ...h, caseId: rest[0], alsoCaseIds: rest.slice(1) })
+      }
+    }
     const now = this.env.clock.now().toISOString()
     const plans = (await this.env.repos.plan.list(userId)).filter((p) => coversCase(p, caseId))
     await this.env.repos.plan.saveMany(

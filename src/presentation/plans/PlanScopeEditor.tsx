@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
 import { coversCase, coversHearing, planCaseIds, planHearingIds } from '@/domain/plans/ActionPlan'
+import { hearingCaseIds } from '@/domain/cases/LegalCase'
+import type { Hearing } from '@/domain/cases/LegalCase'
 import type { ActionPlan } from '@/domain/plans/ActionPlan'
 import type { EntityRef } from '@/domain/shared/types'
 import { KIND_META } from '@/presentation/components/kinds'
@@ -36,7 +38,7 @@ export function PlanScopeEditor({ plan }: { plan: ActionPlan }) {
       <div className="grid gap-1.5">
         {caseIds.map((id) => {
           const c = cases.find((x) => x.id === id)!
-          const mine = hearings.filter((h) => h.caseId === id && hearingIds.includes(h.id)).sort((a, b) => a.date.localeCompare(b.date))
+          const mine = hearings.filter((h) => hearingCaseIds(h).includes(id) && hearingIds.includes(h.id)).sort((a, b) => a.date.localeCompare(b.date))
           return (
             <div key={id} className="flex flex-wrap items-center gap-1.5">
               <Chip icon={Scale} label={`${c.reference} · ${c.title}`} onRemove={() => uncover.run({ kind: 'case', id })} removeLabel={`Stop covering ${c.reference}`} />
@@ -80,6 +82,7 @@ function CoveragePicker({ open, onOpenChange, plan, onPick }: { open: boolean; o
   const { data: hearings } = useEntities('hearing')
   const { data: tasks } = useEntities('task')
   const caseById = useMemo(() => new Map(cases.map((c) => [c.id, c])), [cases])
+  const refsOf = (h: Hearing) => hearingCaseIds(h).map((id) => caseById.get(id)?.reference).filter(Boolean).join(' + ')
 
   const hearingOptions = hearings.filter((h) => !coversHearing(plan, h.id) && caseById.has(h.caseId)).sort((a, b) => b.date.localeCompare(a.date))
   const caseOptions = cases.filter((c) => !coversCase(plan, c.id))
@@ -99,10 +102,10 @@ function CoveragePicker({ open, onOpenChange, plan, onPick }: { open: boolean; o
           {hearingOptions.length > 0 && (
             <CommandGroup heading="Hearings">
               {hearingOptions.map((h) => (
-                <CommandItem key={h.id} value={`hearing ${caseById.get(h.caseId)?.reference} ${caseById.get(h.caseId)?.title} ${h.date} ${h.purpose}`} onSelect={() => pick({ kind: 'hearing', id: h.id })}>
+                <CommandItem key={h.id} value={`hearing ${refsOf(h)} ${caseById.get(h.caseId)?.title} ${h.date} ${h.purpose}`} onSelect={() => pick({ kind: 'hearing', id: h.id })}>
                   <Gavel />
                   <span className="truncate">
-                    {caseById.get(h.caseId)?.reference} · {h.purpose}
+                    {refsOf(h)} · {h.purpose}
                   </span>
                   <CommandShortcut>{format(parseISO(h.date), 'd MMM yyyy')}</CommandShortcut>
                 </CommandItem>

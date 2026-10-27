@@ -1,36 +1,31 @@
 import { useMemo, useState } from 'react'
-import { AnimatePresence } from 'motion/react'
-import { Plus, Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { pendingActions, searchEntries } from '@/domain/diary/Diary'
-import type { DiaryKind } from '@/domain/diary/Diary'
-import { useEditor } from '@/presentation/app/create'
-import { NativeSelect, Segmented } from '@/presentation/components/form'
+import { format, parseISO } from 'date-fns'
+import { motion } from 'motion/react'
+import { Search } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { diaryOf, pendingActions, searchDiary, touchesCase } from '@/domain/cases/hearingDiary'
+import { hearingCaseIds } from '@/domain/cases/LegalCase'
+import { NativeSelect } from '@/presentation/components/form'
 import { EmptyState, PageHeader, Section, Stat } from '@/presentation/components/layout'
 import { useEntities, useToday } from '@/presentation/data/hooks'
-import { DiaryEntryCard } from '@/presentation/diary/DiaryEntryCard'
-import { newDiaryEntry } from '@/presentation/forms/DiaryForm'
+import { HearingRecordDetails } from '@/presentation/diary/HearingRecordDetails'
+import { spring } from '@/presentation/motion/presets'
 
-type Filter = DiaryKind | 'all'
-
-/** Every diary entry across all cases, newest first: the journal of the practice. */
+/**
+ * The case diary across every case, newest first. It is not a second record: each entry is a
+ * hearing that has been written up, and a hearing taken up for several cases appears once.
+ */
 export function DiaryPage() {
-  const { open } = useEditor()
   const today = useToday()
-  const { data: entries } = useEntities('diary')
-  const { data: cases } = useEntities('case')
   const { data: hearings } = useEntities('hearing')
+  const { data: cases } = useEntities('case')
   const { data: tasks } = useEntities('task')
   const [query, setQuery] = useState('')
-  const [kind, setKind] = useState<Filter>('all')
   const [caseId, setCaseId] = useState('')
 
-  const rows = useMemo(() => {
-    const filtered = entries.filter((e) => (kind === 'all' || e.kind === kind) && (!caseId || e.caseId === caseId))
-    return searchEntries(filtered, query).sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`))
-  }, [entries, kind, caseId, query])
-
-  const withOpenWork = entries.filter((e) => pendingActions(e, tasks).length > 0).length
+  const entries = useMemo(() => diaryOf(hearings), [hearings])
+  const rows = useMemo(() => searchDiary(entries.filter((h) => !caseId || touchesCase(h, caseId)), cases, query), [entries, cases, caseId, query])
+  const withOpenWork = entries.filter((h) => pendingActions(h, tasks).length > 0).length
   const month = today.slice(0, 7)
 
   return (
@@ -38,22 +33,16 @@ export function DiaryPage() {
       <PageHeader
         eyebrow="Legal"
         title="Case diary"
-        description="What happened on every date, and the work it left behind. Recording a hearing writes its entry; add chamber work here or from a case."
-        actions={
-          <Button onClick={() => open({ kind: 'diary', value: newDiaryEntry(today) })}>
-            <Plus /> Add entry
-          </Button>
-        }
+        description="What happened on every date, and the work it left behind. It is the hearing record itself: write a hearing up from its case and it appears here, once, even if it covered several cases."
       />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat label="Entries" value={entries.length} />
-        <Stat label="This month" value={entries.filter((e) => e.date.startsWith(month)).length} />
+        <Stat label="This month" value={entries.filter((h) => h.date.startsWith(month)).length} />
         <Stat label="With work still open" value={withOpenWork} tone={withOpenWork ? 'warning' : 'default'} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Segmented<Filter> label="Kind" value={kind} onChange={setKind} options={[{ value: 'all', label: 'All' }, { value: 'court', label: 'Court' }, { value: 'chamber', label: 'Chambers' }]} />
-        <NativeSelect aria-label="Case" value={caseId} onChange={(e) => setCaseId(e.target.value)} className="h-9 w-full sm:w-64">
+        <NativeSelect aria-label="Case" value={caseId} onChange={(e) => setCaseId(e.target.value)} className="h-9 w-full sm:w-72">
           <option value="">All cases</option>
           {cases.map((c) => (
             <option key={c.id} value={c.id}>
@@ -69,17 +58,35 @@ export function DiaryPage() {
 
       {rows.length === 0 ? (
         <Section>
-          <EmptyState title={entries.length ? 'No match.' : 'The diary is empty.'} action={entries.length ? undefined : <Button onClick={() => open({ kind: 'diary', value: newDiaryEntry(today) })}>Add an entry</Button>}>
-            {entries.length ? 'Try a different search or filter.' : 'Record a hearing on a case, or add chamber work, and it appears here.'}
+          <EmptyState title={entries.length ? 'No match.' : 'The diary is empty.'}>
+            {entries.length ? 'Try a different search or case.' : 'Open a case and record a hearing; its write-up is the diary entry.'}
           </EmptyState>
         </Section>
       ) : (
         <ul className="grid gap-2 xl:grid-cols-2">
-          <AnimatePresence initial={false}>
-            {rows.map((e) => (
-              <DiaryEntryCard key={e.id} entry={e} legalCase={cases.find((c) => c.id === e.caseId)} hearing={hearings.find((h) => h.id === e.hearingId)} tasks={tasks} today={today} showCase />
-            ))}
-          </AnimatePresence>
+          {rows.map((h) => (
+            <motion.li key={h.id} layout transition={spring.soft} className="rounded-xl border bg-card p-3">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-sm font-semibold tabular-nums">{format(parseISO(h.date), 'EEE d MMM yyyy')}</span>
+                {hearingCaseIds(h).map((id) => {
+                  const c = cases.find((x) => x.id === id)
+                  return c ? (
+                    <Link key={id} to={`/cases/${id}`} className="font-mono text-[11px] text-muted-foreground hover:text-foreground hover:underline">
+                      {c.reference}
+                    </Link>
+                  ) : null
+                })}
+              </div>
+              <div className="text-sm">{h.purpose}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {hearingCaseIds(h)
+                  .map((id) => cases.find((x) => x.id === id)?.title)
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+              <HearingRecordDetails hearing={h} next={hearings.find((x) => x.id === h.nextHearingId)} tasks={tasks} today={today} />
+            </motion.li>
+          ))}
         </ul>
       )}
     </>
