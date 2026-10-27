@@ -8,6 +8,7 @@ import { useEditor } from '@/presentation/app/create'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { friendlyDate } from '@/presentation/components/dates'
 import { Segmented } from '@/presentation/components/form'
+import { LensNotice } from '@/presentation/components/LensNotice'
 import { EmptyState, PageHeader, Section } from '@/presentation/components/layout'
 import { useEntities, useToday } from '@/presentation/data/hooks'
 import { MeetingCard } from '@/presentation/meetings/MeetingCard'
@@ -55,6 +56,7 @@ export function MeetingsPage() {
           </>
         }
       />
+      <LensNotice items={meetings} noun="meeting" />
       <div className="flex flex-wrap items-center gap-3">
         <Segmented<View>
           label="View"
