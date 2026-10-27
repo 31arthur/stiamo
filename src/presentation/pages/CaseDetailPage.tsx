@@ -33,6 +33,7 @@ import { newHearing } from '@/presentation/forms/CaseForms'
 import { MeetingCard } from '@/presentation/meetings/MeetingCard'
 import { FollowUpRow } from '@/presentation/pages/FollowUpsPage'
 import { CASE_STATUS_TONE } from '@/presentation/pages/CasesPage'
+import { CaseDiary } from '@/presentation/diary/CaseDiary'
 import { UseExistingPlan } from '@/presentation/plans/PlanScopeEditor'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
 import { TaskRow } from '@/presentation/tasks/TaskRow'
@@ -147,6 +148,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
               </ol>
             )}
           </Section>
+          <CaseDiary legalCase={c} />
           <Section title="Thread & history" description="Everything connected to this case, and everything that happened">
             <ThreadPanel root={{ kind: 'case', id: c.id }} />
           </Section>

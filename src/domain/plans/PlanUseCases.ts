@@ -1,11 +1,14 @@
 import type { CrudUseCases } from '../shared/CrudUseCases'
 import { NotFoundError, ValidationError } from '../shared/errors'
 import type { DomainEnv } from '../shared/registry'
-import type { Draft, EntityRef, ID, RichDoc } from '../shared/types'
+import type { Draft, EntityRef, ID, ISODate, RichDoc } from '../shared/types'
 import type { ActivityLog } from '../activity/ActivityLog'
 import { planCaseIds, planHearingIds, stepsOf } from './ActionPlan'
 import type { ActionPlan } from './ActionPlan'
 import type { Task } from '../tasks/Task'
+
+/** A step to create with a plan: just its title, or with its own due date. */
+export type PlanStepDraft = string | { title: string; dueDate?: ISODate }
 
 export class PlanUseCases {
   constructor(
@@ -17,16 +20,19 @@ export class PlanUseCases {
   ) {}
 
   /** Creates a plan, its steps as tasks, and links it to the given goals. */
-  async createWithSteps(userId: ID, draft: Draft<ActionPlan>, steps: string[], goalIds: ID[] = []): Promise<ActionPlan> {
+  async createWithSteps(userId: ID, draft: Draft<ActionPlan>, steps: PlanStepDraft[], goalIds: ID[] = []): Promise<ActionPlan> {
     const plan = await this.plans.create(userId, draft)
     let order = 0
-    for (const title of steps.map((s) => s.trim()).filter(Boolean)) {
+    const drafts = steps
+      .map((s) => (typeof s === 'string' ? { title: s.trim() } : { title: s.title.trim(), dueDate: s.dueDate }))
+      .filter((s) => s.title)
+    for (const { title, dueDate } of drafts) {
       await this.tasks.create(userId, {
         title,
         notes: '',
         workspace: plan.workspace,
         priority: 'normal',
-        dueDate: plan.dueDate,
+        dueDate: dueDate ?? plan.dueDate,
         estimate: 45,
         planId: plan.id,
         order: order++,

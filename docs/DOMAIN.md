@@ -108,6 +108,11 @@ Plans saved before this carried single `caseId` / `hearingId`; `planCaseIds` / `
 
 A plan's page is written as questions, answers and insights (`question`, `answer` and `insight` blocks). `digestOf` reads them back: a question is **answered** once an answer with text follows it, **parked** if set aside, otherwise **open**; insights can each become a step.
 
+### Case diary entry
+A `DiaryEntry` belongs to a case and is either a **court** entry (usually for a hearing, `hearingId`) or **chamber** work. Fields: `date`, `bench`, `proceedings` (what happened), `order`, `submissions`, `authorities[]`, `evidence`, `reflections`, `nextDate` / `nextPurpose`, and **`actions[]`** — each `{ id, text, due?, taskId? }`. An entry must say something (any of those fields, or an action).
+
+`CaseUseCases.recordHearing` writes the entry as part of recording the hearing (`HearingRecord.diary`): when a plan is requested without typed steps, the entry's actions *are* the steps, created in order with their own due dates (default: the plan's date), and each action is stamped with the `taskId` of the task made for it. A hearing has at most one entry; recording it again updates that entry. `DiaryUseCases.toTasks` turns actions that have no task into standalone tasks on the case; `toPlan` makes an action plan from them (covering the case and the hearing listed on `nextDate`, if there is one). An action is *closed* once its task is (`actionClosed`, `pendingActions`). `searchEntries` matches every word of a query across the whole entry. Deleting a case deletes its diary.
+
 ### Client & project (FSA)
 A **client** (`kind` company or individual, contact, status) and its **projects** (`clientId`, status, dates). They are tied to work through the existing `related` pointer: a meeting, appointment or task whose `related` is a client or a project belongs to it. `clientRefKeys` / `meetingsFor` / `tasksFor` gather a client's work (the client itself plus all its projects); `clientOf` finds the client behind a reference. In the thread a project sits under its client and work sits under its project or client. Deleting a client (`ClientUseCases.remove`) deletes its projects; meetings and tasks stay, untied.
 

@@ -50,7 +50,18 @@ Overdue, Today, Upcoming and Recently logged. Follow-up wording for outcomes (Re
 
 - **Opening a case** asks which organization it's filed for (NUMW, TUMWU, PMLU, MRC, TYP, Samrat & Associates) and its type (PoW, Public Interest, Industrial Disputes, MW, Workmen Compensation, Other), who handles it (us by default, or outside counsel with terms), previews the generated case number (`TUMWU-2026-004`) and assigns it on save. The court's own number is an optional extra field.
 - Register with next hearing (relative date), last hearing result, plan progress, and a red flag for hearings not yet written up.
-- Detail: case summary (autosaves), **hearing timeline**, **Record hearing** (summary → result → next listing → action plan with steps → stage/status, all in one dialog), action plans with inline steps and outcomes, upcoming appointments, open follow-ups and tasks for the matter.
+- Detail: case summary (autosaves), **hearing timeline**, **Record hearing** (the diary write-up: what happened → order → result → next listing → work due → action plan → stage/status, all in one dialog), the **case diary**, action plans with inline steps and outcomes, upcoming appointments, open follow-ups and tasks for the matter.
+
+## Case diary (`/diary`, and on every case)
+
+Indian advocates keep a **court diary** (the date, the case, the bench, what was argued, the authorities cited, the order, the next date and what it is fixed for) and a **chamber diary** (the day-to-day work between dates: conferences, studying papers, drafting). There is no prescribed format for an advocate's own diary — the Bar Council rules only require trainees to keep one of each, with the court diary holding the date, case number, arguments, case law cited and result — so this follows that practice and adds what it is for: **turning each date into the work for the next**.
+
+Each entry holds: the date, the kind (court or chambers), the bench, **what happened**, the **order and directions**, submissions, **authorities cited** (as tags), evidence (witnesses examined or still to come, exhibits), your own **reflections** (the bench's leaning, what to do differently), **the next date and what it is listed for**, and **work due before the next date** — each action with an optional deadline (a court direction is just an action with a date).
+
+- **Recording a hearing writes its entry.** *Record hearing* is now the diary write-up: what happened, order and directions, result, a collapsible section for bench / submissions / authorities / evidence / reflections, the next listing, the work due, and an action plan. The actions become the plan's **steps (tasks), each due by its own date** (or the next hearing's). Revising a hearing reopens its entry rather than adding another, and doesn't list or plan a second time by default.
+- **Each action follows its task.** On an entry, an action shows its task's state (done actions are ticked off), and the diary tells you what is still open. Actions not yet turned into tasks have **Make tasks** (standalone tasks on the case) and **Start a plan** (an action plan covering the case and the next hearing).
+- **Chamber work and late entries**: *Add entry* on a case, on the diary page, or from **New → Diary entry**. A court entry can be tied to a listed hearing or stand alone.
+- **Search**: the diary page searches every entry across all cases (orders, authorities, notes, actions), with filters for kind and case; each case's diary has its own search.
 
 ## Counsel (`/counsel`, `/counsel/:id`)
 
