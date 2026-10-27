@@ -22,7 +22,7 @@ export function ClientProjectField({ id, value, onChange }: { id: string; value:
   }
 
   return (
-    <Field label="Client / project" htmlFor={id} hint={clients.length ? undefined : 'Add a client first from Clients & projects'}>
+    <Field label="Client / project" htmlFor={id} hint={clients.length ? undefined : 'Add a client first from Clients'}>
       <NativeSelect id={id} value={toValue(current)} onChange={(e) => pick(e.target.value)}>
         <option value="">None</option>
         {sorted.map((c) => {

@@ -20,7 +20,7 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const project = useEntity('project', id)
   const { isLoading } = useEntities('project')
-  if (!project) return isLoading ? null : <Navigate to="/clients" replace />
+  if (!project) return isLoading ? null : <Navigate to="/projects" replace />
   return <ProjectDetail key={project.id} project={project} />
 }
 
@@ -36,7 +36,7 @@ function ProjectDetail({ project: p }: { project: Project }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <BackButton fallback={client ? `/clients/${client.id}` : '/clients'} />
+        <BackButton fallback="/projects" />
         <div className="flex gap-1">
           <Button variant="outline" size="sm" onClick={() => editor.open({ kind: 'project', value: p })}>
             <Pencil /> Edit
@@ -45,7 +45,7 @@ function ProjectDetail({ project: p }: { project: Project }) {
             what={`${p.title} — meetings and tasks stay, but are no longer tied to it`}
             onConfirm={async () => {
               await remove.run(p.id)
-              navigate(client ? `/clients/${client.id}` : '/clients')
+              navigate('/projects')
             }}
           />
         </div>

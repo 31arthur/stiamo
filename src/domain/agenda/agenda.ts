@@ -113,13 +113,14 @@ export function buildAgenda(src: AgendaSources, from: ISODate, to: ISODate): Age
   for (const h of src.hearings) {
     if (!inRange(h.date)) continue
     const legalCase = caseById.get(h.caseId)
+    const others = (h.alsoCaseIds ?? []).map((id) => caseById.get(id)?.reference).filter(Boolean)
     const ref: EntityRef = { kind: 'hearing', id: h.id }
     entries.push({
       key: entryKey(ref),
       ref,
       kind: 'hearing',
       title: `Hearing — ${legalCase?.title ?? 'Case'}`,
-      subtitle: [legalCase?.reference, h.purpose].filter(Boolean).join(' · '),
+      subtitle: [[legalCase?.reference, ...others].filter(Boolean).join(' + '), h.purpose].filter(Boolean).join(' · '),
       date: h.date,
       slot: h.time !== undefined ? { start: h.time, duration: h.duration } : undefined,
       duration: h.duration,

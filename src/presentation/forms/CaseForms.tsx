@@ -169,6 +169,7 @@ export function HearingForm({ initial, onDone }: { initial: Hearing | HearingDra
   const [h, patch] = usePatch(initial)
   const editing = 'createdAt' in initial
   const save = useSave('hearing', editing ? 'Hearing updated' : 'Hearing listed')
+  const { data: cases } = useEntities('case')
 
   return (
     <FormShell submitLabel={editing ? 'Save' : 'Add hearing'} onCancel={() => onDone()} onSubmit={async () => onDone(await save.run(h))}>
@@ -194,6 +195,28 @@ export function HearingForm({ initial, onDone }: { initial: Hearing | HearingDra
       </div>
       <Field label="Court room / bench" htmlFor="hr-forum">
         <Input id="hr-forum" value={h.forum ?? ''} onChange={(e) => patch({ forum: e.target.value || undefined })} />
+      </Field>
+      <Field label="Heard together with" hint="Connected cases taken up in the same listing share this hearing and one record">
+        <div className="flex flex-wrap gap-1.5">
+          {cases
+            .filter((c) => c.id !== h.caseId)
+            .map((c) => {
+              const on = (h.alsoCaseIds ?? []).includes(c.id)
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  aria-pressed={on}
+                  title={c.title}
+                  onClick={() => patch({ alsoCaseIds: on ? (h.alsoCaseIds ?? []).filter((id) => id !== c.id) : [...(h.alsoCaseIds ?? []), c.id] })}
+                  className={cn('rounded-full border px-3 py-1 text-xs font-medium transition-colors', on ? 'border-foreground bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}
+                >
+                  {c.reference}
+                </button>
+              )
+            })}
+          {cases.length <= 1 && <span className="text-xs text-muted-foreground">No other cases yet</span>}
+        </div>
       </Field>
     </FormShell>
   )

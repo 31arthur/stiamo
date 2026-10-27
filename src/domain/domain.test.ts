@@ -12,7 +12,8 @@ import type { Meeting } from './meetings/Meeting'
 import { buildDayPlan, packDay } from './planner/dayPlan'
 import { caseTypeOf } from './cases/LegalCase'
 import { clientRefKeys, clientOf, meetingsFor, tasksFor } from './clients/Client'
-import { actionClosed, entriesOf, pendingActions, searchEntries } from './diary/Diary'
+import { actionClosed, diaryOf, pendingActions, searchDiary } from './cases/hearingDiary'
+import { hearingCaseIds, hearingsOf } from './cases/LegalCase'
 import { categoryOf, defaultLinkName, describeLink } from './attachments/Attachment'
 import { RelationGraph } from './relations/graph'
 import { planCaseIds, planHearingIds, planProgress, planScope } from './plans/ActionPlan'
@@ -617,120 +618,177 @@ describe('linked documents', () => {
   })
 })
 
-describe('case diary', () => {
-  const caseAndHearing = async (app: ReturnType<typeof freshApp>) => {
+describe('case diary — the hearing record', () => {
+  const setup = async (app: ReturnType<typeof freshApp>) => {
     const c = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'Wages', status: 'active', summary: '' })
     const h = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-10-20', duration: 60, purpose: 'Evidence', forum: 'Court 2', outcome: { status: 'open' } })
     return { c, h }
   }
 
-  it('records a hearing as a diary entry whose actions become the plan’s dated steps', async () => {
+  it('keeps the write-up on the hearing itself, with its actions as the plan’s dated steps', async () => {
     const app = freshApp()
-    const { c, h } = await caseAndHearing(app)
+    const { c, h } = await setup(app)
     const result = await app.cases.recordHearing('u', h.id, {
       summary: 'WW-1 examined.',
       outcome: { status: 'done' },
       next: { date: '2026-11-10', purpose: 'Cross-examination' },
       plan: { title: 'Prepare cross', objective: '', steps: [] },
-      diary: {
+      notes: {
+        bench: 'Court 2',
         order: 'List on 10 Nov.',
         authorities: ['Section 13A', ' Section 13A ', ''],
         actions: [{ text: 'Re-read the ledger', due: '2026-11-01' }, { text: '  ' }, { text: 'Brief the witnesses' }],
       },
     })
 
-    const [entry] = await app.crud.diary.list('u')
-    expect(result.diaryEntryId).toBe(entry.id)
-    expect(entry).toMatchObject({ caseId: c.id, hearingId: h.id, kind: 'court', date: '2026-10-20', bench: 'Court 2', proceedings: 'WW-1 examined.', order: 'List on 10 Nov.', nextDate: '2026-11-10', nextPurpose: 'Cross-examination', authorities: ['Section 13A'] })
-    expect(entry.actions.map((a) => a.text)).toEqual(['Re-read the ledger', 'Brief the witnesses'])
+    // One record: the hearing is the diary entry; nothing else was stored for it.
+    const stored = (await app.crud.hearing.get('u', h.id))!
+    expect(stored).toMatchObject({ summary: 'WW-1 examined.', bench: 'Court 2', order: 'List on 10 Nov.', authorities: ['Section 13A'], nextHearingId: result.nextHearing!.id })
+    expect(stored.actions!.map((a) => a.text)).toEqual(['Re-read the ledger', 'Brief the witnesses'])
+    expect(diaryOf(await app.crud.hearing.list('u')).map((x) => x.id)).toEqual([h.id])
 
-    // Each action became a step due by its own date, or the next hearing; and the diary follows the task.
     const steps = (await app.crud.task.list('u')).filter((t) => t.planId === result.plan!.id).sort((a, b) => a.order! - b.order!)
     expect(steps.map((t) => [t.title, t.dueDate])).toEqual([['Re-read the ledger', '2026-11-01'], ['Brief the witnesses', '2026-11-10']])
-    expect(entry.actions.map((a) => a.taskId)).toEqual(steps.map((t) => t.id))
+    expect(stored.actions!.map((a) => a.taskId)).toEqual(steps.map((t) => t.id))
     expect(result.plan).toMatchObject({ caseIds: [c.id], hearingIds: [result.nextHearing!.id] })
   })
 
-  it('revises the same entry instead of adding another, and keeps the tasks already made', async () => {
+  it('revises the same record, keeps the tasks already made, and clears what is left out', async () => {
     const app = freshApp()
-    const { h } = await caseAndHearing(app)
-    await app.cases.recordHearing('u', h.id, { summary: 'First write-up', outcome: { status: 'done' }, plan: { title: 'P', objective: '', steps: [] }, diary: { actions: [{ text: 'File reply' }] } })
-    const [first] = await app.crud.diary.list('u')
+    const { h } = await setup(app)
+    await app.cases.recordHearing('u', h.id, { summary: 'First write-up', outcome: { status: 'done' }, plan: { title: 'P', objective: '', steps: [] }, notes: { order: 'Reply in 2 weeks', actions: [{ text: 'File reply' }] } })
+    const first = (await app.crud.hearing.get('u', h.id))!
 
-    await app.cases.recordHearing('u', h.id, { summary: 'Corrected write-up', outcome: { status: 'done' }, diary: { order: 'Adjourned', actions: first.actions } })
-    const entries = await app.crud.diary.list('u')
-    expect(entries).toHaveLength(1)
-    expect(entries[0]).toMatchObject({ id: first.id, proceedings: 'Corrected write-up', order: 'Adjourned' })
-    expect(entries[0].actions[0].taskId).toBe(first.actions[0].taskId)
+    await app.cases.recordHearing('u', h.id, { summary: 'Corrected write-up', outcome: { status: 'done' }, notes: { actions: first.actions } })
+    const second = (await app.crud.hearing.get('u', h.id))!
+    expect(second.summary).toBe('Corrected write-up')
+    expect(second.order).toBeUndefined()
+    expect(second.actions![0].taskId).toBe(first.actions![0].taskId)
     expect((await app.crud.plan.list('u')).length).toBe(1)
+    expect((await app.crud.hearing.list('u')).length).toBe(1)
+
+    // With no notes given, what the hearing has is left alone.
+    await app.crud.hearing.update({ ...second, order: 'Adjourned' })
+    await app.cases.recordHearing('u', h.id, { summary: 'Third', outcome: { status: 'done' } })
+    expect((await app.crud.hearing.get('u', h.id))).toMatchObject({ summary: 'Third', order: 'Adjourned' })
   })
 
-  it('does not write an empty entry when recording a hearing with nothing to say', async () => {
+  it('is not a diary entry until something has been written or recorded', async () => {
     const app = freshApp()
-    const { h } = await caseAndHearing(app)
+    const { h } = await setup(app)
+    expect(diaryOf(await app.crud.hearing.list('u'))).toEqual([])
     await app.cases.recordHearing('u', h.id, { summary: '', outcome: { status: 'not_done', comment: 'Not taken up' } })
-    expect(await app.crud.diary.list('u')).toEqual([])
+    expect(diaryOf(await app.crud.hearing.list('u')).map((x) => x.id)).toEqual([h.id])
   })
 
-  it('turns the open actions into tasks or a plan, once', async () => {
+  it('turns the open actions into tasks or a plan, once, following the hearing’s next date', async () => {
     const app = freshApp()
-    const { c, h } = await caseAndHearing(app)
+    const { c, h } = await setup(app)
     const next = await app.crud.hearing.create('u', { caseId: c.id, date: '2026-11-10', duration: 60, purpose: 'Arguments', outcome: { status: 'open' } })
-    const entry = await app.diary.save('u', {
-      caseId: c.id, hearingId: h.id, kind: 'court', date: '2026-10-20', proceedings: 'Adjourned.', authorities: [], nextDate: '2026-11-10', nextPurpose: 'Arguments',
-      actions: [{ text: 'Draft written submissions', due: '2026-11-05' }, { text: 'Collect certified copies' }],
-    })
+    await app.crud.hearing.update({ ...(await app.crud.hearing.get('u', h.id))!, nextHearingId: next.id, summary: 'Adjourned.', actions: [{ id: 'a1', text: 'Draft written submissions', due: '2026-11-05' }, { id: 'a2', text: 'Collect certified copies' }] })
 
-    const tasked = await app.diary.toTasks('u', entry.id)
+    const tasked = await app.hearingActions.toTasks('u', h.id)
     const made = (await app.crud.task.list('u')).filter((t) => t.related?.id === c.id)
     expect(made.map((t) => [t.title, t.dueDate, t.workspace]).sort()).toEqual([['Collect certified copies', '2026-11-10', 'sb'], ['Draft written submissions', '2026-11-05', 'sb']])
-    expect(tasked.actions.every((a) => a.taskId)).toBe(true)
-    await expect(app.diary.toTasks('u', entry.id)).rejects.toThrow(/already has a task/)
+    expect(tasked.actions!.every((a) => a.taskId)).toBe(true)
+    await expect(app.hearingActions.toTasks('u', h.id)).rejects.toThrow(/already has a task/)
 
-    // A later action goes into a plan that covers the case and the hearing it was listed for.
-    const more = await app.diary.save('u', { ...tasked, actions: [...tasked.actions, { id: 'x', text: 'Brief senior counsel' }] })
-    const plan = await app.diary.toPlan('u', more.id)
+    await app.crud.hearing.update({ ...tasked, actions: [...tasked.actions!, { id: 'a3', text: 'Brief senior counsel' }] })
+    const plan = await app.hearingActions.toPlan('u', h.id)
     expect(plan).toMatchObject({ title: 'Prepare for Arguments', caseIds: [c.id], hearingIds: [next.id], origin: { kind: 'hearing', id: h.id } })
     expect((await app.crud.task.list('u')).filter((t) => t.planId === plan.id).map((t) => t.title)).toEqual(['Brief senior counsel'])
-    expect((await app.crud.diary.get('u', more.id))!.actions.every((a) => a.taskId)).toBe(true)
+    expect((await app.crud.hearing.get('u', h.id))!.actions!.every((a) => a.taskId)).toBe(true)
   })
 
-  it('keeps chamber work, needs some content, and searches across the whole entry', async () => {
+  it('shows an action as closed once its task is, and searches the whole record', async () => {
     const app = freshApp()
-    const { c } = await caseAndHearing(app)
-    await expect(app.diary.save('u', { caseId: c.id, kind: 'chamber', date: '2026-10-21', proceedings: '  ', authorities: [], actions: [] })).rejects.toThrow(/Write something/)
-    await expect(app.diary.save('u', { caseId: 'nope', kind: 'chamber', date: '2026-10-21', proceedings: 'x', authorities: [], actions: [] })).rejects.toThrow(/Case not found/)
-    await expect(app.diary.save('u', { caseId: c.id, kind: 'chamber', date: 'tomorrow', proceedings: 'x', authorities: [], actions: [] })).rejects.toThrow(/valid date/)
-
-    const a = await app.diary.save('u', { caseId: c.id, kind: 'chamber', date: '2026-10-21', title: 'Drafted reply', proceedings: 'Limitation point researched.', authorities: ['AIR 1999 SC 1'], actions: [] })
-    await app.diary.save('u', { caseId: c.id, kind: 'court', date: '2026-10-22', proceedings: 'Adjourned for reply.', order: 'Reply in two weeks', authorities: [], actions: [] })
-    const all = await app.crud.diary.list('u')
-    expect(entriesOf(c.id, all).map((e) => e.date)).toEqual(['2026-10-22', '2026-10-21'])
-    expect(searchEntries(all, 'limitation').map((e) => e.id)).toEqual([a.id])
-    expect(searchEntries(all, 'reply two weeks')).toHaveLength(1)
-    expect(searchEntries(all, 'AIR 1999')).toHaveLength(1)
-    expect(searchEntries(all, 'nothing like this')).toEqual([])
-    expect(searchEntries(all, '  ')).toHaveLength(2)
-    expect((await app.crud.activity.list('u')).some((x) => x.ref.id === c.id && /Diary: chambers entry/.test(x.summary))).toBe(true)
-  })
-
-  it('shows an action as closed once its task is', async () => {
-    const app = freshApp()
-    const { c } = await caseAndHearing(app)
-    const entry = await app.diary.save('u', { caseId: c.id, kind: 'chamber', date: '2026-10-21', proceedings: 'x', authorities: [], actions: [{ text: 'File reply' }, { text: 'Serve copy' }] })
-    const tasked = await app.diary.toTasks('u', entry.id)
+    const { c, h } = await setup(app)
+    await app.cases.recordHearing('u', h.id, { summary: 'Limitation point argued.', outcome: { status: 'done' }, notes: { order: 'Reply in two weeks', authorities: ['AIR 1999 SC 1'], actions: [{ text: 'File reply' }, { text: 'Serve copy' }] } })
+    const tasked = await app.hearingActions.toTasks('u', h.id)
     const [t1] = await app.crud.task.list('u')
     await app.crud.task.update({ ...t1, outcome: { status: 'done' } })
     const tasks = await app.crud.task.list('u')
     expect(pendingActions(tasked, tasks)).toHaveLength(1)
-    expect(actionClosed(tasked.actions.find((a) => a.taskId === t1.id)!, tasks)).toBe(true)
-  })
+    expect(actionClosed(tasked.actions!.find((a) => a.taskId === t1.id)!, tasks)).toBe(true)
 
-  it('removes a case’s diary with the case', async () => {
-    const app = freshApp()
-    const { c } = await caseAndHearing(app)
-    await app.diary.save('u', { caseId: c.id, kind: 'chamber', date: '2026-10-21', proceedings: 'x', authorities: [], actions: [] })
-    await app.cases.remove('u', c.id)
-    expect(await app.crud.diary.list('u')).toEqual([])
+    const all = await app.crud.hearing.list('u')
+    const cases = await app.crud.case.list('u')
+    expect(searchDiary(all, cases, 'limitation')).toHaveLength(1)
+    expect(searchDiary(all, cases, 'reply two weeks')).toHaveLength(1)
+    expect(searchDiary(all, cases, 'AIR 1999')).toHaveLength(1)
+    expect(searchDiary(all, cases, c.reference)).toHaveLength(1)
+    expect(searchDiary(all, cases, 'nothing like this')).toEqual([])
+    expect(searchDiary(all, cases, '  ')).toHaveLength(1)
   })
 })
+
+describe('one hearing for several cases', () => {
+  const twoCases = async (app: ReturnType<typeof freshApp>) => {
+    const a = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'Wages A', status: 'active', summary: '' })
+    const b = await app.cases.open('u', { organization: 'TUMWU', type: 'pow', title: 'Wages B', status: 'active', summary: '' })
+    const h = await app.crud.hearing.create('u', { caseId: a.id, alsoCaseIds: [b.id, a.id, b.id], date: '2026-10-20', duration: 60, purpose: 'Evidence (both)', outcome: { status: 'open' } })
+    return { a, b, h }
+  }
+
+  it('lists the hearing on every case it concerns, with one record', async () => {
+    const app = freshApp()
+    const { a, b, h } = await twoCases(app)
+    expect(h.alsoCaseIds).toEqual([b.id])
+    expect(hearingCaseIds(h)).toEqual([a.id, b.id])
+    const all = await app.crud.hearing.list('u')
+    expect(hearingsOf(a.id, all).map((x) => x.id)).toEqual([h.id])
+    expect(hearingsOf(b.id, all).map((x) => x.id)).toEqual([h.id])
+
+    const result = await app.cases.recordHearing('u', h.id, {
+      summary: 'Both matters taken up together.',
+      outcome: { status: 'done' },
+      next: { date: '2026-11-10', purpose: 'Arguments (both)' },
+      plan: { title: 'Prepare', objective: '', steps: [] },
+      notes: { order: 'List both on 10 Nov.', actions: [{ text: 'Consolidated written submissions' }] },
+    })
+    // The next listing and the plan serve both cases; there is still only one record of each.
+    expect(hearingCaseIds(result.nextHearing!)).toEqual([a.id, b.id])
+    expect(result.plan!.caseIds).toEqual([a.id, b.id])
+    expect(diaryOf(await app.crud.hearing.list('u'))).toHaveLength(1)
+    expect(hearingsOf(b.id, await app.crud.hearing.list('u'))).toHaveLength(2)
+  })
+
+  it('sits under each case in the thread and brings every case along to a plan', async () => {
+    const app = freshApp()
+    const { a, b, h } = await twoCases(app)
+    const plan = await app.plans.createWithSteps('u', { title: 'Shared', objective: '', workspace: 'sb', status: 'active' }, [])
+    const covered = await app.plans.cover('u', plan.id, { kind: 'hearing', id: h.id })
+    expect(planCaseIds(covered)).toEqual([a.id, b.id])
+
+    const [tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients, projects, links] = await Promise.all([
+      app.crud.task.list('u'), app.crud.meeting.list('u'), app.crud.followUp.list('u'), app.crud.case.list('u'), app.crud.hearing.list('u'),
+      app.crud.plan.list('u'), app.crud.goal.list('u'), app.crud.counsel.list('u'), app.crud.client.list('u'), app.crud.project.list('u'), app.crud.link.list('u'),
+    ])
+    const graph = new RelationGraph({ tasks, meetings, followUps, cases, hearings, plans, goals, counsel, clients, projects, links })
+    expect(graph.thread({ kind: 'hearing', id: h.id }).ancestors.map((x) => x.ref.id)).toEqual(expect.arrayContaining([a.id, b.id]))
+
+    // Dropping one case keeps the hearing and the plan on the other.
+    const after = await app.plans.uncover('u', plan.id, { kind: 'case', id: a.id })
+    expect(planCaseIds(after)).toEqual([b.id])
+    expect(planHearingIds(after)).toEqual([h.id])
+  })
+
+  it('deleting a case leaves the shared hearing with the other case', async () => {
+    const app = freshApp()
+    const { a, b, h } = await twoCases(app)
+    const only = await app.crud.hearing.create('u', { caseId: a.id, date: '2026-10-25', duration: 30, purpose: 'Only A', outcome: { status: 'open' } })
+    await app.cases.remove('u', a.id)
+    const left = await app.crud.hearing.list('u')
+    expect(left.map((x) => x.id)).toEqual([h.id])
+    expect(left[0].caseId).toBe(b.id)
+    expect(left[0].alsoCaseIds).toBeUndefined()
+    expect(left.some((x) => x.id === only.id)).toBe(false)
+
+    // Dropping a case that was only an “also” detaches it from the hearing.
+    const c = await app.cases.open('u', { organization: 'SA', type: 'other', title: 'C', status: 'active', summary: '' })
+    await app.crud.hearing.update({ ...left[0], alsoCaseIds: [c.id] })
+    await app.cases.remove('u', c.id)
+    expect(hearingCaseIds((await app.crud.hearing.get('u', h.id))!)).toEqual([b.id])
+  })
+})
+

@@ -17,8 +17,9 @@ export interface ActionRow {
  * say so.
  */
 export function ActionListEditor({ actions, onChange, placeholder = 'e.g. File reply to the application' }: { actions: ActionRow[]; onChange: (a: ActionRow[]) => void; placeholder?: string }) {
-  const update = (i: number, patch: Partial<ActionRow>) => onChange(actions.map((a, j) => (j === i ? { ...a, ...patch } : a)))
-  const rows = actions.length ? actions : [{ text: '' }]
+  // An empty list still shows one blank row to type into; editing it creates the first action.
+  const rows: ActionRow[] = actions.length ? actions : [{ text: '' }]
+  const update = (i: number, patch: Partial<ActionRow>) => onChange(rows.map((a, j) => (j === i ? { ...a, ...patch } : a)))
 
   return (
     <div className="grid gap-2">
@@ -32,7 +33,7 @@ export function ActionListEditor({ actions, onChange, placeholder = 'e.g. File r
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && a.text.trim()) {
                   e.preventDefault()
-                  onChange([...actions, { text: '' }])
+                  onChange([...rows, { text: '' }])
                 }
               }}
               placeholder={placeholder}
@@ -52,7 +53,7 @@ export function ActionListEditor({ actions, onChange, placeholder = 'e.g. File r
           </Button>
         </div>
       ))}
-      <Button type="button" variant="ghost" size="sm" className="justify-self-start" onClick={() => onChange([...actions, { text: '' }])}>
+      <Button type="button" variant="ghost" size="sm" className="justify-self-start" onClick={() => onChange([...rows, { text: '' }])}>
         <Plus /> Add an action
       </Button>
     </div>

@@ -36,17 +36,17 @@ export function RecordHearingDialog({ hearing, legalCase, onClose }: { hearing: 
 }
 
 function RecordHearingForm({ hearing, legalCase, onClose }: { hearing: Hearing; legalCase: LegalCase; onClose: () => void }) {
-  const { data: diary } = useEntities('diary')
-  // Revising a hearing that's already written up starts from its diary entry, and doesn't list or plan again by default.
-  const entry = diary.find((e) => e.hearingId === hearing.id)
+  const { data: cases } = useEntities('case')
+  // Revising a hearing that's already written up starts from what is on it, and doesn't list or plan again by default.
   const revising = hearing.outcome.status !== 'open'
+  const together = (hearing.alsoCaseIds ?? []).map((id) => cases.find((c) => c.id === id)).filter(Boolean)
 
-  const [summary, setSummary] = useState(hearing.summary ?? entry?.proceedings ?? '')
+  const [summary, setSummary] = useState(hearing.summary ?? '')
   const [status, setStatus] = useState<OutcomeStatus>(hearing.outcome.status === 'open' ? 'done' : hearing.outcome.status)
   const [comment, setComment] = useState(hearing.outcome.comment ?? '')
-  const [detail, setDetail] = useState<DiaryDetail>({ bench: entry?.bench ?? hearing.forum, order: entry?.order, submissions: entry?.submissions, authorities: entry?.authorities ?? [], evidence: entry?.evidence, reflections: entry?.reflections })
-  const [more, setMore] = useState(!!(entry?.submissions || entry?.evidence || entry?.reflections || entry?.authorities.length))
-  const [actions, setActions] = useState<ActionRow[]>(entry?.actions ?? [])
+  const [detail, setDetail] = useState<DiaryDetail>({ bench: hearing.bench ?? hearing.forum, order: hearing.order, submissions: hearing.submissions, authorities: hearing.authorities ?? [], evidence: hearing.evidence, reflections: hearing.reflections })
+  const [more, setMore] = useState(!!(hearing.submissions || hearing.evidence || hearing.reflections || hearing.authorities?.length))
+  const [actions, setActions] = useState<ActionRow[]>(hearing.actions ?? [])
   const [hasNext, setHasNext] = useState(!hearing.nextHearingId)
   const [nextDate, setNextDate] = useState<string | undefined>()
   const [nextTime, setNextTime] = useState<number | undefined>(hearing.time)
@@ -72,7 +72,7 @@ function RecordHearingForm({ hearing, legalCase, onClose }: { hearing: Hearing; 
       next: hasNext && nextDate ? { date: nextDate, time: nextTime, purpose: nextPurpose || 'Next hearing' } : undefined,
       // The plan's steps are the actions without a task yet, each due by its own date or the next hearing.
       plan: makePlan ? { title: planTitle.trim() || defaultPlanTitle, objective, steps: [] } : undefined,
-      diary: { ...detail, actions },
+      notes: { ...detail, actions },
       caseUpdate: { stage: stage || undefined, status: caseStatus },
     })
     onClose()
@@ -85,6 +85,11 @@ function RecordHearingForm({ hearing, legalCase, onClose }: { hearing: Hearing; 
         <DialogDescription>
           {legalCase.reference} · {format(parseISO(hearing.date), 'EEE d MMM yyyy')} · {hearing.purpose}
         </DialogDescription>
+        {together.length > 0 && (
+          <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+            Heard together with {together.map((c) => c!.reference).join(', ')}. This one write-up is the record for all of them, and the next hearing and the plan cover them too.
+          </p>
+        )}
       </DialogHeader>
       <FormShell submitLabel={revising ? 'Save' : 'Record hearing'} onCancel={onClose} onSubmit={submit}>
         <Field label="What happened" htmlFor="rh-summary">
@@ -165,7 +170,7 @@ function RecordHearingForm({ hearing, legalCase, onClose }: { hearing: Hearing; 
         {!makePlan && open > 0 && <p className="-mt-2 text-xs text-muted-foreground">Without a plan, the actions stay in the diary entry — make them tasks from there when you’re ready.</p>}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Case stage" htmlFor="rh-stage">
+          <Field label={together.length ? `Stage of ${legalCase.reference}` : 'Case stage'} htmlFor="rh-stage">
             <Input id="rh-stage" value={stage} onChange={(e) => setStage(e.target.value)} />
           </Field>
           <Field label="Case status" htmlFor="rh-status">

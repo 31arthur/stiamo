@@ -1,5 +1,4 @@
 import type { CaseUseCases } from '@/domain/cases/CaseUseCases'
-import type { DiaryUseCases } from '@/domain/diary/DiaryUseCases'
 import type { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import type { PlanUseCases } from '@/domain/plans/PlanUseCases'
 import type { CrudUseCases } from '@/domain/shared/CrudUseCases'
@@ -22,7 +21,6 @@ interface SeedTarget {
     project: CrudUseCases<'project'>
   }
   meetings: MeetingUseCases
-  diary: DiaryUseCases
   plans: PlanUseCases
   cases: CaseUseCases
   outcomes: RecordOutcomeUseCase
@@ -113,7 +111,7 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
       // The steps come from the diary entry's actions below.
       steps: [],
     },
-    diary: {
+    notes: {
       bench: 'Hon’ble Presiding Officer, Labour Court 2',
       order: 'WW-1’s evidence recorded. Objection to Ex. W-9 kept open. Employer to begin cross-examination on the next date; list for RW-1.',
       submissions:
@@ -129,16 +127,6 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
       ],
     },
     caseUpdate: { stage: 'Evidence' },
-  })
-  await app.diary.save(userId, {
-    caseId: mehta.id,
-    kind: 'chamber',
-    date: day(-9),
-    title: 'Conference with the union; drafted the application on registers',
-    proceedings: 'Met the TUMWU representatives (24 workers, 6 attended). Confirmed no worker was ever given a wage slip. Settled the list of witnesses. Drafted the application under Section 13A for production of registers.',
-    authorities: ['Section 13A, Payment of Wages Act'],
-    reflections: 'Workers are nervous about cross-examination; plan a short mock session.',
-    actions: [{ text: 'Mock cross-examination session with WW-2 and WW-3', due: day(2) }],
   })
 
   const arora = await app.cases.open(userId, {

@@ -7,9 +7,10 @@ import { BackButton } from '@/presentation/components/BackButton'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { CASE_STATUS_LABELS, CASE_TYPES, caseTypeOf, hearingsOf } from '@/domain/cases/LegalCase'
+import { CASE_STATUS_LABELS, CASE_TYPES, caseTypeOf, hearingCaseIds, hearingsOf } from '@/domain/cases/LegalCase'
 import { organizationName } from '@/domain/cases/Organization'
 import type { Hearing, LegalCase } from '@/domain/cases/LegalCase'
+import type { Task } from '@/domain/tasks/Task'
 import type { ActionPlan } from '@/domain/plans/ActionPlan'
 import { coversCase, coversHearing, planCaseIds, planHearingIds, planProgress } from '@/domain/plans/ActionPlan'
 import { formatClock, instantKey } from '@/domain/shared/time'
@@ -33,7 +34,7 @@ import { newHearing } from '@/presentation/forms/CaseForms'
 import { MeetingCard } from '@/presentation/meetings/MeetingCard'
 import { FollowUpRow } from '@/presentation/pages/FollowUpsPage'
 import { CASE_STATUS_TONE } from '@/presentation/pages/CasesPage'
-import { CaseDiary } from '@/presentation/diary/CaseDiary'
+import { HearingRecordDetails } from '@/presentation/diary/HearingRecordDetails'
 import { UseExistingPlan } from '@/presentation/plans/PlanScopeEditor'
 import { PlanSteps } from '@/presentation/plans/PlanSteps'
 import { TaskRow } from '@/presentation/tasks/TaskRow'
@@ -54,6 +55,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
   const editor = useEditor()
   const [recording, setRecording] = useState<Hearing | null>(null)
   const { data: hearings } = useEntities('hearing')
+  const { data: allCases } = useEntities('case')
   const { data: plans } = useEntities('plan')
   const { data: tasks } = useEntities('task')
   const { data: meetings } = useEntities('meeting')
@@ -143,12 +145,11 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
             ) : (
               <ol className="relative grid gap-4 pl-6 before:absolute before:top-2 before:bottom-2 before:left-[7px] before:w-px before:bg-border">
                 {[...list].reverse().map((h) => (
-                  <HearingItem key={h.id} hearing={h} plans={plans.filter((x) => coversHearing(x, h.id))} today={today} onRecord={() => setRecording(h)} onEdit={() => editor.open({ kind: 'hearing', value: h })} />
+                  <HearingItem key={h.id} hearing={h} caseId={c.id} cases={allCases} next={hearings.find((x) => x.id === h.nextHearingId)} tasks={tasks} plans={plans.filter((x) => coversHearing(x, h.id))} today={today} onRecord={() => setRecording(h)} onEdit={() => editor.open({ kind: 'hearing', value: h })} />
                 ))}
               </ol>
             )}
           </Section>
-          <CaseDiary legalCase={c} />
           <Section title="Thread & history" description="Everything connected to this case, and everything that happened">
             <ThreadPanel root={{ kind: 'case', id: c.id }} />
           </Section>
@@ -244,7 +245,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
   )
 }
 
-function HearingItem({ hearing: h, plans, today, onRecord, onEdit }: { hearing: Hearing; plans: ActionPlan[]; today: string; onRecord: () => void; onEdit: () => void }) {
+function HearingItem({ hearing: h, caseId, cases, next, tasks, plans, today, onRecord, onEdit }: { hearing: Hearing; caseId: string; cases: LegalCase[]; next?: Hearing; tasks: Task[]; plans: ActionPlan[]; today: string; onRecord: () => void; onEdit: () => void }) {
   const [showFiles, setShowFiles] = useState(false)
   const fileCount = useAttachments({ kind: 'hearing', id: h.id }).length
   const past = instantKey(h.date) < instantKey(today)
@@ -284,8 +285,23 @@ function HearingItem({ hearing: h, plans, today, onRecord, onEdit }: { hearing: 
             )}
           </div>
         </div>
-        {h.summary && <p className="mt-2 text-sm whitespace-pre-line text-muted-foreground">{h.summary}</p>}
-        {h.outcome.comment && <p className="mt-1 text-xs text-muted-foreground italic">{h.outcome.comment}</p>}
+        {hearingCaseIds(h).length > 1 && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            Heard together with
+            {hearingCaseIds(h)
+              .filter((id) => id !== caseId)
+              .map((id) => {
+                const other = cases.find((x) => x.id === id)
+                return other ? (
+                  <Link key={id} to={`/cases/${id}`} title={other.title} className="rounded-md border bg-background px-1.5 py-0.5 font-mono text-[11px] hover:text-foreground">
+                    {other.reference}
+                  </Link>
+                ) : null
+              })}
+            <span>· one record for all</span>
+          </div>
+        )}
+        <HearingRecordDetails hearing={h} next={next} tasks={tasks} today={today} />
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           {plans.length > 0 && <span>Plan for this hearing:</span>}
           {plans.map((x) => (

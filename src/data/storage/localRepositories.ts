@@ -19,7 +19,6 @@ export function createLocalRepositories(storage: Storage = localStorage): Reposi
     counsel: new LocalRepository(`${PREFIX}.counsel`, storage),
     client: new LocalRepository(`${PREFIX}.clients`, storage),
     project: new LocalRepository(`${PREFIX}.projects`, storage),
-    diary: new LocalRepository(`${PREFIX}.diary`, storage),
     link: new LocalRepository(`${PREFIX}.links`, storage),
     activity: new LocalRepository(`${PREFIX}.activity`, storage),
     attachment: new LocalRepository(`${PREFIX}.attachments`, storage),
