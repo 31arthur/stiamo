@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PLAN_STATUS_LABELS, planProgress, planSteps } from '@/domain/plans/ActionPlan'
 import type { ActionPlan, PlanStatus } from '@/domain/plans/ActionPlan'
-import type { ID, RichDoc } from '@/domain/shared/types'
+import type { ID, ISODate, RichDoc } from '@/domain/shared/types'
 import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
 import { useAttachments } from '@/presentation/attachments/useAttachments'
 import { ConfirmDelete } from '@/presentation/components/confirm'
@@ -66,6 +66,9 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
     return s.plans.saveDoc(userId, p.id, doc, first)
   })
   const files = useAttachments({ kind: 'plan', id: p.id })
+  const setDue = useAction<ISODate | undefined, { moved: number }>((s, userId, date) => s.plans.setDueDate(userId, p.id, date), {
+    success: ({ moved }) => (moved > 0 ? `${moved} step${moved === 1 ? '' : 's'} on the old date moved too — steps with their own date stayed` : undefined),
+  })
   const addStep = useAction<string, unknown>((s, userId, text) => s.plans.addStep(userId, p.id, text), { success: 'Added as a step' })
 
   const prog = planProgress(p.id, pool)
@@ -121,7 +124,7 @@ function PlanPage({ plan: p }: { plan: ActionPlan }) {
         <Property icon={Calendar} label="Due">
           <div className="flex flex-wrap items-center gap-2">
             <div className="w-44">
-              <DateInput value={p.dueDate} onChange={(dueDate) => save.run({ ...p, dueDate })} />
+              <DateInput value={p.dueDate} onChange={(dueDate) => setDue.run(dueDate)} />
             </div>
             {p.dueDate && <span className={cn('text-xs', overdue ? 'text-destructive' : 'text-muted-foreground')}>{overdue ? 'Overdue' : friendlyDate(p.dueDate, today)}</span>}
           </div>
