@@ -22,7 +22,7 @@ The **publishable key is designed to be public** — it only identifies the proj
 
 ## 2. Create the tables (one time)
 
-Open the Supabase dashboard → **SQL Editor → New query**, paste the contents of each file in [`supabase/migrations`](../supabase/migrations) in order (`0001_init.sql`, `0002_counsel.sql`, then `0003_clients_projects.sql`) and **Run**. They are safe to run again.
+Open the Supabase dashboard → **SQL Editor → New query**, paste the contents of each file in [`supabase/migrations`](../supabase/migrations) in order (`0001_init.sql`, `0002_counsel.sql`, then `0003_clients_projects.sql`, then `0004_diary.sql`) and **Run**. They are safe to run again.
 
 It creates, for each collection, a table of JSON documents (`id`, `user_id`, `data`), turns on **row-level security** so each signed-in user can only read and write their own rows, enables **Realtime** on the table, and creates a private **`attachments`** storage bucket whose policies confine each user to their own folder.
 
@@ -33,6 +33,7 @@ It creates, for each collection, a table of JSON documents (`id`, `user_id`, `da
 | `cases`, `hearings` | legal cases and hearings |
 | `counsel` | outside advocates and law firms |
 | `clients`, `projects` | FSA's clients and the projects done for them |
+| `diary` | the case diary: court and chamber entries |
 | `plans`, `goals` | action plans (incl. page content) and goals |
 | `links`, `activity` | hand-made links and the history trail |
 | `attachments` | file metadata (bytes are in Storage; a linked Google Doc is just a row, with no bytes) |

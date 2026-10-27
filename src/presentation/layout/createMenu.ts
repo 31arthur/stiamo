@@ -1,3 +1,4 @@
+import { NotebookPen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { EditorKind } from '@/presentation/app/create'
 import { KIND_META, MEETING_KIND_ICON } from '@/presentation/components/kinds'
@@ -8,6 +9,7 @@ export const CREATE_MENU: { kind: EditorKind; label: string; icon: LucideIcon }[
   { kind: 'appointment', label: 'Appointment', icon: MEETING_KIND_ICON.appointment },
   { kind: 'meeting', label: 'Meeting', icon: MEETING_KIND_ICON.meeting },
   { kind: 'case', label: 'Case', icon: KIND_META.case.icon },
+  { kind: 'diary', label: 'Diary entry', icon: NotebookPen },
   { kind: 'plan', label: 'Action plan', icon: KIND_META.plan.icon },
   { kind: 'goal', label: 'Goal', icon: KIND_META.goal.icon },
   { kind: 'counsel', label: 'Counsel (advocate / firm)', icon: KIND_META.counsel.icon },

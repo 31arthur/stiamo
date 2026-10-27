@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { CalendarDays, CalendarRange, Menu, Plus, Search, Sun } from 'lucide-react'
+import { CalendarDays, CalendarRange, Menu, NotebookPen, Plus, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -122,6 +122,7 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
       label: 'Legal',
       items: [
         { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length, tone: 'danger' },
+        { to: '/diary', label: 'Case diary', icon: NotebookPen },
         { to: '/counsel', label: 'Counsel', icon: KIND_META.counsel.icon },
       ],
     },

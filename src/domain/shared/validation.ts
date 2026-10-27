@@ -7,6 +7,7 @@ import type { ActionPlan } from '../plans/ActionPlan'
 import type { Task } from '../tasks/Task'
 import type { Counsel } from '../counsel/Counsel'
 import type { Client, Project } from '../clients/Client'
+import type { DiaryEntry } from '../diary/Diary'
 import { required, ValidationError } from './errors'
 import type { Draft } from './types'
 
@@ -107,4 +108,28 @@ export function normalizeGoal(g: Draft<Goal>): Draft<Goal> {
     if (kr.target === kr.start) throw new ValidationError(`"${kr.label}" needs a target different from its starting value`)
   }
   return { ...g, title: required(g.title, 'Title'), planIds: [...new Set(g.planIds)] }
+}
+
+const blank = (v?: string) => v?.trim() || undefined
+
+export function normalizeDiary(e: Draft<DiaryEntry>): Draft<DiaryEntry> {
+  checkDate(e.date, 'Date')
+  checkDate(e.nextDate, 'Next date')
+  for (const a of e.actions) checkDate(a.due, 'Action date')
+  const entry = {
+    ...e,
+    title: blank(e.title),
+    bench: blank(e.bench),
+    proceedings: e.proceedings?.trim() ?? '',
+    order: blank(e.order),
+    submissions: blank(e.submissions),
+    evidence: blank(e.evidence),
+    reflections: blank(e.reflections),
+    nextPurpose: blank(e.nextPurpose),
+    authorities: [...new Set((e.authorities ?? []).map((a) => a.trim()).filter(Boolean))],
+    actions: e.actions.map((a) => ({ ...a, text: a.text.trim() })).filter((a) => a.text),
+  }
+  const hasContent = entry.title || entry.proceedings || entry.order || entry.submissions || entry.evidence || entry.reflections || entry.authorities.length || entry.actions.length
+  if (!hasContent) throw new ValidationError('Write something in the entry first')
+  return entry
 }

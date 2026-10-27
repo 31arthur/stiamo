@@ -9,6 +9,7 @@ import { AttachmentUseCases } from '@/domain/attachments/AttachmentUseCases'
 import { ValidationError } from '@/domain/auth/errors'
 import { CaseUseCases } from '@/domain/cases/CaseUseCases'
 import { ClientUseCases } from '@/domain/clients/ClientUseCases'
+import { DiaryUseCases } from '@/domain/diary/DiaryUseCases'
 import { CounselUseCases } from '@/domain/counsel/CounselUseCases'
 import { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import { PlanUseCases } from '@/domain/plans/PlanUseCases'
@@ -21,6 +22,7 @@ import {
   normalizeCase,
   normalizeClient,
   normalizeCounsel,
+  normalizeDiary,
   normalizeFollowUp,
   normalizeGoal,
   normalizeHearing,
@@ -47,13 +49,15 @@ export function createContainer(backend: Backend) {
     counsel: new CrudUseCases('counsel', env, normalizeCounsel, log),
     client: new CrudUseCases('client', env, normalizeClient, log),
     project: new CrudUseCases('project', env, normalizeProject, log),
+    diary: new CrudUseCases('diary', env, normalizeDiary),
     link: new CrudUseCases('link', env),
     activity: new CrudUseCases('activity', env),
     attachment: new CrudUseCases('attachment', env),
   }
   const meetings = new MeetingUseCases(env, crud.meeting, crud.followUp)
   const plans = new PlanUseCases(env, crud.plan, crud.task, crud.goal, log)
-  const cases = new CaseUseCases(env, crud.case, crud.hearing, plans, log)
+  const diary = new DiaryUseCases(env, crud.diary, crud.task, plans, log)
+  const cases = new CaseUseCases(env, crud.case, crud.hearing, plans, log, diary)
   const counsel = new CounselUseCases(env, crud.counsel, crud.case, log)
   const clients = new ClientUseCases(env, crud.client, crud.project)
   const outcomes = new RecordOutcomeUseCase(env, crud.task, crud.followUp, meetings, log)
@@ -78,6 +82,7 @@ export function createContainer(backend: Backend) {
     cases,
     counsel,
     clients,
+    diary,
     outcomes,
     agenda,
     links,

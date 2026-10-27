@@ -56,8 +56,8 @@ export function TimeInput({ value, onChange, id, required }: { value: Minutes | 
   )
 }
 
-export function DateInput({ value, onChange, id, required }: { value: string | undefined; onChange: (d: string | undefined) => void; id?: string; required?: boolean }) {
-  return <Input id={id} type="date" required={required} value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)} />
+export function DateInput({ value, onChange, id, required, 'aria-label': ariaLabel }: { value: string | undefined; onChange: (d: string | undefined) => void; id?: string; required?: boolean; 'aria-label'?: string }) {
+  return <Input id={id} aria-label={ariaLabel} type="date" required={required} value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)} />
 }
 
 export interface SegmentOption<T extends string> {

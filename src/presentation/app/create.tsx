@@ -26,6 +26,9 @@ import { CounselForm, newCounsel } from '@/presentation/forms/CounselForm'
 import type { CounselDraft } from '@/presentation/forms/CounselForm'
 import type { Counsel } from '@/domain/counsel/Counsel'
 import type { Client, Project } from '@/domain/clients/Client'
+import type { DiaryEntry } from '@/domain/diary/Diary'
+import { DiaryForm, newDiaryEntry } from '@/presentation/forms/DiaryForm'
+import type { DiaryDraft } from '@/presentation/forms/DiaryForm'
 import { ClientForm, newClient, newProject, ProjectForm } from '@/presentation/forms/ClientForms'
 import type { ClientDraft, ProjectDraft } from '@/presentation/forms/ClientForms'
 import { RecordSheet } from './RecordSheet'
@@ -51,6 +54,7 @@ export type EditorRequest =
   | { kind: 'counsel'; value?: Counsel | Partial<CounselDraft> }
   | { kind: 'client'; value?: Client | Partial<ClientDraft> }
   | { kind: 'project'; value?: Project | Partial<ProjectDraft> }
+  | { kind: 'diary'; value?: DiaryEntry | Partial<DiaryDraft> }
 
 export type EditorKind = EditorRequest['kind']
 
@@ -64,6 +68,7 @@ const TITLES: Record<EditorKind, [create: string, edit: string, description: str
   plan: ['New action plan', 'Edit action plan', 'Steps towards an objective'],
   counsel: ['Add counsel', 'Edit counsel', 'An outside advocate or law firm you work with'],
   client: ['Add a client', 'Edit client', 'Someone FSA does work for'],
+  diary: ['Diary entry', 'Edit diary entry', 'What happened in court, or the work done in chambers'],
   project: ['New project', 'Edit project', 'A piece of work for a client'],
   goal: ['Set a goal', 'Edit goal', 'Something to achieve over time'],
 }
@@ -183,6 +188,7 @@ export function EditorHost({ children }: { children: ReactNode }) {
           {request?.kind === 'counsel' && <CounselForm initial={editing ? (request.value as Counsel) : newCounsel(request.value as Partial<CounselDraft>)} onDone={done('/counsel')} />}
           {request?.kind === 'client' && <ClientForm initial={editing ? (request.value as Client) : newClient(request.value as Partial<ClientDraft>)} onDone={done('/clients')} />}
           {request?.kind === 'project' && <ProjectForm initial={editing ? (request.value as Project) : newProject(request.value as Partial<ProjectDraft>)} onDone={done('/projects')} />}
+          {request?.kind === 'diary' && <DiaryForm initial={editing ? (request.value as DiaryEntry) : newDiaryEntry(today, request.value as Partial<DiaryDraft>)} onDone={done()} />}
           {request?.kind === 'goal' && (
             <GoalForm initial={editing ? (request.value as Goal) : { ...newGoal(today), workspace, ...request.value }} onDone={done('/goals')} />
           )}

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { CalendarDays, Sun } from 'lucide-react'
+import { CalendarDays, NotebookPen, Sun } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from '@/components/ui/command'
 import { Command } from '@/components/ui/command'
@@ -39,6 +39,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       { label: 'Follow-ups', to: '/follow-ups', icon: KIND_META.followUp.icon },
       { label: 'Meetings & appointments', to: '/meetings', icon: KIND_META.meeting.icon },
       { label: 'Cases', to: '/cases', icon: KIND_META.case.icon },
+      { label: 'Case diary', to: '/diary', icon: NotebookPen },
       { label: 'Counsel', to: '/counsel', icon: KIND_META.counsel.icon },
       { label: 'Clients & projects', to: '/clients', icon: KIND_META.client.icon },
       { label: 'Action plans', to: '/plans', icon: KIND_META.plan.icon },

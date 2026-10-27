@@ -1,4 +1,5 @@
 import type { CaseUseCases } from '@/domain/cases/CaseUseCases'
+import type { DiaryUseCases } from '@/domain/diary/DiaryUseCases'
 import type { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import type { PlanUseCases } from '@/domain/plans/PlanUseCases'
 import type { CrudUseCases } from '@/domain/shared/CrudUseCases'
@@ -21,6 +22,7 @@ interface SeedTarget {
     project: CrudUseCases<'project'>
   }
   meetings: MeetingUseCases
+  diary: DiaryUseCases
   plans: PlanUseCases
   cases: CaseUseCases
   outcomes: RecordOutcomeUseCase
@@ -108,9 +110,35 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     plan: {
       title: 'Prepare cross-examination of RW-1',
       objective: 'Establish that no wages or registers exist and make the workers’ ledger (Ex. W-9) admissible.',
-      steps: ['Re-read the ledger Ex. W-9 against worker statements', 'Prep worker witnesses for likely cross questions', 'Brief on admissibility of an unsigned ledger', 'Tabulate wages due, worker by worker'],
+      // The steps come from the diary entry's actions below.
+      steps: [],
+    },
+    diary: {
+      bench: 'Hon’ble Presiding Officer, Labour Court 2',
+      order: 'WW-1’s evidence recorded. Objection to Ex. W-9 kept open. Employer to begin cross-examination on the next date; list for RW-1.',
+      submissions:
+        'Argued that registers are the employer’s duty under the Payment of Wages Act and their absence shifts the burden. Respondent says the ledger is unsigned and a private record. Bench asked for authority on admissibility of private ledgers.',
+      authorities: ['Section 13A, Payment of Wages Act', 'Authority on the employer’s burden to produce registers (to be located)'],
+      evidence: 'WW-1 examined in chief. Ex. W-4 to W-11 marked; W-9 objected to. WW-2 and WW-3 still to be examined.',
+      reflections: 'Bench seems receptive on the registers point but wants a case on unsigned ledgers. Lead with the burden argument next time; keep the ledger as corroboration.',
+      actions: [
+        { text: 'Re-read the ledger Ex. W-9 against worker statements', due: day(1) },
+        { text: 'Prep worker witnesses for likely cross questions', due: day(2) },
+        { text: 'Brief on admissibility of an unsigned ledger', due: day(2) },
+        { text: 'Tabulate wages due, worker by worker' },
+      ],
     },
     caseUpdate: { stage: 'Evidence' },
+  })
+  await app.diary.save(userId, {
+    caseId: mehta.id,
+    kind: 'chamber',
+    date: day(-9),
+    title: 'Conference with the union; drafted the application on registers',
+    proceedings: 'Met the TUMWU representatives (24 workers, 6 attended). Confirmed no worker was ever given a wage slip. Settled the list of witnesses. Drafted the application under Section 13A for production of registers.',
+    authorities: ['Section 13A, Payment of Wages Act'],
+    reflections: 'Workers are nervous about cross-examination; plan a short mock session.',
+    actions: [{ text: 'Mock cross-examination session with WW-2 and WW-3', due: day(2) }],
   })
 
   const arora = await app.cases.open(userId, {
