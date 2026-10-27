@@ -15,6 +15,7 @@ import { useEditor } from '@/presentation/app/create'
 import type { EditorRequest } from '@/presentation/app/create'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { entryIcon, entryLabel } from '@/presentation/components/kinds'
+import { LensNotice } from '@/presentation/components/LensNotice'
 import { OUTCOME_STYLE } from '@/presentation/components/outcome'
 import { WS_STYLE, WorkspaceDot } from '@/presentation/components/workspace'
 import { useAgenda, useToday } from '@/presentation/data/hooks'
@@ -103,6 +104,8 @@ export function CalendarPage() {
           </div>
         </div>
       </div>
+
+      <LensNotice items={entries.filter((e) => e.date.startsWith(monthPrefix))} />
 
       <div className="overflow-hidden rounded-2xl border bg-card/80 shadow-float backdrop-blur">
         <div className="grid grid-cols-7 border-b text-center text-[11px] font-medium tracking-wider text-muted-foreground uppercase">

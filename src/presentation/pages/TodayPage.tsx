@@ -21,6 +21,7 @@ import { useEditor } from '@/presentation/app/create'
 import type { EditorRequest } from '@/presentation/app/create'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { friendlyDate } from '@/presentation/components/dates'
+import { LensNotice } from '@/presentation/components/LensNotice'
 import { Section } from '@/presentation/components/layout'
 import { OutcomeControl } from '@/presentation/components/outcome'
 import { ProgressRing } from '@/presentation/components/progress'
@@ -270,6 +271,8 @@ function DayPlanner({ date }: { date: ISODate }) {
             </div>
           </div>
         </div>
+
+        <LensNotice items={planner.entries} />
 
         <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_1fr] xl:grid-cols-[280px_1fr_300px]">
           <aside className="flex min-h-0 flex-col gap-4 max-lg:max-h-96">
