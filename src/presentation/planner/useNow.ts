@@ -9,8 +9,16 @@ const minutesSinceMidnight = () => {
 export function useNow(intervalMs = 30_000): number {
   const [now, setNow] = useState(minutesSinceMidnight)
   useEffect(() => {
-    const id = setInterval(() => setNow(minutesSinceMidnight()), intervalMs)
-    return () => clearInterval(id)
+    const tick = () => setNow(minutesSinceMidnight())
+    const id = setInterval(tick, intervalMs)
+    // Timers pause while a laptop sleeps or a tab is in the background; catch up on return.
+    document.addEventListener('visibilitychange', tick)
+    window.addEventListener('focus', tick)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+      window.removeEventListener('focus', tick)
+    }
   }, [intervalMs])
   return now
 }

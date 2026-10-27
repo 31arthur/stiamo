@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { addDays, format, isToday as isTodayDate, isValid, parseISO } from 'date-fns'
+import { addDays, format, isValid, parseISO } from 'date-fns'
 import { DndContext, DragOverlay, MouseSensor, pointerWithin, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core'
 import { AnimatePresence, motion } from 'motion/react'
@@ -49,7 +49,9 @@ function readGap(): number {
 
 export function TodayPage() {
   const params = useParams<{ date?: string }>()
-  const parsed = params.date ? parseISO(params.date) : new Date()
+  // `/today` follows the clock, so a tab left open past midnight moves on to the new day.
+  const today = useToday()
+  const parsed = params.date ? parseISO(params.date) : parseISO(today)
   if (!isValid(parsed)) return <Navigate to="/today" replace />
   return <DayPlanner date={toISODate(parsed)} />
 }
@@ -63,7 +65,7 @@ function DayPlanner({ date }: { date: ISODate }) {
   const { data: tasks } = useEntities('task')
   const quickSave = useSave('task')
   const day = parseISO(date)
-  const isToday = isTodayDate(day)
+  const isToday = date === today
   const clock = useNow()
   const now = isToday ? clock : null
 
@@ -142,7 +144,7 @@ function DayPlanner({ date }: { date: ISODate }) {
   }
 
   function goToDay(offset: number | null) {
-    const target = offset === null ? new Date() : addDays(day, offset)
+    const target = offset === null ? parseISO(today) : addDays(day, offset)
     setDirection(Math.sign(target.getTime() - day.getTime()))
     navigate(`/today/${toISODate(target)}`)
   }
@@ -251,8 +253,16 @@ function DayPlanner({ date }: { date: ISODate }) {
               <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label="Previous day" onClick={() => goToDay(-1)}>
                 <ChevronLeft />
               </Button>
-              <Button variant="ghost" size="sm" className="rounded-full px-2 text-xs" onClick={() => goToDay(null)} disabled={isToday}>
-                Today
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-w-24 rounded-full px-2 text-xs"
+                onClick={() => goToDay(null)}
+                disabled={isToday}
+                title={isToday ? undefined : 'Back to today'}
+                aria-label={isToday ? 'Today' : `${friendlyDate(date, today)} — back to today`}
+              >
+                {friendlyDate(date, today)}
               </Button>
               <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label="Next day" onClick={() => goToDay(1)}>
                 <ChevronRight />
