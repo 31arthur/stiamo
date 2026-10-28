@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Without Supabase config the app runs offline on this device: sign in with `demo@stiamo.app` / `password123` (a demo practice is seeded on first run). To use your cloud project, copy `.env.example` to `.env.local`, run the SQL migration, and follow [docs/SUPABASE.md](docs/SUPABASE.md).
+With `VITE_API_URL` set (see `.env.example`) the app signs in to and stores everything on the Stiamo backend. Otherwise, without Supabase config the app runs offline on this device: sign in with `demo@stiamo.app` / `password123` (a demo practice is seeded on first run). To use your cloud project, copy `.env.example` to `.env.local`, run the SQL migration, and follow [docs/SUPABASE.md](docs/SUPABASE.md).
 
 | Script | Purpose |
 | --- | --- |
