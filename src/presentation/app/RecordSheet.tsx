@@ -3,8 +3,10 @@ import { Clock, Flag, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { chaseOf } from '@/domain/followups/chase'
 import { CHANNEL_LABELS } from '@/domain/followups/FollowUp'
 import type { FollowUp } from '@/domain/followups/FollowUp'
+import { AttemptHistory, ChaseBadge, LogCall } from '@/presentation/followups/chase'
 import { CONFIRMATION_LABELS } from '@/domain/meetings/Meeting'
 import { formatClock, formatDuration } from '@/domain/shared/time'
 import type { EntityRef } from '@/domain/shared/types'
@@ -153,6 +155,18 @@ function FollowUpBody({ followUp: f, onEdit, onDeleted }: { followUp: FollowUp; 
                   </div>
                   {f.notes && <p className="text-sm whitespace-pre-line">{f.notes}</p>}
                   <OutcomeNote outcome={f.outcome} target="followUp" />
+                  {f.outcome.status === 'open' && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ChaseBadge chase={chaseOf(f)} today={today} />
+                      <LogCall followUp={f} label={f.channel === 'call' ? 'Log a call' : 'Log a try'} />
+                    </div>
+                  )}
+                  {!!f.attempts?.length && (
+                    <div className="grid gap-1.5">
+                      <div className="text-xs font-medium text-muted-foreground">Tries so far</div>
+                      <AttemptHistory followUp={f} today={today} />
+                    </div>
+                  )}
                 </div>
               ),
             },

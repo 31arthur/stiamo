@@ -42,6 +42,19 @@ Grouped by date (Overdue, Today, Next 7 days, Later, No date) or by workspace; f
 
 Overdue, Today, Upcoming and Recently logged. Follow-up wording for outcomes (Reached, Left message, No answer). Confirmation follow-ups are labelled and link to their appointment.
 
+**Chasing.** A follow-up is a chase, not a one-shot: it stays open through every try. **Log call** on any row (or in a follow-up's side panel) takes two taps — pick what happened, confirm the next try:
+
+| What happened | What the system does |
+|---|---|
+| No answer / left a message | Schedules the next try for you: later today (2 h on, before 6 pm), then a different time of day tomorrow, then two days on, then three — and from the third miss suggests *switching to a message*. If the contact has picked up before, it uses the time of day they did. |
+| Said call later | Next try at the time they gave (tomorrow at that time if it has passed). |
+| Will call me | Parks it under **Waiting on them** until the day you'd chase them (two days by default). |
+| Not done yet | You spoke but they haven't finished: set the day they promised and it comes back that day, badged *Promised for…* (red once past). |
+| Reached — done | Closes it as reached. |
+| Wrong number | Stops scheduling; it goes to **Stuck — try another way** until you give it a new contact. |
+
+Every try is kept (what happened, when, what was said) under the row (*3 tries · last: No answer, yesterday*) and in the follow-up's panel; the suggested time is shown with its reason and can be changed; an **Undo** on the toast puts the follow-up back as it was. The retry lands on the Today timeline and Calendar like any timed follow-up, and a number in the contact becomes a **Call** link.
+
 ## Meetings & appointments (`/meetings`, `/meetings/:id`)
 
 - List by Upcoming / **Needs outcome** / Past, filter by kind; cards show confirmation status and agenda coverage.

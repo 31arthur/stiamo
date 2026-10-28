@@ -14,6 +14,8 @@ import { caseTypeOf } from './cases/LegalCase'
 import { clientRefKeys, clientOf, meetingsFor, tasksFor } from './clients/Client'
 import { actionClosed, diaryOf, mergeCandidates, pendingActions, searchDiary } from './cases/hearingDiary'
 import { hearingCaseIds, hearingsOf } from './cases/LegalCase'
+import { bestMinute, chaseOf, suggestRetry } from './followups/chase'
+import type { Attempt, AttemptResult } from './followups/FollowUp'
 import { categoryOf, defaultLinkName, describeLink } from './attachments/Attachment'
 import { RelationGraph } from './relations/graph'
 import { planCaseIds, planHearingIds, planProgress, planScope, planSteps } from './plans/ActionPlan'
@@ -1010,5 +1012,86 @@ describe('step dates and the plan date', () => {
     expect(result.plan.dueDate).toBe('2026-11-20')
     expect(planSteps(plan.id, await pool()).map((s) => s.date)).toEqual(['2026-11-20', '2026-11-04', '2026-11-10'])
     expect((await app.plans.setDueDate('u', plan.id, undefined)).moved).toBe(0)
+  })
+})
+
+describe('chasing a follow-up', () => {
+  const make = async (app: ReturnType<typeof freshApp>, over = {}) =>
+    app.crud.followUp.create('u', { title: 'Chase the affidavit', channel: 'call', workspace: 'sb', contact: 'Mr. Rao', due: { date: '2026-10-28' }, duration: 15, outcome: { status: 'open' }, ...over })
+  const attempt = (result: AttemptResult, minute: number, date = '2026-10-28'): Attempt => ({ date, minute, result })
+
+  it('backs off after each miss, moves around the day, and then suggests another channel', () => {
+    const now = { date: '2026-10-28', minute: at(11) }
+    expect(suggestRetry([], 'no_answer', now)).toMatchObject({ date: '2026-10-28', time: at(13) })
+    expect(suggestRetry([], 'no_answer', { date: '2026-10-28', minute: at(17) })).toMatchObject({ date: '2026-10-29', time: at(10) })
+    // The second miss was in the morning, so try the evening.
+    expect(suggestRetry([attempt('no_answer', at(9))], 'left_message', now)).toMatchObject({ date: '2026-10-29', time: at(17) })
+    expect(suggestRetry([attempt('no_answer', at(15)), attempt('no_answer', at(16))], 'no_answer', { date: '2026-10-28', minute: at(15) })).toMatchObject({ date: '2026-10-30', switchChannel: true })
+    const fourth = suggestRetry([attempt('no_answer', at(9)), attempt('no_answer', at(10)), attempt('no_answer', at(11))], 'no_answer', now)!
+    expect(fourth).toMatchObject({ date: '2026-10-31', switchChannel: true })
+    // Being reached in between starts the count again.
+    expect(suggestRetry([attempt('no_answer', at(9)), attempt('not_ready', at(10))], 'no_answer', now)).toMatchObject({ date: '2026-10-28', time: at(13) })
+  })
+
+  it('goes with what the person said over the pattern', () => {
+    const now = { date: '2026-10-28', minute: at(11) }
+    expect(suggestRetry([], 'call_back', now, { callBackAt: at(16, 30) })).toMatchObject({ date: '2026-10-28', time: at(16, 30) })
+    expect(suggestRetry([], 'call_back', now, { callBackAt: at(9) })).toMatchObject({ date: '2026-10-29', time: at(9) })
+    expect(suggestRetry([], 'not_ready', now, { promisedFor: '2026-11-06' })).toMatchObject({ date: '2026-11-06' })
+    expect(suggestRetry([], 'they_will_call', now)).toMatchObject({ date: '2026-10-30' })
+    expect(suggestRetry([], 'reached', now)).toBeNull()
+    expect(suggestRetry([], 'unreachable', now)).toBeNull()
+  })
+
+  it('keeps the follow-up open through every try, logging each, and closes it when someone is reached', async () => {
+    const app = freshApp()
+    const f = await make(app)
+    const first = await app.followUps.logAttempt('u', f.id, { result: 'no_answer', note: 'Rang out' })
+    expect(first.followUp.outcome.status).toBe('open')
+    expect(first.followUp.attempts).toHaveLength(1)
+    expect(first.followUp.due).toEqual({ date: first.suggestion!.date, time: first.suggestion!.time })
+    expect(chaseOf(first.followUp)).toMatchObject({ kind: 'chasing', tries: 1, misses: 1 })
+
+    const second = await app.followUps.logAttempt('u', f.id, { result: 'not_ready', note: 'Says the notary is away', promisedFor: '2026-11-04' })
+    expect(second.followUp.due).toEqual({ date: '2026-11-04', time: undefined })
+    expect(chaseOf(second.followUp)).toMatchObject({ kind: 'promised', promisedFor: '2026-11-04', tries: 2, misses: 0 })
+
+    const done = await app.followUps.logAttempt('u', f.id, { result: 'reached', note: 'Signed and sent' })
+    expect(done.followUp.outcome).toMatchObject({ status: 'done', comment: 'Signed and sent' })
+    expect(done.followUp.attempts!.map((a) => a.result)).toEqual(['no_answer', 'not_ready', 'reached'])
+
+    const back = await app.followUps.restore(done.before)
+    expect(back.outcome.status).toBe('open')
+    expect(back.attempts).toHaveLength(2)
+  })
+
+  it('lets you pick the next try yourself, switch channel, or stop when the number is dead', async () => {
+    const app = freshApp()
+    const f = await make(app)
+    const own = await app.followUps.logAttempt('u', f.id, { result: 'call_back', callBackAt: at(16), next: { date: '2026-11-02', time: at(9) }, switchTo: 'message' })
+    expect(own.followUp).toMatchObject({ channel: 'message', due: { date: '2026-11-02', time: at(9) } })
+    expect(chaseOf(own.followUp).last?.channel).toBe('call')
+
+    const waiting = await app.followUps.logAttempt('u', f.id, { result: 'they_will_call' })
+    expect(chaseOf(waiting.followUp).kind).toBe('waiting')
+
+    const dead = await app.followUps.logAttempt('u', f.id, { result: 'unreachable', note: 'Switched off for good' })
+    expect(dead.followUp.due).toBeUndefined()
+    expect(dead.followUp.outcome.status).toBe('open')
+    expect(chaseOf(dead.followUp).kind).toBe('unreachable')
+  })
+
+  it('calls a chase stalled after three misses, and remembers when a contact picks up', async () => {
+    const app = freshApp()
+    const f = await make(app)
+    for (let i = 0; i < 3; i++) await app.followUps.logAttempt('u', f.id, { result: 'no_answer' })
+    expect(chaseOf((await app.crud.followUp.get('u', f.id))!).kind).toBe('stalled')
+
+    const other = await make(app, { title: 'Another', contact: ' mr. rao ' })
+    expect(bestMinute('Mr. Rao', await app.crud.followUp.list('u'))).toBeUndefined()
+    await app.crud.followUp.update({ ...(await app.crud.followUp.get('u', other.id))!, attempts: [{ date: '2026-10-20', minute: at(10, 10), result: 'reached' }] })
+    expect(bestMinute('Mr. Rao', await app.crud.followUp.list('u'))).toBe(at(10, 15))
+    const next = await app.followUps.suggest('u', f.id, { result: 'no_answer' })
+    expect(next).toMatchObject({ time: at(10, 15) })
   })
 })

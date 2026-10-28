@@ -32,7 +32,7 @@ export type OutcomeVocab = OutcomeTarget | 'agenda'
 export const OUTCOME_VOCAB: Record<OutcomeVocab, Partial<Record<OutcomeStatus, string>>> = {
   agenda: { done: 'Covered', partial: 'Partly covered', not_done: 'Not covered', cancelled: 'Dropped' },
   task: {},
-  followUp: { done: 'Reached', partial: 'Left message', not_done: 'No answer' },
+  followUp: { done: 'Reached', partial: 'Left message', not_done: 'Gave up' },
   meeting: { done: 'Held', partial: 'Partly covered', not_done: 'Didn’t happen' },
   hearing: { done: 'Proceeded', partial: 'Part-heard', not_done: 'Adjourned' },
 }

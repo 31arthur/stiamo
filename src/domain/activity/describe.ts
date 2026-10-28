@@ -6,6 +6,7 @@ import { CLIENT_KIND_LABELS, CLIENT_STATUS_LABELS, PROJECT_STATUS_LABELS } from 
 import type { Client, Project } from '../clients/Client'
 import { PLAN_SCOPE_LABELS, planCaseIds, planHearingIds, planScope } from '../plans/ActionPlan'
 import type { PlanScope } from '../plans/ActionPlan'
+import { attemptLabel } from '../followups/chase'
 import type { FollowUp } from '../followups/FollowUp'
 import type { Goal } from '../goals/Goal'
 import type { Meeting } from '../meetings/Meeting'
@@ -123,6 +124,10 @@ export function diff<K extends EntityKind>(kind: K, before: Records[K], after: R
       }
       add('Channel', x.channel, y.channel)
       add('Contact', x.contact, y.contact)
+      if ((y.attempts?.length ?? 0) > (x.attempts?.length ?? 0)) {
+        const t = y.attempts![y.attempts!.length - 1]
+        changes.push({ field: `Try ${y.attempts!.length}`, to: `${attemptLabel(t.result, t.channel ?? y.channel)}${t.note ? ` — ${text(t.note)}` : ''}` })
+      }
       break
     }
     case 'meeting': {

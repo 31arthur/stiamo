@@ -5,6 +5,7 @@ import type { FollowUp, FollowUpChannel } from '@/domain/followups/FollowUp'
 import { OPEN } from '@/domain/shared/outcome'
 import { DateInput, Field, Segmented, TimeInput } from '@/presentation/components/form'
 import { WorkspacePicker } from '@/presentation/components/workspace'
+import { AttemptHistory } from '@/presentation/followups/chase'
 import { useSave, useToday } from '@/presentation/data/hooks'
 import { FormShell, usePatch } from './shared'
 
@@ -77,6 +78,11 @@ export function FollowUpForm({ initial, onDone }: { initial: FollowUp | FollowUp
       <Field label="Notes" htmlFor="fu-notes">
         <Textarea id="fu-notes" value={f.notes ?? ''} onChange={(e) => patch({ notes: e.target.value })} />
       </Field>
+      {'attempts' in f && !!f.attempts?.length && (
+        <Field label="Tries so far" hint="Log a new one with “Log call” on the follow-up">
+          <AttemptHistory followUp={f} today={today} />
+        </Field>
+      )}
     </FormShell>
   )
 }

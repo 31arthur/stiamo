@@ -460,6 +460,10 @@ export async function seedDemoData(app: SeedTarget, userId: ID, todayDate: Date)
     contact: 'Karan · +91 99999 12345',
     due: { date: day(-1), time: h(18) },
     duration: 10,
+    attempts: [
+      { date: day(-3), minute: h(11), result: 'no_answer', channel: 'call' },
+      { date: day(-2), minute: h(17), result: 'left_message', channel: 'call', note: 'Voicemail — asked him to ring back' },
+    ],
     outcome: open,
   })
 }
