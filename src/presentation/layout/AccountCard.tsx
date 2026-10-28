@@ -3,7 +3,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { motion } from 'motion/react'
 import { Cloud, CloudOff, Database, HardDrive, LogOut, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/presentation/auth/AuthProvider'
 import { useAction } from '@/presentation/data/hooks'
@@ -49,7 +49,9 @@ export function AccountCard() {
             <MoreHorizontal />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-56">
-            <DropdownMenuLabel className="text-xs text-muted-foreground">{sync.mode !== 'local' ? 'Cloud workspace' : 'Offline workspace'}</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">{sync.mode !== 'local' ? 'Cloud workspace' : 'Offline workspace'}</DropdownMenuLabel>
+            </DropdownMenuGroup>
             {sync.mode !== 'api' && (
               <>
                 <DropdownMenuItem closeOnClick={false} onClick={() => (setMenuOpen(false), seed.run())} disabled={seed.pending}>

@@ -70,3 +70,29 @@ Additional pieces since v2:
 ## Testing
 
 `npm test` runs Vitest. `domain.test.ts` covers confirmation timing and sync, agenda building, reflow, overlap layout, outcome-weighted progress, goal health, and use-case flows (recording a hearing, spawning further actions, rescheduling with undo, seed consistency) against the real container on in-memory storage.
+
+## Backends
+
+`main.tsx` picks one at start-up, in this order: **Stiamo backend** (`VITE_API_URL`), **Supabase** (`VITE_SUPABASE_*`),
+otherwise **offline** (browser storage). All three produce the same `Container`, so no screen knows which it has.
+
+The Stiamo backend runs the domain rules on the server, so `data/api/` holds *remote use cases* with the same signatures
+the screens already call (`RemotePlans.addStep`, `RemoteCases.recordHearing`, …): each is one request, and the server's
+answer is what the screen shows. The browser keeps the live views fresh by refetching after its own writes, on a timer,
+and when the tab or network returns (`ChangeBus`, `ApiRepository.subscribe`).
+
+### Sign-in and tokens (`data/api/ApiHttp.ts`)
+
+- `login`/`register` return an **access token** (JWT, ~15 min) and a **refresh token** (30 days). Both are stored in one
+  `Session` (`localStorage`, shared by tabs). The access token goes in `Authorization: Bearer`; the refresh token is only
+  ever sent to `/v1/auth/refresh`.
+- A request renews the access token first when it has under 30 s left, and if the server still answers 401 it renews once
+  and repeats the request. A second 401 ends the session.
+- Renewing **rotates** the refresh token and the server treats a second use of an old one as theft (it revokes the whole
+  sign-in). So renewal is single-flight within a tab and serialised across tabs with the Web Locks API; a tab that waited
+  re-reads the stored session and uses what the winner saved.
+- Only a refresh the server **rejects** (401) signs the user out. Offline or a 5xx keeps the session and retries later.
+- `logout` revokes the refresh token on the server, then clears the session. Tabs follow each other through the
+  `storage` event. Old Supabase sessions are removed on start-up.
+- Trade-off: tokens in `localStorage` are readable by any script on the page, so the app avoids third-party scripts and
+  keeps access tokens short. Moving the refresh token to an httpOnly cookie is the next step if the backend and app share a site.
