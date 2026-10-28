@@ -31,12 +31,12 @@ export function AccountCard() {
     <div className="grid gap-1.5">
       <div className={cn('flex items-center gap-1.5 px-2.5 text-[11px]', status.tone)}>
         <span className="relative flex size-2">
-          {sync.mode === 'supabase' && sync.online && !sync.error && (
+          {sync.mode !== 'local' && sync.online && !sync.error && (
             <motion.span className="absolute inset-0 rounded-full bg-current" animate={{ scale: [1, 2.4], opacity: [0.5, 0] }} transition={{ duration: 2, repeat: Infinity }} />
           )}
           <span className="relative size-2 rounded-full bg-current" />
         </span>
-        {sync.mode === 'supabase' && !sync.ready && !sync.error && sync.online ? <Spinner size="xs" tone="current" decorative /> : <status.icon className="size-3" />} {status.label}
+        {sync.mode !== 'local' && !sync.ready && !sync.error && sync.online ? <Spinner size="xs" tone="current" decorative /> : <status.icon className="size-3" />} {status.label}
       </div>
       <div className="flex items-center gap-2 rounded-xl border bg-background/60 p-2">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ws-sb to-ws-fsa text-xs font-semibold text-white">{initialsOf(user?.name)}</div>
@@ -49,11 +49,15 @@ export function AccountCard() {
             <MoreHorizontal />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-56">
-            <DropdownMenuLabel className="text-xs text-muted-foreground">{sync.mode === 'supabase' ? 'Cloud workspace' : 'Offline workspace'}</DropdownMenuLabel>
-            <DropdownMenuItem closeOnClick={false} onClick={() => (setMenuOpen(false), seed.run())} disabled={seed.pending}>
-              <Database /> Load sample practice
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground">{sync.mode !== 'local' ? 'Cloud workspace' : 'Offline workspace'}</DropdownMenuLabel>
+            {sync.mode !== 'api' && (
+              <>
+                <DropdownMenuItem closeOnClick={false} onClick={() => (setMenuOpen(false), seed.run())} disabled={seed.pending}>
+                  <Database /> Load sample practice
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem variant="destructive" closeOnClick={false} onClick={() => (setMenuOpen(false), logout())}>
               <LogOut /> Sign out
             </DropdownMenuItem>

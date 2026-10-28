@@ -124,7 +124,7 @@ export function LoginPage() {
                 </motion.h2>
               </AnimatePresence>
               <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                {backend === 'supabase' ? (
+                {backend !== 'local' ? (
                   <>
                     <Cloud className="size-3.5" /> Synced securely to your Stiamo cloud
                   </>

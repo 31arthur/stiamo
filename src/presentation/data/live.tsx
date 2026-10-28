@@ -15,7 +15,7 @@ export interface SyncState {
   online: boolean
   /** The most recent subscription error (missing database, rules…), if any. */
   error: string | null
-  mode: 'supabase' | 'local'
+  mode: 'supabase' | 'local' | 'api'
 }
 
 const SyncContext = createContext<SyncState>({ ready: false, online: true, error: null, mode: 'local' })

@@ -18,7 +18,7 @@ import { LinkUseCases } from '@/domain/relations/LinkUseCases'
 import { CrudUseCases } from '@/domain/shared/CrudUseCases'
 import { RecordOutcomeUseCase } from '@/domain/shared/RecordOutcomeUseCase'
 import type { DomainEnv, EntityMap, StoreKind } from '@/domain/shared/registry'
-import type { ID } from '@/domain/shared/types'
+import type { Draft, ID } from '@/domain/shared/types'
 import {
   normalizeCase,
   normalizeClient,
@@ -33,8 +33,57 @@ import {
 } from '@/domain/shared/validation'
 import type { Backend } from './backends'
 
+/** What every screen can do with a collection. Offline it runs in the browser; online it is the backend's API. */
+export interface CrudApi<K extends StoreKind> {
+  list(userId: ID): Promise<EntityMap[K][]>
+  get(userId: ID, id: ID): Promise<EntityMap[K] | null>
+  create(userId: ID, draft: Draft<EntityMap[K]>): Promise<EntityMap[K]>
+  update(entity: EntityMap[K]): Promise<EntityMap[K]>
+  remove(userId: ID, id: ID): Promise<void>
+}
+
+/**
+ * The surface the screens depend on. `createContainer` builds it from use cases that run in the browser (offline,
+ * Supabase); `createApiContainer` builds it from calls to the Stiamo backend, which runs the same rules on the server.
+ */
+export interface Container {
+  backend: 'local' | 'supabase' | 'api'
+  allowSignUp: boolean
+  auth: {
+    login: Pick<LoginUseCase, 'execute'>
+    register: Pick<RegisterUseCase, 'execute'>
+    resetPassword: Pick<ResetPasswordUseCase, 'execute'>
+    logout: Pick<LogoutUseCase, 'execute'>
+    getCurrentUser: Pick<GetCurrentUserUseCase, 'execute'>
+    onChange: (listener: Parameters<Backend['auth']['onChange']>[0]) => () => void
+  }
+  crud: { [K in StoreKind]: CrudApi<K> }
+  meetings: Pick<MeetingUseCases, 'save' | 'remove'>
+  followUps: Pick<FollowUpUseCases, 'suggest' | 'logAttempt' | 'restore'>
+  plans: Pick<
+    PlanUseCases,
+    'createWithSteps' | 'addStep' | 'setDueDate' | 'setStepDate' | 'convertStep' | 'cover' | 'uncover' | 'duplicate' | 'saveDoc' | 'reorderSteps' | 'link' | 'unlink' | 'remove'
+  >
+  cases: Pick<CaseUseCases, 'open' | 'assignCounsel' | 'recordHearing' | 'saveHearing' | 'joinCases' | 'remove'>
+  counsel: Pick<CounselUseCases, 'remove'>
+  clients: Pick<ClientUseCases, 'remove'>
+  hearingActions: Pick<HearingActionUseCases, 'toTasks' | 'toPlan'>
+  outcomes: Pick<RecordOutcomeUseCase, 'execute'>
+  agenda: Pick<AgendaUseCases, 'range' | 'schedule' | 'reflow' | 'restore'>
+  links: Pick<LinkUseCases, 'link' | 'unlink' | 'addNote'>
+  attachments: Pick<AttachmentUseCases, 'attach' | 'attachLink' | 'remove' | 'rename' | 'url'>
+  /** Live views of each collection, updated on every change from any device. */
+  live: {
+    subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) => () => void
+  }
+  /** Fills the given account with a realistic sample practice. */
+  seedSampleData: (userId: ID) => Promise<void>
+  /** Resolves once first-run data is in place. */
+  ready: Promise<void>
+}
+
 /** Composition root: the only place concrete data implementations are wired to domain use cases. */
-export function createContainer(backend: Backend) {
+export function createContainer(backend: Backend): Container {
   const env: DomainEnv = { repos: backend.repos, clock: backend.clock, ids: backend.ids }
 
   const log = new ActivityLog(env)
@@ -88,14 +137,11 @@ export function createContainer(backend: Backend) {
     agenda,
     links,
     attachments,
-    /** Live views of each collection, updated on every change from any device. */
     live: {
       subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) =>
         (backend.repos[kind].subscribe as (u: ID, l: (items: EntityMap[K][]) => void, e?: (e: Error) => void) => () => void)(userId, listener, onError),
     },
-    /** Fills the given account with a realistic sample practice. */
     seedSampleData: (userId: ID) => seedDemoData(container, userId, backend.clock.now()),
-    /** Resolves once first-run demo data is in place. */
     ready: Promise.resolve(),
   }
 
@@ -106,4 +152,3 @@ export function createContainer(backend: Backend) {
   return container
 }
 
-export type Container = ReturnType<typeof createContainer>
