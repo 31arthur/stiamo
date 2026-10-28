@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { CalendarDays, CalendarRange, Menu, NotebookPen, Plus, Search, Sun } from 'lucide-react'
+import { Check, CalendarDays, CalendarRange, ChevronsUpDown, Menu, NotebookPen, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,6 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { WORKSPACE_IDS, WORKSPACES } from '@/domain/shared/workspace'
 import { useAttention } from '@/presentation/app/attention'
-import { useEditor } from '@/presentation/app/create'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
@@ -22,7 +21,6 @@ import { AccountCard, SyncBanner } from './AccountCard'
 import { CommandPalette } from './CommandPalette'
 import { MobileTabBar } from './MobileTabBar'
 import { SECTION_TITLES, useDocumentTitle } from './useDocumentTitle'
-import { CREATE_MENU } from './createMenu'
 import { Logo } from './Logo'
 
 interface NavItem {
@@ -77,12 +75,12 @@ export function AppShell() {
   return (
     <div className="bg-ambient flex min-h-dvh">
       <aside className="glass sticky top-0 hidden h-screen w-64 shrink-0 border-r lg:block">
-        <Sidebar onSearch={() => setPaletteOpen(true)} />
+        <Sidebar />
       </aside>
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0" showCloseButton={false}>
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <Sidebar onSearch={() => setPaletteOpen(true)} />
+          <Sidebar />
         </SheetContent>
       </Sheet>
 
@@ -119,8 +117,7 @@ export function AppShell() {
   )
 }
 
-function Sidebar({ onSearch }: { onSearch: () => void }) {
-  const { open } = useEditor()
+function Sidebar() {
   const attention = useAttention()
   const { scope, setScope } = useWorkspaceFilter()
 
@@ -165,6 +162,7 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
   ]
 
   const scopes: { id: WorkspaceScope; label: string }[] = [{ id: 'all', label: 'All workspaces' }, ...WORKSPACE_IDS.map((id) => ({ id, label: WORKSPACES[id].name }))]
+  const current = scopes.find((s) => s.id === scope)!
 
   return (
     <div className="flex h-full flex-col gap-4 p-3">
@@ -172,21 +170,29 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
         <Logo />
       </div>
 
-      <div className="flex gap-1.5">
-        <ActionMenu
-          trigger={<Button className="flex-1 justify-start" size="sm" />}
-          triggerContent={
+      <ActionMenu
+        trigger={<Button variant="outline" className="w-full justify-start gap-2 px-2.5" aria-label={`Workspace: ${current.label}. Change`} />}
+        triggerContent={
+          <>
+            {scope === 'all' ? <CalendarRange className="size-4" /> : <WorkspaceDot ws={scope} className="mx-1" />}
+            <span className="flex-1 truncate text-left">{current.label}</span>
+            <ChevronsUpDown className="size-3.5 text-muted-foreground" />
+          </>
+        }
+        contentProps={{ className: 'w-56', align: 'start' }}
+        items={scopes.map((s) => ({
+          key: s.id,
+          label: (
             <>
-              <Plus /> New
+              <span className="flex-1">{s.label}</span>
+              {scope === s.id && <Check className="size-4" />}
             </>
-          }
-          contentProps={{ className: 'w-52' }}
-          items={CREATE_MENU.map((c, i) => ({ key: c.kind, label: c.label, icon: <c.icon />, separatorBefore: i === 4, onSelect: () => open({ kind: c.kind } as never) }))}
-        />
-        <Button variant="outline" size="sm" onClick={onSearch} aria-label="Search and commands" className="gap-1 px-2 text-muted-foreground">
-          <Search /> <kbd className="text-[10px]">Ctrl K</kbd>
-        </Button>
-      </div>
+          ),
+          icon: s.id === 'all' ? <CalendarRange className="size-4" /> : <WorkspaceDot ws={s.id} className="mx-1" />,
+          separatorBefore: s.id === WORKSPACE_IDS[0],
+          onSelect: () => setScope(s.id),
+        }))}
+      />
 
       <nav className="scrollbar-thin -mx-1 flex flex-1 flex-col gap-4 overflow-y-auto px-1">
         {groups.map((g) => (
@@ -223,28 +229,6 @@ function Sidebar({ onSearch }: { onSearch: () => void }) {
             </div>
           </div>
         ))}
-
-        <div>
-          <div className="mb-1 px-2.5 text-[10px] font-semibold tracking-widest text-muted-foreground/80 uppercase">Workspace</div>
-          <div className="grid gap-0.5" role="radiogroup" aria-label="Workspace filter">
-            {scopes.map((s) => {
-              const active = scope === s.id
-              return (
-                <button
-                  key={s.id}
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setScope(s.id)}
-                  className={cn('relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors', active ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}
-                >
-                  {active && <motion.span layoutId="scope-active" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-muted" />}
-                  {s.id === 'all' ? <CalendarRange className="relative size-4" /> : <WorkspaceDot ws={s.id} className="relative mx-1" />}
-                  <span className="relative">{s.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
       </nav>
 
       <AccountCard />
