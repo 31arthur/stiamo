@@ -30,6 +30,9 @@ export class SessionExpiredError extends Error {
 export async function toApiError(response: Response): Promise<ApiError> {
   let code = 'error'
   let message = `Something went wrong (${response.status})`
+  // Answers that did not come from the app itself: a gateway with no route for the request, or a service that is down.
+  if (response.status === 404) message = 'The server has no such address. It may not have been updated for this version yet (404).'
+  else if (response.status === 502 || response.status === 503 || response.status === 504) message = 'The server is starting up or unavailable. Try again in a moment.'
   try {
     const body = (await response.json()) as { error?: { code?: string; message?: string }; detail?: unknown }
     if (body.error?.message) {

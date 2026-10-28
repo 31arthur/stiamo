@@ -256,3 +256,55 @@ describe('change bus', () => {
     vi.useRealTimers()
   })
 })
+
+describe('live views', () => {
+  const browserStubs = () => {
+    const noop = { addEventListener() {}, removeEventListener() {} }
+    vi.stubGlobal('document', { visibilityState: 'visible', ...noop })
+    vi.stubGlobal('window', noop)
+  }
+
+  it('catch up with a write that happened while a fetch was already under way', async () => {
+    browserStubs()
+    let version = 1
+    const releaseFirst: { run?: () => void } = {}
+    let calls = 0
+    const t = setup(
+      {
+        'GET /v1/tasks': async () => {
+          calls++
+          const seen = version // what this fetch reads
+          if (calls === 1) await new Promise<void>((resolve) => (releaseFirst.run = resolve)) // the first fetch is slow
+          return json({ items: [{ id: 't1', title: `v${seen}` }], nextCursor: null })
+        },
+      },
+      session(1, 1_000_000),
+    )
+    const bus = new ChangeBus(0)
+    const heard: string[] = []
+    const stop = new ApiRepository<{ id: string; title: string } & never>(t.http, 'task', bus).subscribe('u1', (items) => heard.push((items[0] as { title: string }).title))
+
+    await vi.waitFor(() => expect(calls).toBe(1))
+    version = 2 // a write lands while the slow fetch is still waiting...
+    bus.touch()
+    await new Promise((r) => setTimeout(r, 10))
+    releaseFirst.run?.() // ...and the slow fetch now returns what it read before the write
+    await vi.waitFor(() => expect(heard).toContain('v2')) // the screen still ends up with the new data
+    expect(heard.at(-1)).toBe('v2')
+    stop()
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('errors people can act on', () => {
+  it('say so when the server has no such address, or is not up', async () => {
+    const t = setup({ 'GET /v1/gone': () => new Response('404 page not found', { status: 404 }), 'GET /v1/down': () => new Response('', { status: 503 }) }, session(1, 1_000_000))
+    await expect(t.http.get('/v1/gone')).rejects.toMatchObject({ status: 404, message: expect.stringMatching(/no such address/) })
+    await expect(t.http.get('/v1/down')).rejects.toMatchObject({ status: 503, message: expect.stringMatching(/unavailable/) })
+  })
+
+  it('keep the message the app itself sent', async () => {
+    const t = setup({ 'GET /v1/tasks/x': () => json({ error: { code: 'not_found', message: 'Task not found.' } }, 404) }, session(1, 1_000_000))
+    await expect(t.http.get('/v1/tasks/x')).rejects.toMatchObject({ message: 'Task not found.' })
+  })
+})

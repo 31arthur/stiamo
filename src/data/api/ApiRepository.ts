@@ -87,26 +87,42 @@ export class ApiRepository<T extends Entity> implements Repository<T> {
 
   subscribe(userId: ID, listener: (items: T[]) => void, onError?: (error: Error) => void): () => void {
     let stopped = false
-    let inflight: Promise<void> | null = null
+    let running: Promise<void> | null = null
+    // A write that lands while a fetch is already under way would otherwise be missed until the next poll,
+    // because that fetch may have read the data just before the write. Ask for one more round straight after.
+    let again = false
     let last = ''
 
-    const refresh = () =>
-      (inflight ??= (async () => {
-        try {
-          const items = await this.list(userId)
-          if (stopped) return
-          // Polling usually finds nothing new; don't wake every screen for that.
-          const signature = JSON.stringify(items)
-          if (signature !== last) {
-            last = signature
-            listener(items)
-          }
-        } catch (e) {
-          if (!stopped) onError?.(e instanceof Error ? e : new Error(String(e)))
-        } finally {
-          inflight = null
+    const fetchOnce = async () => {
+      try {
+        const items = await this.list(userId)
+        if (stopped) return
+        // Polling usually finds nothing new; don't wake every screen for that.
+        const signature = JSON.stringify(items)
+        if (signature !== last) {
+          last = signature
+          listener(items)
         }
-      })())
+      } catch (e) {
+        if (!stopped) onError?.(e instanceof Error ? e : new Error(String(e)))
+      }
+    }
+
+    const refresh = (): Promise<void> => {
+      if (running) {
+        again = true
+        return running
+      }
+      running = (async () => {
+        do {
+          again = false
+          await fetchOnce()
+        } while (again && !stopped)
+      })().finally(() => {
+        running = null
+      })
+      return running
+    }
 
     void refresh()
     const timer = setInterval(() => document.visibilityState === 'visible' && void refresh(), POLL_MS)
