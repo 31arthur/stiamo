@@ -69,6 +69,8 @@ Both have a mode (in person / virtual / phone), location or link, counterpart, c
 ### Follow-up
 A call, message, email or visit to make, due on a date (optionally at a time), about a subject (any record). Confirmation follow-ups carry `trigger: 'day_before' | 'hour_before'`.
 
+A follow-up is a **chase**: `attempts` records every try (`date`, `minute`, `result`: `no_answer | left_message | call_back | they_will_call | not_ready | reached | unreachable`, optional note, `promisedFor`). `FollowUpUseCases.logAttempt` appends a try and re-dates the follow-up from `suggestRetry` (domain/followups/chase.ts) unless the caller supplies the next try; `reached` closes it as done, `unreachable` clears the date, anything else leaves it open. `chaseOf` derives where it stands (fresh, chasing, waiting, promised, stalled after three misses, unreachable) and `bestMinute` the time of day a contact last picked up. Nothing about the chase is stored besides the attempts and the new `due`.
+
 ### Legal case & hearing
 Cases are filed on behalf of an **organization**: NUMW (National Union for Migrant Workers), TUMWU (Telangana Unorganized and Migrant Workers Union), PMLU (Palamooru Migrant Labour Union), MRC (Migrants Rights Council), TYP (The Youth Project) or SA (Samrat & Associates).
 

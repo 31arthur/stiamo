@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Mail, MapPin, MessageSquare, Phone, Plus, ShieldCheck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { chaseLine, chaseOf } from '@/domain/followups/chase'
 import { followUpKey } from '@/domain/followups/FollowUp'
 import type { FollowUp, FollowUpChannel } from '@/domain/followups/FollowUp'
 import { CONFIRMATION_LABELS } from '@/domain/meetings/Meeting'
@@ -17,6 +18,7 @@ import { RefChip } from '@/presentation/components/RefChip'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
 import { useEntities, useToday } from '@/presentation/data/hooks'
 import { spring } from '@/presentation/motion/presets'
+import { AttemptHistory, ChaseBadge, LogCall } from '@/presentation/followups/chase'
 import { AttachmentBadge } from '@/presentation/attachments/AttachmentsPanel'
 import { useAttachmentCounts } from '@/presentation/attachments/useAttachments'
 
@@ -28,14 +30,21 @@ export function FollowUpsPage() {
   const { matches } = useWorkspaceFilter()
   const { data: followUps } = useEntities('followUp')
 
-  const { overdue, todays, upcoming, anytime, logged } = useMemo(() => {
+  const { overdue, todays, upcoming, anytime, waiting, stuck, logged } = useMemo(() => {
     const mine = followUps.filter((f) => matches(f.workspace)).sort((a, b) => followUpKey(a).localeCompare(followUpKey(b)))
     const openOnes = mine.filter((f) => f.outcome.status === 'open')
+    // A number that doesn't work needs a decision, not a date; and someone who said they'd call
+    // is out of your hands until the day you chose to chase them.
+    const dead = (f: FollowUp) => chaseOf(f).kind === 'unreachable'
+    const parked = (f: FollowUp) => chaseOf(f).kind === 'waiting' && !!f.due && f.due.date > today
+    const live = openOnes.filter((f) => !dead(f) && !parked(f))
     return {
-      overdue: openOnes.filter((f) => f.due && f.due.date < today),
-      todays: openOnes.filter((f) => f.due?.date === today),
-      upcoming: openOnes.filter((f) => f.due && f.due.date > today),
-      anytime: openOnes.filter((f) => !f.due),
+      overdue: live.filter((f) => f.due && f.due.date < today),
+      todays: live.filter((f) => f.due?.date === today),
+      upcoming: live.filter((f) => f.due && f.due.date > today),
+      anytime: live.filter((f) => !f.due),
+      waiting: openOnes.filter(parked),
+      stuck: openOnes.filter((f) => dead(f) || chaseOf(f).kind === 'stalled'),
       logged: mine
         .filter((f) => f.outcome.status !== 'open')
         .sort((a, b) => (b.outcome.recordedAt ?? '').localeCompare(a.outcome.recordedAt ?? ''))
@@ -57,16 +66,18 @@ export function FollowUpsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Overdue" value={overdue.length} tone={overdue.length ? 'danger' : 'default'} />
         <Stat label="Due today" value={todays.length} tone={todays.length ? 'warning' : 'default'} />
-        <Stat label="Upcoming" value={upcoming.length} />
-        <Stat label="Logged recently" value={logged.length} tone="success" />
+        <Stat label="Waiting on them" value={waiting.length} />
+        <Stat label="Stuck" value={stuck.length} tone={stuck.length ? 'warning' : 'default'} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="grid content-start gap-4">
           <FollowUpGroup title="Overdue" items={overdue} today={today} tone="danger" />
           <FollowUpGroup title="Today" items={todays} today={today} empty="Nothing to chase today." />
+          <FollowUpGroup title="Stuck — try another way" items={stuck} today={today} tone="warning" />
         </div>
         <div className="grid content-start gap-4">
           <FollowUpGroup title="Upcoming" items={upcoming} today={today} />
+          <FollowUpGroup title="Waiting on them" items={waiting} today={today} />
           <FollowUpGroup title="Anytime" items={anytime} today={today} />
           <FollowUpGroup title="Recently logged" items={logged} today={today} />
         </div>
@@ -75,10 +86,10 @@ export function FollowUpsPage() {
   )
 }
 
-function FollowUpGroup({ title, items, today, tone, empty }: { title: string; items: FollowUp[]; today: ISODate; tone?: 'danger'; empty?: string }) {
+function FollowUpGroup({ title, items, today, tone, empty }: { title: string; items: FollowUp[]; today: ISODate; tone?: 'danger' | 'warning'; empty?: string }) {
   if (!items.length && !empty) return null
   return (
-    <Section title={title} className={cn(tone === 'danger' && 'border-destructive/30')} bodyClassName="p-1.5">
+    <Section title={title} className={cn(tone === 'danger' && 'border-destructive/30', tone === 'warning' && 'border-warning/40')} bodyClassName="p-1.5">
       {items.length === 0 ? (
         <EmptyState title={empty!} className="py-6" />
       ) : (
@@ -100,6 +111,9 @@ export function FollowUpRow({ followUp: f, today }: { followUp: FollowUp; today:
   const closed = f.outcome.status !== 'open'
   const files = useAttachmentCounts()
   const late = !closed && !!f.due && f.due.date < today
+  const chase = chaseOf(f)
+  const line = chaseLine(f, today)
+  const [history, setHistory] = useState(false)
 
   return (
     <motion.li
@@ -127,13 +141,33 @@ export function FollowUpRow({ followUp: f, today }: { followUp: FollowUp; today:
           )}
           <RefChip refTo={f.subject} />
           <AttachmentBadge count={files.get(`followUp:${f.id}`)} />
+          {!closed && <ChaseBadge chase={chase} today={today} />}
+          {line && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setHistory((h) => !h)
+              }}
+              aria-expanded={history}
+              className="underline-offset-2 hover:text-foreground hover:underline"
+            >
+              {line}
+            </button>
+          )}
         </div>
+        {history && (
+          <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+            <AttemptHistory followUp={f} today={today} />
+          </div>
+        )}
         {closed && (
           <div className="mt-1.5">
             <OutcomeNote outcome={f.outcome} target="followUp" />
           </div>
         )}
       </ClickableRow>
+      {!closed && <LogCall followUp={f} label={chase.tries ? 'Log try' : f.channel === 'call' ? 'Log call' : 'Log'} />}
     </motion.li>
   )
 }

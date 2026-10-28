@@ -10,6 +10,7 @@ import { ValidationError } from '@/domain/auth/errors'
 import { CaseUseCases } from '@/domain/cases/CaseUseCases'
 import { ClientUseCases } from '@/domain/clients/ClientUseCases'
 import { HearingActionUseCases } from '@/domain/cases/HearingActionUseCases'
+import { FollowUpUseCases } from '@/domain/followups/FollowUpUseCases'
 import { CounselUseCases } from '@/domain/counsel/CounselUseCases'
 import { MeetingUseCases } from '@/domain/meetings/MeetingUseCases'
 import { PlanUseCases } from '@/domain/plans/PlanUseCases'
@@ -53,6 +54,7 @@ export function createContainer(backend: Backend) {
     attachment: new CrudUseCases('attachment', env),
   }
   const meetings = new MeetingUseCases(env, crud.meeting, crud.followUp)
+  const followUps = new FollowUpUseCases(env, crud.followUp)
   const plans = new PlanUseCases(env, crud.plan, crud.task, crud.followUp, meetings, crud.goal, log)
   const cases = new CaseUseCases(env, crud.case, crud.hearing, plans, log)
   const hearingActions = new HearingActionUseCases(env, crud.hearing, crud.task, plans)
@@ -76,6 +78,7 @@ export function createContainer(backend: Backend) {
     },
     crud,
     meetings,
+    followUps,
     plans,
     cases,
     counsel,
