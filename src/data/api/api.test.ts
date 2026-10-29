@@ -4,6 +4,7 @@ import { ApiAuthRepository } from './ApiAuthRepository'
 import { ApiHttp, REFRESH_SKEW_MS } from './ApiHttp'
 import type { AuthResponse } from './ApiHttp'
 import { ApiRepository } from './ApiRepository'
+import { RemoteDrive } from './RemoteDrive'
 import { ChangeBus } from './ChangeBus'
 import { NetworkError, SessionExpiredError } from './errors'
 import { MemorySessionStore } from './session'
@@ -306,5 +307,39 @@ describe('errors people can act on', () => {
   it('keep the message the app itself sent', async () => {
     const t = setup({ 'GET /v1/tasks/x': () => json({ error: { code: 'not_found', message: 'Task not found.' } }, 404) }, session(1, 1_000_000))
     await expect(t.http.get('/v1/tasks/x')).rejects.toMatchObject({ message: 'Task not found.' })
+  })
+})
+
+describe('drive search requests', () => {
+  const file = { id: 'f1', name: 'Letter.pdf', mimeType: 'application/pdf', webViewLink: 'https://drive.google.com/file/d/f1/view' }
+
+  it('send the words, the page and a limit, and hand back the files', async () => {
+    const t = setup({ 'GET /v1/drive/search': () => json({ items: [file], nextPageToken: 'more' }) }, session(1, 1_000_000))
+    const page = await new RemoteDrive(t.http).search('labour "WP 1290/2026"', 'tok')
+    expect(page).toEqual({ items: [file], nextPageToken: 'more' })
+    const url = new URL(BASE + t.calls[0].path)
+    expect(url.searchParams.get('q')).toBe('labour "WP 1290/2026"')
+    expect(url.searchParams.get('pageToken')).toBe('tok')
+    expect(url.searchParams.get('limit')).toBe('20')
+    expect(t.calls[0].authorization).toBe('Bearer access-1')
+  })
+
+  it('ask for suggestions only when there is something to look for', async () => {
+    const t = setup({ 'POST /v1/drive/suggest': () => json({ items: [{ ...file, matched: ['TUMWU-2026-001'] }] }) }, session(1, 1_000_000))
+    const drive = new RemoteDrive(t.http)
+    expect(await drive.suggest([])).toEqual([])
+    expect(t.calls).toHaveLength(0)
+    expect((await drive.suggest(['TUMWU-2026-001']))[0].matched).toEqual(['TUMWU-2026-001'])
+    expect(t.calls[0].body).toEqual({ terms: ['TUMWU-2026-001'] })
+  })
+
+  it('report whether Drive can be used, and why not', async () => {
+    const t = setup({ 'GET /v1/drive/status': () => json({ available: false, reason: 'Not turned on for this account.' }) }, session(1, 1_000_000))
+    expect(await new RemoteDrive(t.http).status()).toEqual({ available: false, reason: 'Not turned on for this account.' })
+  })
+
+  it('pass on what the server says when Drive is not connected', async () => {
+    const t = setup({ 'GET /v1/drive/search': () => json({ error: { code: 'drive_not_connected', message: 'Google Drive isn’t connected on this server yet.' } }, 503) }, session(1, 1_000_000))
+    await expect(new RemoteDrive(t.http).search('x')).rejects.toMatchObject({ code: 'drive_not_connected', message: expect.stringMatching(/isn’t connected/) })
   })
 })

@@ -96,3 +96,15 @@ and when the tab or network returns (`ChangeBus`, `ApiRepository.subscribe`).
   `storage` event. Old Supabase sessions are removed on start-up.
 - Trade-off: tokens in `localStorage` are readable by any script on the page, so the app avoids third-party scripts and
   keeps access tokens short. Moving the refresh token to an httpOnly cookie is the next step if the backend and app share a site.
+
+### Searching Google Drive (`domain/drive`, `data/api/RemoteDrive`, `presentation/drive`)
+
+With the Stiamo backend, the app can search the owner's Drive by file **name and content** without copying anything: the
+backend's `drive` service asks Google, and the app receives only each match's name, date and link. `container.drive`
+(`DriveApi`) is `NO_DRIVE` offline and with Supabase, and `useDriveStatus()` hides every Drive control unless the server
+says it is available (connected, and this account's email is allowed).
+
+- **Command palette** (Ctrl/⌘+K): from three characters, a "Letters in Drive" group (debounced); choosing one opens it in Drive.
+- **Find in Drive** on any record's Documents panel: search, or, on a case, suggestions first. `caseSearchTerms` turns the
+  case number, court number, title, client and opposing party into exact-phrase searches, and a letter that matches more
+  of them ranks higher. **Link** attaches the file as an ordinary link attachment (`attachLink`), so it previews in place.
