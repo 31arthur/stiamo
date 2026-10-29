@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { CalendarDays, NotebookPen, Sun } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from '@/components/ui/command'
@@ -8,7 +8,11 @@ import { formatClock } from '@/domain/shared/time'
 import { useEditor } from '@/presentation/app/create'
 import { friendlyDate } from '@/presentation/components/dates'
 import { KIND_META, MEETING_KIND_ICON } from '@/presentation/components/kinds'
+import { Spinner } from '@/components/ui/spinner'
 import { WorkspaceDot } from '@/presentation/components/workspace'
+import { DriveIcon } from '@/presentation/drive/DriveFinder'
+import { driveDate } from '@/presentation/drive/format'
+import { useDebounced, useDriveSearch, useDriveStatus } from '@/presentation/drive/useDrive'
 import { useEntities, useToday } from '@/presentation/data/hooks'
 import { CREATE_MENU } from './createMenu'
 
@@ -26,8 +30,18 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const { data: projects } = useEntities('project')
   const { data: tasks } = useEntities('task')
 
+  const [query, setQuery] = useState('')
+  const drive = useDriveStatus()
+  const typed = useDebounced(query, 350)
+  const letters = useDriveSearch(typed, open && drive.available && typed.trim().length >= 3)
+  const lookingInDrive = drive.available && typed.trim().length >= 3
+
+  const change = (next: boolean) => {
+    if (!next) setQuery('')
+    onOpenChange(next)
+  }
   const run = (fn: () => void) => () => {
-    onOpenChange(false)
+    change(false)
     fn()
   }
 
@@ -50,11 +64,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   )
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} title="Search and commands" className="sm:max-w-xl">
+    <CommandDialog open={open} onOpenChange={change} title="Search and commands" className="sm:max-w-xl">
       <Command>
-        <CommandInput placeholder="Search cases, meetings, plans, goals, tasks — or type a command…" />
+        <CommandInput value={query} onValueChange={setQuery} placeholder={drive.available ? 'Search cases, meetings, tasks, letters in Drive — or type a command…' : 'Search cases, meetings, plans, goals, tasks — or type a command…'} />
         <CommandList className="max-h-[60vh]">
-          <CommandEmpty>Nothing matches.</CommandEmpty>
+          {/* While searching Drive, that group says for itself whether anything was found. */}
+          {!lookingInDrive && <CommandEmpty>Nothing matches.</CommandEmpty>}
           <CommandGroup heading="Create">
             {CREATE_MENU.map((c) => (
               <CommandItem key={c.kind} value={`new ${c.label}`} onSelect={run(() => editor.open({ kind: c.kind } as never))}>
@@ -125,6 +140,23 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               </CommandItem>
             ))}
           </CommandGroup>
+          {lookingInDrive && (
+            <CommandGroup heading="Letters in Drive" forceMount>
+              {letters.loading && (
+                <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+                  <Spinner size="xs" tone="current" decorative /> Searching your Drive…
+                </div>
+              )}
+              {letters.error && <div className="px-2 py-1.5 text-xs text-destructive">{letters.error}</div>}
+              {!letters.loading && !letters.error && letters.files.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">No letter contains all of those words.</div>}
+              {letters.files.map((f) => (
+                <CommandItem key={f.id} forceMount value={`drive-file ${f.id}`} onSelect={run(() => f.webViewLink && window.open(f.webViewLink, '_blank', 'noopener'))}>
+                  <DriveIcon mime={f.mimeType} /> <span className="truncate">{f.name}</span>
+                  <CommandShortcut>{driveDate(f.modifiedTime)}</CommandShortcut>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
           <CommandGroup heading="Tasks">
             {tasks
               .filter((t) => t.outcome.status === 'open')

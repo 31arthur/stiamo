@@ -28,6 +28,7 @@ import { useAction, useEntities, useEntity, useGraph, useSave, useStepPool, useT
 import type { RecordInfo } from '@/presentation/components/records'
 import { LinkPicker } from '@/presentation/relations/LinkPicker'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { caseSearchTerms } from '@/domain/drive/Drive'
 import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
 import { useAttachments } from '@/presentation/attachments/useAttachments'
 import { newHearing } from '@/presentation/forms/CaseForms'
@@ -197,7 +198,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
             })}
           </Section>
           <Section title="Case documents" description="Pleadings, orders, evidence, correspondence">
-            <AttachmentsPanel owner={{ kind: 'case', id: c.id }} compact />
+            <AttachmentsPanel owner={{ kind: 'case', id: c.id }} compact suggestTerms={caseSearchTerms(c)} />
           </Section>
           <Section
             title="Meetings & appointments"

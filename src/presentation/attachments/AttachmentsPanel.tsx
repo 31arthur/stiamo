@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { ClipboardEvent, DragEvent, FormEvent } from 'react'
 import { format, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { Link2, Paperclip, Trash2, UploadCloud } from 'lucide-react'
+import { Link2, Paperclip, Search, Trash2, UploadCloud } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -17,6 +17,9 @@ import { useAction, useUserId } from '@/presentation/data/hooks'
 import { spring } from '@/presentation/motion/presets'
 import { Field } from '@/presentation/components/form'
 import { Skeleton } from '@/presentation/components/loading'
+import { DriveFinder } from '@/presentation/drive/DriveFinder'
+import { attachedDriveIds } from '@/presentation/drive/format'
+import { useDriveStatus } from '@/presentation/drive/useDrive'
 import { FileIcon, LinkTile } from './FileIcon'
 import { FilePreview } from './FilePreview'
 import { formatBytes, useAttachments, useFileUrl } from './useAttachments'
@@ -28,7 +31,7 @@ interface Upload {
 }
 
 /** Supporting documents for a record: drop, paste or pick files; preview them in place. */
-export function AttachmentsPanel({ owner, compact = false, className }: { owner: EntityRef; compact?: boolean; className?: string }) {
+export function AttachmentsPanel({ owner, compact = false, className, suggestTerms }: { owner: EntityRef; compact?: boolean; className?: string; suggestTerms?: string[] }) {
   const services = useServices()
   const userId = useUserId()
   const files = useAttachments(owner)
@@ -38,6 +41,8 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
   const [uploads, setUploads] = useState<Upload[]>([])
   const [dragging, setDragging] = useState(false)
   const [linking, setLinking] = useState(false)
+  const [finding, setFinding] = useState(false)
+  const drive = useDriveStatus()
   const [preview, setPreview] = useState<number | null>(null)
   const remove = useAction<Attachment, void>((s, uid, a) => s.attachments.remove(uid, a, ownerTitle), { success: 'File removed' })
 
@@ -100,9 +105,16 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
           <span className="font-medium">Drop files, paste, or browse</span>
           <span className="text-xs">PDFs, images, documents, recordings — up to 25 MB each</span>
         </button>
-        <Button variant="ghost" size="sm" className="justify-self-center text-muted-foreground" onClick={() => setLinking(true)}>
-          <Link2 /> Or link a Google Doc, Sheet or web page
-        </Button>
+        <div className="flex flex-wrap justify-center gap-1">
+          {drive.available && (
+            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setFinding(true)}>
+              <Search /> Find in Drive
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setLinking(true)}>
+            <Link2 /> Or link a Google Doc, Sheet or web page
+          </Button>
+        </div>
         </div>
       ) : (
         <>
@@ -111,6 +123,11 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
               <Paperclip className="size-3.5" /> {files.length} file{files.length === 1 ? '' : 's'}
             </span>
             <div className="flex gap-1">
+              {drive.available && (
+                <Button variant="ghost" size="xs" onClick={() => setFinding(true)}>
+                  <Search /> Find in Drive
+                </Button>
+              )}
               <Button variant="ghost" size="xs" onClick={() => setLinking(true)}>
                 <Link2 /> Add link
               </Button>
@@ -146,6 +163,7 @@ export function AttachmentsPanel({ owner, compact = false, className }: { owner:
       </AnimatePresence>
 
       <FilePreview files={files} index={preview} onIndexChange={setPreview} onClose={() => setPreview(null)} />
+      {drive.available && <DriveFinder open={finding} onClose={() => setFinding(false)} owner={owner} ownerTitle={ownerTitle} suggestTerms={suggestTerms} attachedIds={attachedDriveIds(files.map((f) => f.link?.url))} />}
       <LinkDialog open={linking} onClose={() => setLinking(false)} onAdd={async (address, name) => void (await attachLink.run({ address, name }))} />
     </div>
   )

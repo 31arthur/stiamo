@@ -25,3 +25,4 @@ The repository's default branch is `dev`; it acts as the trunk.
 | `feature/mobile-and-meta` | Mobile layouts, icons, manifest |
 | `feature/v2-practice-model` | Domain rebuilt: workspaces, outcomes, appointments/meetings, follow-ups, cases & hearings, action plans, goals; new shell and every screen |
 | `feature/api-backend` | Connect to the Stiamo backend: JWT sign-in with refresh rotation, server-run use cases, live views by polling |
+| `feature/drive-search` | Search Google Drive letters by content (command palette, Find in Drive, suggestions per case) |
