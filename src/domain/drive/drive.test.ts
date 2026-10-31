@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { caseSearchTerms, driveFileId, isGoogleDoc, NO_DRIVE } from './Drive'
+import { casesForFile, caseSearchTerms, driveFileAsAttachment, driveFileId, isGoogleDoc, NO_DRIVE } from './Drive'
 
 describe('what identifies a case in a letter', () => {
   it('uses our number, the court’s number, the title, the client and the other side', () => {
@@ -38,5 +38,27 @@ describe('without the backend', () => {
     expect((await NO_DRIVE.status()).available).toBe(false)
     expect(await NO_DRIVE.suggest(['x'])).toEqual([])
     await expect(NO_DRIVE.search('x')).rejects.toThrow(/backend/)
+  })
+})
+
+describe('previewing a Drive file in place', () => {
+  const id = '1AbCdEfGhIjKlMnOpQrStUv'
+  it('shows it through Google’s own viewer', () => {
+    const a = driveFileAsAttachment({ id, name: 'Notice.pdf', mimeType: 'application/pdf', webViewLink: `https://drive.google.com/file/d/${id}/view` }, 'u1')
+    expect(a?.link?.embedUrl).toBe(`https://drive.google.com/file/d/${id}/preview`)
+    expect(a?.name).toBe('Notice.pdf')
+  })
+  it('has nothing to show without a link', () => {
+    expect(driveFileAsAttachment({ id, name: 'x', mimeType: 'application/pdf' }, 'u1')).toBeNull()
+  })
+})
+
+describe('which case a file belongs to', () => {
+  const c = (reference: string, status: 'active' | 'closed', createdAt: string, courtNumber?: string) => ({ reference, courtNumber, title: reference, status, createdAt }) as const
+  it('puts the cases the file name mentions first, then open matters, newest first', () => {
+    const list = [c('SA-2026-001', 'closed', '2026-01-01'), c('SA-2026-002', 'active', '2026-02-01'), c('SA-2026-003', 'active', '2026-03-01', 'WP 1290/2026')]
+    const out = casesForFile('Order in wp 1290/2026.pdf', list)
+    expect(out.map((o) => o.case.reference)).toEqual(['SA-2026-003', 'SA-2026-002', 'SA-2026-001'])
+    expect(out.map((o) => o.suggested)).toEqual([true, false, false])
   })
 })

@@ -1,4 +1,7 @@
+import { describeLink, LINK_MIME } from '../attachments/Attachment'
+import type { Attachment } from '../attachments/Attachment'
 import type { LegalCase } from '../cases/LegalCase'
+import type { ID } from '../shared/types'
 
 /** A file in the owner's Google Drive. Only this description ever reaches Stiamo; the file itself stays in Drive. */
 export interface DriveFile {
@@ -60,3 +63,24 @@ export function driveFileId(address: string | undefined): string | undefined {
 }
 
 export const isGoogleDoc = (mime: string) => mime.startsWith('application/vnd.google-apps.')
+
+/** A Drive file shaped like an attachment, so it can be previewed in place without being linked to anything. */
+export function driveFileAsAttachment(f: DriveFile, userId: ID): Attachment | null {
+  const link = f.webViewLink ? describeLink(f.webViewLink) : null
+  if (!link) return null
+  const at = f.modifiedTime ?? new Date(0).toISOString()
+  return { id: f.id, userId, owner: { kind: 'case', id: '' }, name: f.name, mime: LINK_MIME, size: f.size ?? 0, backend: 'link', link, createdAt: at, updatedAt: at }
+}
+
+/**
+ * Cases to offer for a file, those it looks like it belongs to first: the file's name mentions the case's number,
+ * the court's number or the case title. Otherwise open matters come before closed ones, newest first.
+ */
+export function casesForFile<C extends Pick<LegalCase, 'reference' | 'courtNumber' | 'title' | 'status' | 'createdAt'>>(fileName: string, cases: C[]): { case: C; suggested: boolean }[] {
+  const name = fileName.toLowerCase()
+  const mentions = (c: C) => [c.reference, c.courtNumber].some((t) => !!t && t.length >= 3 && name.includes(t.toLowerCase()))
+  const open = (c: C) => (c.status === 'active' || c.status === 'on_hold' ? 0 : 1)
+  return cases
+    .map((c) => ({ case: c, suggested: mentions(c) }))
+    .sort((a, b) => Number(b.suggested) - Number(a.suggested) || open(a.case) - open(b.case) || b.case.createdAt.localeCompare(a.case.createdAt))
+}

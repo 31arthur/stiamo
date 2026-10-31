@@ -29,7 +29,8 @@ export function useDriveStatus() {
 }
 
 /** Files whose name or contents contain every word. Pages are fetched on request (`fetchNextPage`). */
-export function useDriveSearch(text: string, enabled: boolean) {
+/** With `minChars` of 0 an empty search lists the newest files. */
+export function useDriveSearch(text: string, enabled: boolean, minChars = 2) {
   const services = useServices()
   const userId = useUserId()
   const query = text.trim()
@@ -38,7 +39,7 @@ export function useDriveSearch(text: string, enabled: boolean) {
     queryFn: ({ pageParam }) => services.drive.search(query, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextPageToken,
-    enabled: enabled && query.length >= 2,
+    enabled: enabled && query.length >= minChars,
     staleTime: 60_000,
   })
   return {
