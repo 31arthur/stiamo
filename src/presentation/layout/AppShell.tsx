@@ -262,7 +262,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
         }))}
       />
 
-      <nav className="scrollbar-thin -mx-1 flex flex-1 flex-col gap-4 overflow-y-auto px-1">
+      <nav className="scrollbar-none -mx-1 flex flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-1">
         {groups.map((g) => (
           <div key={g.label}>
             <div className="mb-1 flex items-center justify-between px-2.5">
@@ -332,7 +332,13 @@ function Fold({ fold }: { fold: NonNullable<NavGroup['folds']>[number] }) {
     }
   })
   const inside = fold.items.some((i) => here.includes(i.to.replace(/^\//, '')))
-  const shown = open || inside
+  // Going into one of its pages opens it; after that it opens and closes only when you say so (so a fold you are inside can still be closed).
+  const [wasInside, setWasInside] = useState(inside)
+  if (inside !== wasInside) {
+    setWasInside(inside)
+    if (inside) setOpen(true)
+  }
+  const shown = open
   const toggle = () => {
     setOpen(!open)
     try {
@@ -351,7 +357,7 @@ function Fold({ fold }: { fold: NonNullable<NavGroup['folds']>[number] }) {
       <AnimatePresence initial={false}>
         {shown && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
-            <div className="mt-0.5 ml-[1.15rem] grid gap-0.5 border-l pl-2">
+            <div className="mt-0.5 ml-[1.15rem] grid grid-cols-[minmax(0,1fr)] gap-0.5 border-l pl-2">
               {fold.items.length === 0 ? <span className="px-2.5 py-1 text-xs text-muted-foreground">{fold.empty}</span> : fold.items.map((item) => <NavRow key={item.to} item={item} nested />)}
             </div>
           </motion.div>
