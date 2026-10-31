@@ -5,6 +5,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useServices } from '@/presentation/app/services'
 import { PageHeader } from '@/presentation/components/layout'
+import { WorkspaceChips } from './WorkspaceChips'
+import { useScope } from '@/presentation/app/workspaceFilter'
+import { Section } from '@/presentation/components/layout'
 import { Link, useNavigate } from '@/presentation/routing'
 import { WorkflowBuilder } from './WorkflowBuilder'
 import type { WorkflowDraft } from './WorkflowBuilder'
@@ -18,11 +21,14 @@ export function NewAgentPage() {
   const client = useQueryClient()
   const [template, setTemplate] = useState<WorkflowTemplate | null>(null)
   const [saving, setSaving] = useState(false)
+  // Built from inside a workspace, it starts in that workspace.
+  const scope = useScope()
+  const [workspaces, setWorkspaces] = useState<string[]>(scope === 'all' ? [] : [scope])
 
   async function save(d: WorkflowDraft) {
     setSaving(true)
     try {
-      const w = await agent.createWorkflow(d.name, d.description, d.config)
+      const w = await agent.createWorkflow(d.name, d.description, d.config, workspaces)
       await client.invalidateQueries({ queryKey: ['agent'] })
       toast.success(`${w.name} is ready`)
       navigate(`/agents/${w.id}`)
@@ -67,9 +73,14 @@ export function NewAgentPage() {
             saving={saving}
             onSave={(d) => void save(d)}
             extra={
-              <p className="text-xs text-muted-foreground">
-                It runs on the model you chose last, or on Jev. Change it after saving, in the agent’s <Link to="/agents/settings" className="underline underline-offset-2">settings and providers</Link>.
-              </p>
+              <>
+                <Section title="Workspaces" description="Where it is listed in the sidebar. You can change this later.">
+                  <WorkspaceChips value={workspaces} onChange={setWorkspaces} />
+                </Section>
+                <p className="text-xs text-muted-foreground">
+                  It runs on the model you chose last. Change it after saving, or in the <Link to="/agents/settings" className="underline underline-offset-2">agents’ settings</Link>.
+                </p>
+              </>
             }
           />
         </div>

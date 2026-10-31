@@ -139,26 +139,34 @@ function Sidebar() {
   const { settings: agentSettings } = useAgentSettings()
 
   // Each workspace owns its section; the others stay out of the way. "All workspaces" shows the overview instead.
-  const workspaceGroup: { label: string; items: NavItem[] } | null =
+  // What belongs to a workspace is grouped by what it is, not labelled with the workspace's name: you already chose the workspace.
+  const workspaceGroups: NavGroup[] =
     scope === 'sb'
-      ? {
-          label: WORKSPACES.sb.name,
-          items: [
-            { to: '/letters', label: 'Letters', icon: Mail },
-            { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length, tone: 'danger' },
-            { to: '/diary', label: 'Case diary', icon: NotebookPen },
-            { to: '/counsel', label: 'Counsel', icon: KIND_META.counsel.icon },
-          ],
-        }
-      : scope === 'fsa'
-        ? {
-            label: WORKSPACES.fsa.name,
+      ? [
+          {
+            label: 'Matters',
             items: [
-              { to: '/clients', label: 'Clients', icon: KIND_META.client.icon },
-              { to: '/projects', label: 'Projects', icon: KIND_META.project.icon },
+              { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length, tone: 'danger' },
+              { to: '/diary', label: 'Case diary', icon: NotebookPen },
+              { to: '/counsel', label: 'Counsel', icon: KIND_META.counsel.icon },
             ],
-          }
-        : null
+          },
+          { label: 'Documents', items: [{ to: '/letters', label: 'Letters', icon: Mail }] },
+        ]
+      : scope === 'fsa'
+        ? [
+            {
+              label: 'Delivery',
+              items: [
+                { to: '/clients', label: 'Clients', icon: KIND_META.client.icon },
+                { to: '/projects', label: 'Projects', icon: KIND_META.project.icon },
+              ],
+            },
+          ]
+        : []
+
+  // The agents listed here: all of them under "All workspaces", otherwise those assigned to this workspace.
+  const teamAgents = (agentSettings?.agents ?? []).filter((a) => scope === 'all' || a.workspaces.includes(scope))
 
   const groups: NavGroup[] = [
     {
@@ -169,7 +177,7 @@ function Sidebar() {
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
       ],
     },
-    ...(workspaceGroup ? [workspaceGroup] : []),
+    ...workspaceGroups,
     {
       label: 'Execute',
       items: [
@@ -179,19 +187,15 @@ function Sidebar() {
       ],
     },
     // Agents: an overview, the team (each agent is its own page, folded away when you don't need it), and the settings they share.
-    ...(scope === 'all'
-      ? [
-          {
-            label: 'Agents',
-            action: { to: '/agents/new', label: 'New agent', icon: Plus },
-            items: [
-              { to: '/agents', label: 'Overview', icon: LayoutGrid, end: true },
-              { to: '/agents/settings', label: 'Settings', icon: SlidersHorizontal },
-            ],
-            fold: { key: 'team', label: 'Team', at: 1, items: (agentSettings?.agents ?? []).map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: a.kind === 'workflow' ? Workflow : Bot })) },
-          } satisfies NavGroup,
-        ]
-      : []),
+    {
+      label: 'Agents',
+      action: { to: '/agents/new', label: 'New agent', icon: Plus },
+      items: [
+        { to: '/agents', label: 'Overview', icon: LayoutGrid, end: true },
+        { to: '/agents/settings', label: 'Settings', icon: SlidersHorizontal },
+      ],
+      fold: { key: 'team', label: 'Team', at: 1, items: teamAgents.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: a.kind === 'workflow' ? Workflow : Bot })) },
+    },
     {
       label: 'Direction',
       items: [

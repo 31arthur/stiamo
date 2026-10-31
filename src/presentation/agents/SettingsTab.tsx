@@ -9,7 +9,8 @@ import { Section } from '@/presentation/components/layout'
 import { Link, useNavigate } from '@/presentation/routing'
 import { ModelPicker } from './ModelPicker'
 import { PromptEditor } from './PromptEditor'
-import { useAgentSummary, useWorkflow } from './useAgent'
+import { useAgentAction, useAgentSummary, useWorkflow } from './useAgent'
+import { WorkspaceChips } from './WorkspaceChips'
 import { WorkflowBuilder } from './WorkflowBuilder'
 import type { WorkflowDraft } from './WorkflowBuilder'
 
@@ -21,6 +22,7 @@ export function SettingsTab() {
   return (
     <div className="grid gap-4">
       <ModelSection id={def.id} />
+      <WorkspacesSection id={def.id} />
       <PromptEditor agentId={def.id} />
     </div>
   )
@@ -39,6 +41,17 @@ function ModelSection({ id, note }: { id: string; note?: string }) {
       }
     >
       <ModelPicker def={def} />
+    </Section>
+  )
+}
+
+/** Where an agent is listed. It can work in several workspaces, so these are toggles. */
+function WorkspacesSection({ id }: { id: string }) {
+  const def = useAgentSummary(id)!
+  const set = useAgentAction((a, w: string[]) => a.setWorkspaces(id, w))
+  return (
+    <Section title="Workspaces" description="Where this agent is listed in the sidebar. It can work in several; “All workspaces” always lists every agent.">
+      <WorkspaceChips value={def.workspaces} onChange={(w) => void set.run(w)} disabled={set.pending} />
     </Section>
   )
 }
@@ -85,7 +98,12 @@ function WorkflowSettings({ id }: { id: string }) {
         saving={saving}
         onSave={(d) => void save(d)}
         onDelete={() => setConfirming(true)}
-        extra={w.config.decider === 'model' ? <ModelSection id={id} /> : <p className="text-xs text-muted-foreground">It decides with Jev, through your OpenRouter key, so it has no model of its own to choose.</p>}
+        extra={
+          <>
+            {w.config.decider === 'model' ? <ModelSection id={id} /> : <p className="text-xs text-muted-foreground">It decides with Jev, through your OpenRouter key, so it has no model of its own to choose.</p>}
+            <WorkspacesSection id={id} />
+          </>
+        }
       />
       {confirming && (
         <div role="alertdialog" aria-label="Delete this agent?" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
