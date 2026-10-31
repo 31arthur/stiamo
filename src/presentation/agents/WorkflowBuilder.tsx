@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Copy, Eye, KeyRound, Play, Plus, RefreshCw, Save, Trash2 } from 'lucide-react'
+import { Copy, Eye, KeyRound, Play, Plus, RefreshCw, Save, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { PromptPreview, WorkflowConfig, WorkflowRun } from '@/domain/ai/AgentApi'
+import type { PromptPreview, SafeSenders, WorkflowConfig, WorkflowRun } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
-import { Field, TokenInput } from '@/presentation/components/form'
+import { DateInput, Field, TokenInput } from '@/presentation/components/form'
+import { Switch } from '@/presentation/components/Switch'
 import { Section } from '@/presentation/components/layout'
 import { useMailAccounts, useMailAvailable } from '@/presentation/mail/useMail'
 import { toast } from '@/presentation/notifications/toast'
@@ -56,7 +57,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
   const setLabel = (i: number, p: Partial<WorkflowConfig['labels'][number]>) => setCfg((c) => ({ ...c, labels: c.labels.map((l, j) => (j === i ? { ...l, ...p } : l)) }))
   const manual = cfg.source.kind === 'manual'
   const mail = cfg.source.kind === 'mail'
-  const rules = cfg.rules ?? { protectedDomains: [], protectedPhrases: [], protectCorrespondents: true }
+  const rules = cfg.rules ?? { protectedDomains: [], protectedPhrases: [], protectCorrespondents: true, protectedAddresses: [] }
   const action = cfg.action ?? { trashLabel: null, auto: false }
   const setRules = (p: Partial<typeof rules>) => set({ rules: { ...rules, ...p } })
   const setAction = (p: Partial<typeof action>) => set({ action: { ...action, ...p } })
@@ -147,23 +148,38 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                     </select>
                   </label>
                 )}
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                  {mail ? 'Received' : 'Created or changed'}
-                  <select value={cfg.filters.sinceDays ? String(cfg.filters.sinceDays) : ''} onChange={(e) => setFilters({ sinceDays: e.target.value ? Number(e.target.value) : null })} className={SELECT}>
-                    {DAYS.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {mail ? (
+                  <WhichMail filters={cfg.filters} setFilters={setFilters} />
+                ) : (
+                  <label className="grid gap-1 text-xs text-muted-foreground">
+                    Created or changed
+                    <select value={cfg.filters.sinceDays ? String(cfg.filters.sinceDays) : ''} onChange={(e) => setFilters({ sinceDays: e.target.value ? Number(e.target.value) : null })} className={SELECT}>
+                      {DAYS.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="grid gap-1 text-xs text-muted-foreground">
                   Only if it contains
                   <Input value={cfg.filters.contains ?? ''} onChange={(e) => setFilters({ contains: e.target.value || null })} placeholder="a word (optional)" maxLength={100} className="h-8" />
                 </label>
                 <label className="grid gap-1 text-xs text-muted-foreground">
-                  At most
-                  <Input type="number" min={1} max={200} value={cfg.filters.limit} onChange={(e) => setFilters({ limit: Math.max(1, Math.min(200, Number(e.target.value) || 1)) })} className="h-8" />
+                  {mail ? 'Emails per run' : 'At most'}
+                  {mail ? (
+                    <select value={cfg.filters.limit} onChange={(e) => setFilters({ limit: Number(e.target.value) })} className={SELECT}>
+                      {[25, 50, 100, 200, 500].map((n) => (
+                        <option key={n} value={n}>
+                          {n} at a time
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input type="number" min={1} max={500} value={cfg.filters.limit} onChange={(e) => setFilters({ limit: Math.max(1, Math.min(500, Number(e.target.value) || 1)) })} className="h-8" />
+                  )}
+                  {mail && <span>A run does this many; run again, or use “Run through the whole inbox”, to carry on with the rest.</span>}
                 </label>
                 <label className="flex items-center gap-2 text-sm sm:col-span-2">
                   <input type="checkbox" checked={cfg.filters.newOnly} onChange={(e) => setFilters({ newOnly: e.target.checked })} className="size-4 accent-[var(--foreground)]" />
@@ -227,10 +243,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
               <Field label="Always keep mail that mentions" hint="Words or phrases in the sender, the subject or the start of the message.">
                 <TokenInput values={rules.protectedPhrases} onChange={(v) => setRules({ protectedPhrases: v })} placeholder="a name or phrase" />
               </Field>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={rules.protectCorrespondents} onChange={(e) => setRules({ protectCorrespondents: e.target.checked })} className="size-4 accent-[var(--foreground)]" />
-                Always keep mail from people I have written to
-              </label>
+              <SafeSendersCard rules={rules} setRules={setRules} accountIds={mailboxes} />
               <div className="grid gap-3 border-t pt-4">
                 <label className="grid gap-1 text-xs text-muted-foreground sm:max-w-xs">
                   Move to Trash when it is labelled
@@ -428,6 +441,120 @@ function PromptView({ cfg }: { cfg: WorkflowConfig }) {
           {view.questions && block('Its questions, one per email', JSON.stringify(view.questions, null, 2))}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Everything or a stretch of the inbox: the whole folder, the last few days, or between two dates. */
+function WhichMail({ filters, setFilters }: { filters: WorkflowConfig['filters']; setFilters: (p: Partial<WorkflowConfig['filters']>) => void }) {
+  const mode = filters.after || filters.before ? 'dates' : filters.sinceDays ? 'days' : 'all'
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const shift = (day: string, by: number) => {
+    const d = new Date(`${day}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + by)
+    return iso(d)
+  }
+  const pick = (m: 'all' | 'days' | 'dates') => {
+    if (m === 'all') setFilters({ sinceDays: null, after: null, before: null })
+    else if (m === 'days') setFilters({ sinceDays: 30, after: null, before: null })
+    else setFilters({ sinceDays: null, after: iso(new Date(Date.now() - 30 * 86_400_000)), before: null })
+  }
+  return (
+    <div className="grid gap-2 sm:col-span-2">
+      <span className="text-xs text-muted-foreground">Which emails</span>
+      <div role="radiogroup" aria-label="Which emails" className="flex flex-wrap gap-2">
+        {[
+          { id: 'all' as const, label: 'The whole inbox' },
+          { id: 'days' as const, label: 'The last few days' },
+          { id: 'dates' as const, label: 'Between two dates' },
+        ].map((o) => (
+          <button key={o.id} type="button" role="radio" aria-checked={mode === o.id} onClick={() => pick(o.id)} className={cn('rounded-full border px-3 py-1.5 text-sm transition-colors', mode === o.id ? 'border-foreground/40 bg-background font-medium' : 'text-muted-foreground hover:border-foreground/30 hover:text-foreground')}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {mode === 'days' && (
+        <select aria-label="How many days back" value={filters.sinceDays ?? 30} onChange={(e) => setFilters({ sinceDays: Number(e.target.value) })} className={cn(SELECT, 'w-fit')}>
+          {[1, 7, 14, 30, 90, 180, 365, 1095].map((n) => (
+            <option key={n} value={n}>
+              {n === 1 ? 'Today and yesterday' : n >= 365 ? `The last ${n / 365 === 1 ? 'year' : `${Math.round(n / 365)} years`}` : `The last ${n} days`}
+            </option>
+          ))}
+        </select>
+      )}
+      {mode === 'dates' && (
+        <div className="grid max-w-md grid-cols-2 gap-3">
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            From
+            <DateInput value={filters.after ?? undefined} onChange={(d) => setFilters({ after: d ?? null })} aria-label="From date" />
+          </label>
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            Until (included)
+            <DateInput value={filters.before ? shift(filters.before, -1) : undefined} onChange={(d) => setFilters({ before: d ? shift(d, 1) : null })} aria-label="Until date" />
+          </label>
+        </div>
+      )}
+      {mode === 'all' && <p className="text-xs text-muted-foreground">Every email in the inbox, newest first. It works through them a few at a time and never reads one twice.</p>}
+    </div>
+  )
+}
+
+/** The shield that keeps mail from anyone you have written to. It can be switched off, and you can see who it protects. */
+function SafeSendersCard({ rules, setRules, accountIds }: { rules: NonNullable<WorkflowConfig['rules']>; setRules: (p: Partial<NonNullable<WorkflowConfig['rules']>>) => void; accountIds: string[] }) {
+  const { agent } = useServices()
+  const [found, setFound] = useState<SafeSenders[] | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function look() {
+    setBusy(true)
+    try {
+      setFound(await agent.safeSenders(accountIds))
+    } catch (e) {
+      toast.error('Couldn’t read the Sent folders', { description: e instanceof Error ? e.message : undefined })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className={cn('grid gap-3 rounded-xl border p-3.5 transition-colors', rules.protectCorrespondents ? 'border-success/40 bg-success/5' : 'bg-muted/30')}>
+      <div className="flex items-start gap-3">
+        <ShieldCheck className={cn('mt-0.5 size-5 shrink-0', rules.protectCorrespondents ? 'text-success' : 'text-muted-foreground')} />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium">Safe senders</div>
+          <p className="text-xs text-muted-foreground">Anyone you have written to from these mailboxes is never judged or moved. It reads each mailbox’s Sent folder (the last 5,000 messages) every run, so new contacts are protected as soon as you write to them.</p>
+        </div>
+        <Switch checked={rules.protectCorrespondents} onChange={(on) => setRules({ protectCorrespondents: on })} label="Safe senders" />
+      </div>
+
+      {rules.protectCorrespondents ? (
+        <div className="grid gap-2 pl-8">
+          <Button variant="outline" size="sm" className="w-fit" disabled={busy || accountIds.length === 0} onClick={() => void look()}>
+            {busy ? <Spinner size="xs" tone="current" decorative /> : <Eye />} Who is protected?
+          </Button>
+          {found?.map((f) => (
+            <div key={f.accountId} className="text-xs">
+              {f.error ? (
+                <p className="text-destructive">{f.error}</p>
+              ) : (
+                <>
+                  <p className="text-muted-foreground">
+                    <b className="text-foreground tabular-nums">{f.count}</b> address{f.count === 1 ? '' : 'es'} protected{found.length > 1 ? ' in this mailbox' : ''}
+                    {f.count > f.sample.length ? `, first ${f.sample.length} shown` : ''}.
+                  </p>
+                  {f.sample.length > 0 && <p className="mt-1 flex flex-wrap gap-1">{f.sample.map((a) => <span key={a} className="rounded-md bg-muted px-1.5 py-0.5">{a}</span>)}</p>}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="pl-8 text-xs text-warning">Off: mail from people you know is judged like any other, so it can be moved to Trash.</p>
+      )}
+
+      <Field label="Also always keep these addresses" hint="For people you haven’t written to yet. Type an address and press Enter.">
+        <TokenInput values={rules.protectedAddresses ?? []} onChange={(v) => setRules({ protectedAddresses: v })} placeholder="name@example.com" />
+      </Field>
     </div>
   )
 }

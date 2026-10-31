@@ -62,11 +62,13 @@ export function TestResults({ run }: { run: WorkflowRun }) {
 
       {run.stats && (
         <dl className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {!!run.stats.inRange && <Stat label="In range" value={`${run.stats.inRange}`} hint="Emails in the dates you chose" />}
           <Stat label="Read" value={`${run.stats.scanned}`} hint={`Messages looked through${run.stats.mailboxes > 1 ? ` in ${run.stats.mailboxes} mailboxes` : ''}`} />
           <Stat label="Protected" value={`${run.stats.protected}`} hint="Kept by your rules, not judged" />
           <Stat label="Judged" value={`${run.stats.judged}`} hint="Read by the model" />
           <Stat label="Requests" value={`${run.stats.requests}`} hint={run.stats.batchSize > 1 ? `Up to ${run.stats.batchSize} per request` : 'One per item'} />
           <Stat label="Model" value={run.stats.model || '—'} hint={run.stats.provider} />
+          {!!run.stats.remaining && <Stat label="Still to go" value={`${run.stats.remaining}`} hint="Run again to carry on with these" />}
           <Stat label="Cost" value={run.stats.cost ? `$${run.stats.cost.toFixed(run.stats.cost < 0.01 ? 5 : 3)}` : '—'} hint="What the decision model charged, when it says" />
         </dl>
       )}
