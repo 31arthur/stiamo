@@ -354,6 +354,50 @@ export interface RunPage {
   next: string | null
 }
 
+/** What runs used. `cost` is null (not 0) when no run in it had a price to report. */
+export interface UsageTotals {
+  runs: number
+  errors: number
+  inputTokens: number
+  outputTokens: number
+  items: number
+  cost: number | null
+  /** How many of the runs had a cost reported. */
+  pricedRuns: number
+}
+
+export interface UsageSummary {
+  windowDays: number | null
+  total: UsageTotals
+  allTime: UsageTotals
+  byAgent: (UsageTotals & { agentId: string; name: string; kind: 'chat' | 'workflow' })[]
+  byModel: (UsageTotals & { provider: string; model: string })[]
+  daily: (UsageTotals & { date: string })[]
+}
+
+/** One run and what it used. */
+export interface UsageTransaction {
+  id: string
+  at: string
+  agentId: string
+  agentName: string
+  kind: 'chat' | 'workflow'
+  trigger: string
+  status: 'ok' | 'error'
+  provider: string
+  model: string
+  inputTokens: number
+  outputTokens: number
+  cost: number | null
+  items: number
+  durationMs: number
+}
+
+export interface UsagePage {
+  items: UsageTransaction[]
+  nextBefore: string | null
+}
+
 export interface AgentStats {
   totalRuns: number
   windowDays: number
@@ -363,6 +407,10 @@ export interface AgentStats {
   avgDurationMs: number
   inputTokens: number
   outputTokens: number
+  /** US dollars over the window, when the provider says what it charged; null when it doesn't. */
+  cost: number | null
+  /** Everything this agent has used since it began, whatever happened to its history. */
+  allTime: UsageTotals
   byTrigger: Record<string, number>
   daily: { date: string; runs: number; errors: number }[]
   lastRun: RunSummary | null
@@ -415,6 +463,8 @@ export interface AgentApi {
   preview(agentId: string, question: string, prompt?: PromptSettings): Promise<PromptPackage>
   chat(agentId: string, message: string, messages: unknown[]): Promise<ChatReply>
   stats(agentId: string): Promise<AgentStats>
+  usageSummary(days: number | null, agent?: string): Promise<UsageSummary>
+  usageTransactions(opts: { days: number | null; agent?: string; before?: string }): Promise<UsagePage>
   runs(agentId: string, before?: string): Promise<RunPage>
   run(runId: string): Promise<RunDetail>
   clearRuns(agentId: string): Promise<void>

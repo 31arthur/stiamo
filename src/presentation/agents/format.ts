@@ -16,3 +16,11 @@ export const ago = (iso: string) => formatDistanceToNowStrict(parseISO(iso), { a
 
 /** 1 234 → "1.2k". */
 export const compact = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : String(n))
+
+/** US dollars, with enough places that a fraction of a cent is still visible. "—" when nobody says what it cost. */
+export function money(n: number | null | undefined): string {
+  if (n === null || n === undefined) return '—'
+  if (n === 0) return '$0'
+  if (n < 0.01) return `$${n.toFixed(5)}`
+  return n < 1 ? `$${n.toFixed(3)}` : `$${n.toFixed(2)}`
+}

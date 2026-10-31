@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bot, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
+import { Bot, Check, Coins, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -219,6 +219,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       action: { to: '/agents/new', label: 'New agent', icon: Plus },
       items: [
         { to: '/agents', label: 'Overview', icon: LayoutGrid, end: true },
+        { to: '/agents/usage', label: 'Usage', icon: Coins },
         { to: '/agents/settings', label: 'Settings', icon: SlidersHorizontal },
       ],
       folds: [

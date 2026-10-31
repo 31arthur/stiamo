@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -85,6 +85,28 @@ export function useReview(id: string | undefined, enabled = true) {
   const { agent } = useServices()
   const userId = useUserId()
   return useQuery<ReviewItem[]>({ queryKey: ['agent', 'review', userId, id], queryFn: () => agent.review(id!), enabled: enabled && !!id, retry: false })
+}
+
+/** What every agent has used (or one agent), over the last `days` days or all time. */
+export function useUsageSummary(days: number | null, agentId?: string) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  return useQuery<UsageSummary>({ queryKey: ['agent', 'usage', userId, days, agentId], queryFn: () => agent.usageSummary(days, agentId), enabled: useAgentAvailable(), staleTime: 15_000, retry: false })
+}
+
+/** Every run and what it used, newest first, a page at a time. */
+export function useUsageTransactions(days: number | null, agentId?: string) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  return useInfiniteQuery({
+    queryKey: ['agent', 'usage-runs', userId, days, agentId],
+    queryFn: ({ pageParam }) => agent.usageTransactions({ days, agent: agentId, before: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last: UsagePage) => last.nextBefore ?? undefined,
+    enabled: useAgentAvailable(),
+    staleTime: 15_000,
+    retry: false,
+  })
 }
 
 /** Every real run of an agent you built, newest first. */

@@ -22,6 +22,7 @@ const CounselPage = lazy(() => import('@/presentation/pages/CounselPage').then((
 const CounselDetailPage = lazy(() => import('@/presentation/pages/CounselDetailPage').then((m) => ({ default: m.CounselDetailPage })))
 const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
 const WorkspacePagesPage = lazy(() => import('@/presentation/pages/WorkspacePagesPage').then((m) => ({ default: m.WorkspacePagesPage })))
+const UsagePage = lazy(() => import('@/presentation/agents/UsagePage').then((m) => ({ default: m.UsagePage })))
 const ExecutionsTab = lazy(() => import('@/presentation/agents/ExecutionsTab').then((m) => ({ default: m.ExecutionsTab })))
 const ExecutionPage = lazy(() => import('@/presentation/agents/ExecutionPage').then((m) => ({ default: m.ExecutionPage })))
 const MailPage = lazy(() => import('@/presentation/mail/MailPage').then((m) => ({ default: m.MailPage })))
@@ -64,6 +65,7 @@ export default function App({ container }: { container: Container }) {
                   <Route path="overview" element={<OverviewPage />} />
                   <Route path="agents" element={<AgentsLayout />}>
                     <Route index element={<AgentsHome />} />
+                    <Route path="usage" element={<UsagePage />} />
                     <Route path="settings" element={<AgentsSettingsPage />} />
                     <Route path="new" element={<NewAgentPage />} />
                     <Route path=":agentId" element={<AgentLayout />}>
