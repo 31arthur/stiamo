@@ -33,8 +33,8 @@ function ModelSection({ id, note }: { id: string; note?: string }) {
       title="Model"
       description={note ?? (def.selectionInherited ? 'No choice of its own yet: it uses the model you chose last. Pick one to give this agent its own.' : 'The provider, model and how hard it thinks. Each agent has its own.')}
       actions={
-        <Link to="/agents/providers" className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-          Manage providers
+        <Link to="/agents/settings" className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+          All agents’ settings
         </Link>
       }
     >

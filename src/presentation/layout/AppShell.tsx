@@ -1,11 +1,12 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bot, Check, CalendarDays, CalendarRange, ChevronsUpDown, KeyRound, LayoutDashboard, LayoutGrid, Mail, Menu, NotebookPen, Plus, Scale, Search, Sun, Workflow } from 'lucide-react'
+import { Bot, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { WORKSPACE_IDS, WORKSPACES } from '@/domain/shared/workspace'
@@ -33,6 +34,15 @@ interface NavItem {
   tone?: 'danger' | 'default'
   /** Active only on exactly this address, not on what is under it. */
   end?: boolean
+}
+
+interface NavGroup {
+  label: string
+  items: NavItem[]
+  /** A small button beside the heading, for the thing you most often add here. */
+  action?: { to: string; label: string; icon: LucideIcon }
+  /** A part of the group that folds away, shown after the first `at` items. */
+  fold?: { key: string; label: string; at: number; items: NavItem[] }
 }
 
 
@@ -150,7 +160,7 @@ function Sidebar() {
           }
         : null
 
-  const groups: { label: string; items: NavItem[] }[] = [
+  const groups: NavGroup[] = [
     {
       label: 'Plan',
       items: [
@@ -168,19 +178,18 @@ function Sidebar() {
         { to: '/meetings', label: 'Meetings', icon: KIND_META.meeting.icon, badge: attention.meetingsToRecord.length },
       ],
     },
-    // Every agent is its own entry; the providers they share are below them.
+    // Agents: an overview, the team (each agent is its own page, folded away when you don't need it), and the settings they share.
     ...(scope === 'all'
       ? [
           {
             label: 'Agents',
+            action: { to: '/agents/new', label: 'New agent', icon: Plus },
             items: [
-              { to: '/agents', label: 'All agents', icon: LayoutGrid, end: true },
-              ...(agentSettings?.agents ?? []).map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: a.kind === 'workflow' ? Workflow : Bot })),
-              { to: '/agents/new', label: 'New agent', icon: Plus },
-              { to: '/agents/providers', label: 'Providers', icon: KeyRound },
-              { to: '/agents/decisions', label: 'Decision models', icon: Scale },
-            ] as NavItem[],
-          },
+              { to: '/agents', label: 'Overview', icon: LayoutGrid, end: true },
+              { to: '/agents/settings', label: 'Settings', icon: SlidersHorizontal },
+            ],
+            fold: { key: 'team', label: 'Team', at: 1, items: (agentSettings?.agents ?? []).map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: a.kind === 'workflow' ? Workflow : Bot })) },
+          } satisfies NavGroup,
         ]
       : []),
     {
@@ -228,41 +237,98 @@ function Sidebar() {
       <nav className="scrollbar-thin -mx-1 flex flex-1 flex-col gap-4 overflow-y-auto px-1">
         {groups.map((g) => (
           <div key={g.label}>
-            <div className="mb-1 px-2.5 text-[10px] font-semibold tracking-widest text-muted-foreground/80 uppercase">{g.label}</div>
+            <div className="mb-1 flex items-center justify-between px-2.5">
+              <span className="text-[10px] font-semibold tracking-widest text-muted-foreground/80 uppercase">{g.label}</span>
+              {g.action && (
+                <Tooltip>
+                  <TooltipTrigger render={<NavLink to={g.action.to} aria-label={g.action.label} className="-mr-1 flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" />}>
+                    <g.action.icon className="size-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{g.action.label}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
             <div className="grid gap-0.5">
-              {g.items.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.end} className="group relative">
-                  {({ isActive }) => (
-                    <span className={cn('relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', isActive ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
-                      {isActive && <motion.span layoutId="sidebar-active" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-background shadow-float" />}
-                      <item.icon className="relative size-4" />
-                      <span className="relative flex-1">{item.label}</span>
-                      <AnimatePresence>
-                        {!!item.badge && (
-                          <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0 }}
-                            transition={spring.snappy}
-                            className={cn(
-                              'relative min-w-5 rounded-full px-1.5 text-center text-[10px] leading-5 font-semibold tabular-nums',
-                              item.tone === 'danger' ? 'bg-destructive text-white' : 'bg-foreground text-background',
-                            )}
-                          >
-                            {item.badge}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                    </span>
-                  )}
-                </NavLink>
+              {g.items.slice(0, g.fold?.at ?? g.items.length).map((item) => (
+                <NavRow key={item.to} item={item} />
               ))}
+              {g.fold && <Fold fold={g.fold} />}
+              {g.fold && g.items.slice(g.fold.at).map((item) => <NavRow key={item.to} item={item} />)}
             </div>
           </div>
         ))}
       </nav>
 
       <AccountCard />
+    </div>
+  )
+}
+
+function NavRow({ item, nested = false }: { item: NavItem; nested?: boolean }) {
+  return (
+    <NavLink to={item.to} end={item.end} className="group relative">
+      {({ isActive }) => (
+        <span className={cn('relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', nested && 'py-1', isActive ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
+          {isActive && <motion.span layoutId="sidebar-active" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-background shadow-float" />}
+          <item.icon className="relative size-4" />
+          <span className="relative min-w-0 flex-1 truncate">{item.label}</span>
+          <AnimatePresence>
+            {!!item.badge && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={spring.snappy}
+                className={cn('relative min-w-5 rounded-full px-1.5 text-center text-[10px] leading-5 font-semibold tabular-nums', item.tone === 'danger' ? 'bg-destructive text-white' : 'bg-foreground text-background')}
+              >
+                {item.badge}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
+      )}
+    </NavLink>
+  )
+}
+
+const FOLD_KEY = 'stiamo.nav.fold.'
+
+/** A part of the sidebar that folds away. It remembers whether it was open, and opens itself when you are inside it. */
+function Fold({ fold }: { fold: NonNullable<NavGroup['fold']> }) {
+  const here = useLocation().pathname
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(FOLD_KEY + fold.key) !== 'closed'
+    } catch {
+      return true
+    }
+  })
+  const inside = fold.items.some((i) => here.includes(i.to.replace(/^\//, '')))
+  const shown = open || inside
+  const toggle = () => {
+    setOpen(!open)
+    try {
+      localStorage.setItem(FOLD_KEY + fold.key, open ? 'closed' : 'open')
+    } catch {
+      // Remembering it is a convenience.
+    }
+  }
+  return (
+    <div>
+      <button type="button" onClick={toggle} aria-expanded={shown} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+        <ChevronRight className={cn('size-4 transition-transform', shown && 'rotate-90')} />
+        <span className="flex-1 text-left">{fold.label}</span>
+        <span className="rounded-full bg-muted px-1.5 text-[10px] leading-5 font-medium tabular-nums">{fold.items.length}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {shown && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
+            <div className="mt-0.5 ml-[1.15rem] grid gap-0.5 border-l pl-2">
+              {fold.items.length === 0 ? <span className="px-2.5 py-1 text-xs text-muted-foreground">No agents yet</span> : fold.items.map((item) => <NavRow key={item.to} item={item} nested />)}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

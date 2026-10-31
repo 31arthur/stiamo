@@ -68,7 +68,7 @@ export function NewAgentPage() {
             onSave={(d) => void save(d)}
             extra={
               <p className="text-xs text-muted-foreground">
-                It runs on the model you chose last, or on Jev. Change it after saving, in the agent’s <Link to="/agents/providers" className="underline underline-offset-2">settings and providers</Link>.
+                It runs on the model you chose last, or on Jev. Change it after saving, in the agent’s <Link to="/agents/settings" className="underline underline-offset-2">settings and providers</Link>.
               </p>
             }
           />

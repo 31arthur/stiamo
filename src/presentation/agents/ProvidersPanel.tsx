@@ -6,19 +6,20 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { PROVIDER_IDS, PROVIDERS } from '@/domain/ai/types'
 import type { ProviderId } from '@/domain/ai/types'
-import { PageHeader, Section } from '@/presentation/components/layout'
+import { Section } from '@/presentation/components/layout'
 import { useAgentAction, useAgentSettings, useModels } from './useAgent'
 
-/** Add the providers the agent can use. A key is checked against the provider before the server keeps it. */
-export function ProvidersPage() {
+/** The providers agents can run on. A key is checked against the provider before the server keeps it. */
+export function ProvidersPanel({ compact = false }: { compact?: boolean }) {
   const { settings, loading, error } = useAgentSettings()
   return (
     <div className="grid gap-4">
-      <PageHeader eyebrow="Agents" title="Providers" description="The AI providers every agent can run on. Each agent chooses its own model from them." />
       <p className="flex items-start gap-2 rounded-xl border bg-card/70 px-3.5 py-3 text-sm text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />
         <span>
-          Keys are kept encrypted on your Stiamo server, never in the browser, and are never sent back to it. When you ask the agent something, the question and the matching cases and document names go to the provider you chose, so pick one you are happy to share them with.
+          {compact
+            ? 'Keys are kept encrypted on your server and never sent back to the browser.'
+            : 'Keys are kept encrypted on your Stiamo server, never in the browser, and are never sent back to it. When you ask an agent something, the question and the matching cases and document names go to the provider it uses, so pick one you are happy to share them with.'}
         </span>
       </p>
       {error && (
@@ -29,7 +30,7 @@ export function ProvidersPage() {
       {loading ? (
         <Spinner label="Loading" />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className={compact ? 'grid gap-3 sm:grid-cols-3' : 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3'}>
           {PROVIDER_IDS.map((id) => (
             <ProviderCard key={id} id={id} connected={!!settings?.providers[id]?.connected} last4={settings?.providers[id]?.last4} />
           ))}

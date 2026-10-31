@@ -170,19 +170,10 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
               </Button>
             )}
 
-            <div className="grid gap-3 border-t pt-4 sm:grid-cols-2">
-              <label className="grid gap-1 text-xs text-muted-foreground">
-                Who decides
-                <select value={cfg.decider} onChange={(e) => set({ decider: e.target.value as 'model' | 'jev' })} className={SELECT}>
-                  <option value="model">This agent’s model (answers in words)</option>
-                  <option value="jev">Jev, the decision model (answers in probabilities)</option>
-                </select>
-              </label>
-              <label className="grid gap-1 text-xs text-muted-foreground">
-                Unsure below {Math.round(cfg.defaultThreshold * 100)}%: send to review
-                <input type="range" min={0} max={100} step={5} value={Math.round(cfg.defaultThreshold * 100)} onChange={(e) => set({ defaultThreshold: Number(e.target.value) / 100 })} className="accent-[var(--foreground)]" aria-label="Default confidence needed" />
-              </label>
-            </div>
+            <label className="grid gap-1 border-t pt-4 text-xs text-muted-foreground sm:max-w-sm">
+              Unsure below {Math.round(cfg.defaultThreshold * 100)}%: send to review
+              <input type="range" min={0} max={100} step={5} value={Math.round(cfg.defaultThreshold * 100)} onChange={(e) => set({ defaultThreshold: Number(e.target.value) / 100 })} className="accent-[var(--foreground)]" aria-label="Default confidence needed" />
+            </label>
           </div>
         </Section>
 
@@ -211,8 +202,8 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
             {error && (
               <div role="alert" className="grid gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm">
                 {error}
-                {/choose a provider|add an openrouter key/i.test(error) && (
-                  <Button variant="outline" size="sm" className="w-fit" nativeButton={false} render={<Link to="/agents/providers" />}>
+                {/choose a provider/i.test(error) && (
+                  <Button variant="outline" size="sm" className="w-fit" nativeButton={false} render={<Link to="/agents/settings" />}>
                     <KeyRound /> Providers
                   </Button>
                 )}
