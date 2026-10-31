@@ -22,6 +22,8 @@ const CounselPage = lazy(() => import('@/presentation/pages/CounselPage').then((
 const CounselDetailPage = lazy(() => import('@/presentation/pages/CounselDetailPage').then((m) => ({ default: m.CounselDetailPage })))
 const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
 const WorkspacePagesPage = lazy(() => import('@/presentation/pages/WorkspacePagesPage').then((m) => ({ default: m.WorkspacePagesPage })))
+const ExecutionsTab = lazy(() => import('@/presentation/agents/ExecutionsTab').then((m) => ({ default: m.ExecutionsTab })))
+const ExecutionPage = lazy(() => import('@/presentation/agents/ExecutionPage').then((m) => ({ default: m.ExecutionPage })))
 const MailPage = lazy(() => import('@/presentation/mail/MailPage').then((m) => ({ default: m.MailPage })))
 const LettersPage = lazy(() => import('@/presentation/pages/LettersPage').then((m) => ({ default: m.LettersPage })))
 const OverviewPage = lazy(() => import('@/presentation/pages/OverviewPage').then((m) => ({ default: m.OverviewPage })))
@@ -68,6 +70,8 @@ export default function App({ container }: { container: Container }) {
                       <Route index element={<OverviewTab />} />
                       <Route path="try" element={<TryTab />} />
                       <Route path="run" element={<WorkflowRunTab />} />
+                      <Route path="executions" element={<ExecutionsTab />} />
+                      <Route path="executions/:runId" element={<ExecutionPage />} />
                       <Route path="review" element={<ReviewTab />} />
                       <Route path="settings" element={<SettingsTab />} />
                       <Route path="channels" element={<ChannelsTab />} />

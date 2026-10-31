@@ -14,23 +14,25 @@ import { useMailActions, useMessage } from './useMail'
  * A message. Its HTML has already been cleaned by the server and is shown here in a frame that cannot run scripts, submit forms or
  * reach this page, with a switch to hide remote pictures when the sender isn't trusted.
  */
-export function MessageReader({ accountId, folder, uid, onBack }: { accountId: string; folder: string; uid: number; onBack: () => void }) {
+export function MessageReader({ accountId, folder, uid, onBack, markRead = true }: { accountId: string; folder: string; uid: number; onBack?: () => void; /** Opening a message reads it. A preview inside another screen leaves it as it was. */ markRead?: boolean }) {
   const { data: m, isLoading, error } = useMessage(accountId, folder, uid)
   const { mark } = useMailActions()
 
   // Opening a message reads it, like any mail program. (The server fetched it without touching the flag.)
   useEffect(() => {
-    if (m && !m.seen) mark.mutate({ accountId, folder, uid, seen: true })
+    if (markRead && m && !m.seen) mark.mutate({ accountId, folder, uid, seen: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m?.uid, m?.seen])
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-1 border-b px-3 py-2 lg:hidden">
-        <Button size="sm" variant="ghost" onClick={onBack}>
-          <ArrowLeft /> Inbox
-        </Button>
-      </div>
+      {onBack && (
+        <div className="flex items-center gap-1 border-b px-3 py-2 lg:hidden">
+          <Button size="sm" variant="ghost" onClick={onBack}>
+            <ArrowLeft /> Inbox
+          </Button>
+        </div>
+      )}
       {isLoading ? (
         <div className="grid gap-3 p-5">
           <Skeleton className="h-7 w-2/3" />

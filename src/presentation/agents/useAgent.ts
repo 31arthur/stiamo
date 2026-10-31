@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { AgentApi, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -85,6 +85,20 @@ export function useReview(id: string | undefined, enabled = true) {
   const { agent } = useServices()
   const userId = useUserId()
   return useQuery<ReviewItem[]>({ queryKey: ['agent', 'review', userId, id], queryFn: () => agent.review(id!), enabled: enabled && !!id, retry: false })
+}
+
+/** Every real run of an agent you built, newest first. */
+export function useExecutions(id: string | undefined) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  return useQuery<Execution[]>({ queryKey: ['agent', 'executions', userId, id], queryFn: () => agent.executions(id!), enabled: !!id, retry: false })
+}
+
+/** One run and every item it decided, as it stands now. */
+export function useExecution(id: string | undefined, runId: string | undefined) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  return useQuery<ExecutionDetail>({ queryKey: ['agent', 'execution', userId, id, runId], queryFn: () => agent.execution(id!, runId!), enabled: !!id && !!runId, retry: false })
 }
 
 /** The agents listed in the workspace you are in; under "All workspaces", every agent. */

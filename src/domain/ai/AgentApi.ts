@@ -254,6 +254,40 @@ export interface ReviewItem {
   at: string | null
 }
 
+export type LedgerStatus = 'proposed' | 'needs_review' | 'approved' | 'dismissed' | 'kept' | 'applied' | 'protected'
+
+/** One real run of an agent you built. `counts` is what the run did; `now` is where its items stand today. */
+export interface Execution {
+  id: string
+  startedAt: string
+  durationMs: number
+  status: 'ok' | 'error'
+  summary: string
+  counts: { items?: number; proposed?: number; needsReview?: number; failed?: number; kept?: number; applied?: number; protected?: number }
+  stats: Partial<RunStats>
+  error: string | null
+  version: number
+  now: Partial<Record<LedgerStatus, number>>
+}
+
+export interface ExecutionItem {
+  id: string
+  title: string
+  /** The start of the item as the agent read it (for mail: sender, subject, the first lines). */
+  excerpt: string
+  label: string | null
+  confidence: number
+  reason: string
+  status: LedgerStatus
+  at: string | null
+  decidedAt: string | null
+}
+
+export interface ExecutionDetail {
+  execution: Execution
+  items: ExecutionItem[]
+}
+
 /** Where a question came from. */
 export type RunTrigger = 'chat' | 'telegram' | 'whatsapp' | 'test' | 'schedule'
 
@@ -381,6 +415,8 @@ export interface AgentApi {
   testWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   runWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   review(id: string): Promise<ReviewItem[]>
+  executions(id: string): Promise<Execution[]>
+  execution(id: string, runId: string): Promise<ExecutionDetail>
   decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string): Promise<{ changed: number; moved?: number }>
   channels(): Promise<Channel[]>
   connectTelegram(botToken: string, agent?: string): Promise<Channel>

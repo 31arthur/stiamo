@@ -1,4 +1,4 @@
-import type { AgentApi, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -113,6 +113,14 @@ export class RemoteAgent implements AgentApi {
 
   runWorkflow(id: string, manual?: string) {
     return this.http.post<WorkflowRun>(`/v1/agent/workflows/${encodeURIComponent(id)}/run`, { manual })
+  }
+
+  async executions(id: string): Promise<Execution[]> {
+    return (await this.http.get<{ items: Execution[] }>(`/v1/agent/workflows/${encodeURIComponent(id)}/executions`)).items
+  }
+
+  execution(id: string, runId: string) {
+    return this.http.get<ExecutionDetail>(`/v1/agent/workflows/${encodeURIComponent(id)}/executions/${encodeURIComponent(runId)}`)
   }
 
   async review(id: string): Promise<ReviewItem[]> {
