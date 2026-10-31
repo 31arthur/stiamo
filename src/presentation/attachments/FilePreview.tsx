@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { format, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { categoryOf, PROVIDER_LABELS } from '@/domain/attachments/Attachment'
+import { driveFileId, nameForContent } from '@/domain/drive/Drive'
+import { useDriveContent, useDriveStatus } from '@/presentation/drive/useDrive'
 import type { Attachment } from '@/domain/attachments/Attachment'
 import { FileIcon } from './FileIcon'
 import { Centered, CsvViewer, DocxViewer, LinkViewer, OnlineViewerOffer, WorkbookViewer } from './FileViewers'
@@ -102,13 +104,36 @@ function FileActions({ file }: { file: Attachment }) {
   )
 }
 
-function PreviewBody({ file }: { file: Attachment }) {
-  const { data: url, isLoading, error } = useFileUrl(file)
-  const category = categoryOf(file)
+export function PreviewBody({ file }: { file: Attachment }) {
+  const drive = useDriveStatus()
+  const driveId = file.link ? driveFileId(file.link.url) : undefined
+  // A letter in the Drive is fetched by the backend, which has its own access, so no Google sign-in is needed.
+  if (file.link && driveId && drive.available) return <DriveBody file={file} fileId={driveId} link={file.link} />
   // A link needs no download, so it can show before (or without) its address resolving.
   if (file.link) return <LinkViewer link={file.link} name={file.name} />
+  return <StoredBody file={file} />
+}
+
+/** A Drive file shown from the bytes the backend fetched; if they can't be had, Google's own viewer is the fallback. */
+function DriveBody({ file, fileId, link }: { file: Attachment; fileId: string; link: NonNullable<Attachment['link']> }) {
+  const { data: blob, isLoading, error } = useDriveContent(fileId)
+  const url = useMemo(() => (blob ? URL.createObjectURL(blob) : undefined), [blob])
+  useEffect(() => () => (url ? URL.revokeObjectURL(url) : undefined), [url])
+  if (isLoading) return <Centered><Spinner label="Opening the file" /></Centered>
+  if (error || !blob || !url) return <LinkViewer link={link} name={file.name} />
+  const name = nameForContent(file.name, blob.type)
+  return <FileBody file={{ ...file, name, mime: blob.type, link: undefined, backend: 'local' }} url={url} />
+}
+
+function StoredBody({ file }: { file: Attachment }) {
+  const { data: url, isLoading, error } = useFileUrl(file)
   if (isLoading) return <Centered><Spinner label="Opening the file" /></Centered>
   if (error || !url) return <Centered><p className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load this file'}</p></Centered>
+  return <FileBody file={file} url={url} />
+}
+
+function FileBody({ file, url }: { file: Attachment; url: string }) {
+  const category = categoryOf(file)
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
 
   switch (category) {

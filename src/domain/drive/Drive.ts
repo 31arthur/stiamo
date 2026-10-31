@@ -39,6 +39,8 @@ export interface DriveApi {
   search(query: string, pageToken?: string): Promise<DrivePage>
   /** Files that mention any of these details (a case number, a court number, a party…), best first. */
   suggest(terms: string[]): Promise<DriveMatch[]>
+  /** The file itself, fetched by the backend with its own Google access: no Google sign-in is needed to view it. Google's documents arrive as PDF or xlsx. */
+  content(fileId: string): Promise<Blob>
 }
 
 /** Used when there is no backend to search through (offline, Supabase). */
@@ -46,6 +48,7 @@ export const NO_DRIVE: DriveApi = {
   status: async () => ({ available: false, reason: 'Drive search needs the Stiamo backend.' }),
   search: () => Promise.reject(new Error('Drive search needs the Stiamo backend.')),
   suggest: async () => [],
+  content: () => Promise.reject(new Error('Drive search needs the Stiamo backend.')),
 }
 
 /** What identifies a case in a letter: our case number, the court's number, its title, the client and the other side. */
@@ -83,4 +86,42 @@ export function casesForFile<C extends Pick<LegalCase, 'reference' | 'courtNumbe
   return cases
     .map((c) => ({ case: c, suggested: mentions(c) }))
     .sort((a, b) => Number(b.suggested) - Number(a.suggested) || open(a.case) - open(b.case) || b.case.createdAt.localeCompare(a.case.createdAt))
+}
+
+const EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+}
+
+/** A Google document is exported, so its name needs the extension of what arrived for it to be shown the right way. */
+export function nameForContent(name: string, mime: string): string {
+  const ext = EXTENSIONS[mime]
+  return ext && !name.toLowerCase().endsWith(`.${ext}`) ? `${name}.${ext}` : name
+}
+
+export type FileKind = 'doc' | 'sheet' | 'slides' | 'pdf' | 'word' | 'excel' | 'image' | 'other'
+
+export const FILE_KIND_LABELS: Record<FileKind, string> = {
+  doc: 'Google Doc',
+  sheet: 'Google Sheet',
+  slides: 'Google Slides',
+  pdf: 'PDF',
+  word: 'Word document',
+  excel: 'Excel workbook',
+  image: 'Image',
+  other: 'File',
+}
+
+/** What a Drive file is, for its icon and for filtering: Google's own documents, Office files, PDFs, pictures. */
+export function fileKind(mime: string, name: string): FileKind {
+  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  if (mime === 'application/vnd.google-apps.document') return 'doc'
+  if (mime === 'application/vnd.google-apps.spreadsheet') return 'sheet'
+  if (mime === 'application/vnd.google-apps.presentation') return 'slides'
+  if (mime === 'application/pdf' || ext === 'pdf') return 'pdf'
+  if (mime.startsWith('image/')) return 'image'
+  if (mime.includes('word') || ['doc', 'docx', 'odt', 'rtf'].includes(ext)) return 'word'
+  if (mime.includes('excel') || mime.includes('spreadsheet') || mime === 'text/csv' || ['xls', 'xlsx', 'ods', 'csv'].includes(ext)) return 'excel'
+  return 'other'
 }

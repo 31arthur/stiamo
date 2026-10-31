@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { casesForFile, caseSearchTerms, driveFileAsAttachment, driveFileId, isGoogleDoc, NO_DRIVE } from './Drive'
+import { casesForFile, fileKind, nameForContent, caseSearchTerms, driveFileAsAttachment, driveFileId, isGoogleDoc, NO_DRIVE } from './Drive'
 
 describe('what identifies a case in a letter', () => {
   it('uses our number, the court’s number, the title, the client and the other side', () => {
@@ -60,5 +60,21 @@ describe('which case a file belongs to', () => {
     const out = casesForFile('Order in wp 1290/2026.pdf', list)
     expect(out.map((o) => o.case.reference)).toEqual(['SA-2026-003', 'SA-2026-002', 'SA-2026-001'])
     expect(out.map((o) => o.suggested)).toEqual([true, false, false])
+  })
+})
+
+describe('what kind of file it is', () => {
+  it('tells Google documents, Office files, PDFs and pictures apart', () => {
+    expect(fileKind('application/vnd.google-apps.document', 'Notes')).toBe('doc')
+    expect(fileKind('application/vnd.google-apps.spreadsheet', 'Wages')).toBe('sheet')
+    expect(fileKind('application/octet-stream', 'Order.PDF')).toBe('pdf')
+    expect(fileKind('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'a.docx')).toBe('word')
+    expect(fileKind('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'a.xlsx')).toBe('excel')
+    expect(fileKind('image/png', 'scan.png')).toBe('image')
+    expect(fileKind('application/zip', 'a.zip')).toBe('other')
+  })
+  it('gives an exported Google document the extension of what arrived', () => {
+    expect(nameForContent('Notes', 'application/pdf')).toBe('Notes.pdf')
+    expect(nameForContent('Wages.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')).toBe('Wages.xlsx')
   })
 })

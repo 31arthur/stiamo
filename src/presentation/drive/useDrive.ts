@@ -52,6 +52,20 @@ export function useDriveSearch(text: string, enabled: boolean, minChars = 2) {
   }
 }
 
+/** A file's bytes through the backend (kept for a few minutes so flipping back and forth is instant). */
+export function useDriveContent(fileId: string | undefined, enabled = true) {
+  const services = useServices()
+  const userId = useUserId()
+  return useQuery<Blob>({
+    queryKey: ['drive', 'content', userId, fileId],
+    queryFn: () => services.drive.content(fileId!),
+    enabled: enabled && !!fileId,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    retry: false,
+  })
+}
+
 /** Files that mention any of the details of a record, best match first. */
 export function useDriveSuggestions(terms: string[], enabled: boolean) {
   const services = useServices()
