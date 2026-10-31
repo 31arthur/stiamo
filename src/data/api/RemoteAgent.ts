@@ -6,8 +6,10 @@ import { ApiHttp } from './ApiHttp'
 export class RemoteAgent implements AgentApi {
   constructor(private readonly http: ApiHttp) {}
 
-  settings() {
-    return this.http.get<AgentSettings>('/v1/agent/settings')
+  async settings(): Promise<AgentSettings> {
+    const s = await this.http.get<AgentSettings>('/v1/agent/settings')
+    // A server that hasn't been updated yet leaves out what newer versions added (`kind`, `workspaces`): fill it in, so the app works with either.
+    return { ...s, agents: (s.agents ?? []).map((a) => ({ ...a, kind: a.kind ?? 'chat', workspaces: a.workspaces ?? [] })) }
   }
 
   async putKey(provider: ProviderId, apiKey: string): Promise<ModelInfo[]> {
