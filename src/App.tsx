@@ -1,3 +1,4 @@
+import { PagesProvider } from '@/presentation/app/pages'
 import { lazy } from 'react'
 import { MotionConfig } from 'motion/react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
@@ -20,6 +21,7 @@ const DiaryPage = lazy(() => import('@/presentation/pages/DiaryPage').then((m) =
 const CounselPage = lazy(() => import('@/presentation/pages/CounselPage').then((m) => ({ default: m.CounselPage })))
 const CounselDetailPage = lazy(() => import('@/presentation/pages/CounselDetailPage').then((m) => ({ default: m.CounselDetailPage })))
 const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
+const WorkspacePagesPage = lazy(() => import('@/presentation/pages/WorkspacePagesPage').then((m) => ({ default: m.WorkspacePagesPage })))
 const MailPage = lazy(() => import('@/presentation/mail/MailPage').then((m) => ({ default: m.MailPage })))
 const LettersPage = lazy(() => import('@/presentation/pages/LettersPage').then((m) => ({ default: m.LettersPage })))
 const OverviewPage = lazy(() => import('@/presentation/pages/OverviewPage').then((m) => ({ default: m.OverviewPage })))
@@ -49,6 +51,7 @@ export default function App({ container }: { container: Container }) {
   return (
     <MotionConfig reducedMotion="user">
       <ServicesProvider container={container}>
+        <PagesProvider>
         <AuthProvider auth={container.auth}>
           <BrowserRouter>
             <Routes>
@@ -80,6 +83,7 @@ export default function App({ container }: { container: Container }) {
                   <Route path="cases" element={<CasesPage />} />
                   <Route path="cases/:id" element={<CaseDetailPage />} />
                   <Route path="mail" element={<MailPage />} />
+                  <Route path="pages" element={<WorkspacePagesPage />} />
                   <Route path="letters" element={<LettersPage />} />
                   <Route path="diary" element={<DiaryPage />} />
                   <Route path="counsel" element={<CounselPage />} />
@@ -97,6 +101,7 @@ export default function App({ container }: { container: Container }) {
             </Routes>
           </BrowserRouter>
         </AuthProvider>
+        </PagesProvider>
         <Toaster position="bottom-center" theme="system" />
       </ServicesProvider>
     </MotionConfig>

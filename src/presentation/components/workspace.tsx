@@ -25,10 +25,10 @@ export function WorkspaceBadge({ ws, className }: { ws: WorkspaceId; className?:
   )
 }
 
-export function WorkspacePicker({ value, onChange, id }: { value: WorkspaceId; onChange: (ws: WorkspaceId) => void; id?: string }) {
+export function WorkspacePicker({ value, onChange, id, only }: { value: WorkspaceId; onChange: (ws: WorkspaceId) => void; id?: string; /** Offer just these workspaces. */ only?: WorkspaceId[] }) {
   return (
     <div id={id} role="radiogroup" aria-label="Workspace" className="flex flex-wrap gap-1 rounded-lg bg-muted p-1">
-      {WORKSPACE_IDS.map((ws) => {
+      {WORKSPACE_IDS.filter((ws) => !only || only.includes(ws) || ws === value).map((ws) => {
         const selected = value === ws
         return (
           <button

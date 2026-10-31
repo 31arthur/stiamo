@@ -3,14 +3,16 @@ import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Bot, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useLocation, useOutlet } from 'react-router-dom'
+import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
-import { WORKSPACE_IDS, WORKSPACES } from '@/domain/shared/workspace'
+import { firstEnabled } from '@/domain/shared/pages'
+import { WORKSPACE_IDS, WORKSPACES, isScope } from '@/domain/shared/workspace'
 import { useAttention } from '@/presentation/app/attention'
+import { usePages } from '@/presentation/app/pages'
 import { useServices } from '@/presentation/app/services'
 import { useAgentSettings } from '@/presentation/agents/useAgent'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
@@ -70,6 +72,8 @@ export function AppShell() {
   // /:workspace/:section/…
   const segments = location.pathname.split('/').filter(Boolean)
   const section = segments[1] ?? ''
+  const scope = isScope(segments[0]) ? segments[0] : 'all'
+  const { enabled, hidden } = usePages()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   // Detail pages (e.g. /cases/:id) name the tab after the record themselves.
@@ -88,6 +92,9 @@ export function AppShell() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // A page switched off for this workspace isn't reachable by an old link either.
+  if (!enabled(scope, section)) return <Navigate to={`/${scope}/${firstEnabled(hidden, scope)}`} replace />
 
   return (
     <div className="bg-ambient flex min-h-dvh">
@@ -139,6 +146,8 @@ function Sidebar() {
   const { scope, setScope } = useWorkspaceFilter()
   const { settings: agentSettings } = useAgentSettings()
   const { backend } = useServices()
+  const { enabled } = usePages()
+  const on = (page: string) => enabled(scope, page)
 
   // Each workspace owns its section; the others stay out of the way. "All workspaces" shows the overview instead.
   // What belongs to a workspace is grouped by what it is, not labelled with the workspace's name: you already chose the workspace.
@@ -178,7 +187,8 @@ function Sidebar() {
         { to: '/today', label: 'Today', icon: Sun },
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
         ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }] : []),
-      ],
+      ].filter((i) => on(i.to.slice(1))),
+      action: scope === 'all' ? { to: '/pages', label: 'Choose each workspace’s pages', icon: SlidersHorizontal } : undefined,
     },
     ...workspaceGroups,
     {
@@ -187,14 +197,14 @@ function Sidebar() {
         { to: '/tasks', label: 'Tasks', icon: KIND_META.task.icon, badge: attention.overdueTasks.length, tone: 'danger' },
         { to: '/follow-ups', label: 'Follow-ups', icon: KIND_META.followUp.icon, badge: attention.dueFollowUps.length },
         { to: '/meetings', label: 'Meetings', icon: KIND_META.meeting.icon, badge: attention.meetingsToRecord.length },
-      ],
+      ].filter((i) => on(i.to.slice(1))),
     },
     {
       label: 'Direction',
       items: [
         { to: '/plans', label: 'Action plans', icon: KIND_META.plan.icon },
         { to: '/goals', label: 'Goals', icon: KIND_META.goal.icon },
-      ],
+      ].filter((i) => on(i.to.slice(1))),
     },
     // Agents: an overview, the team (each agent is its own page, folded away when you don't need it), and the settings they share.
     {

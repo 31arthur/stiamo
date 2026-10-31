@@ -19,7 +19,7 @@ import { useMailActions } from './useMail'
 type Mode = { kind: 'list' } | { kind: 'form'; account?: MailAccount }
 
 /** Connect, change and remove the mailboxes. Opens on the list, or straight on the form when there is nothing connected yet. */
-export function MailboxesDialog({ open, onOpenChange, accounts, workspace }: { open: boolean; onOpenChange: (o: boolean) => void; accounts: MailAccount[]; workspace: WorkspaceId }) {
+export function MailboxesDialog({ open, onOpenChange, accounts, workspace, only }: { open: boolean; onOpenChange: (o: boolean) => void; accounts: MailAccount[]; workspace: WorkspaceId; only: WorkspaceId[] }) {
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
   const shown: Mode = accounts.length === 0 && mode.kind === 'list' ? { kind: 'form' } : mode
   const back = () => setMode({ kind: 'list' })
@@ -36,7 +36,7 @@ export function MailboxesDialog({ open, onOpenChange, accounts, workspace }: { o
         {shown.kind === 'list' ? (
           <List accounts={accounts} onAdd={() => setMode({ kind: 'form' })} onEdit={(account) => setMode({ kind: 'form', account })} />
         ) : (
-          <Form account={shown.account} workspace={workspace} canGoBack={accounts.length > 0} onBack={back} onDone={() => (accounts.length === 0 && !shown.account ? onOpenChange(false) : back())} />
+          <Form account={shown.account} workspace={workspace} only={only} canGoBack={accounts.length > 0} onBack={back} onDone={() => (accounts.length === 0 && !shown.account ? onOpenChange(false) : back())} />
         )}
       </DialogContent>
     </Dialog>
@@ -87,7 +87,7 @@ function List({ accounts, onAdd, onEdit }: { accounts: MailAccount[]; onAdd: () 
   )
 }
 
-function Form({ account, workspace, canGoBack, onBack, onDone }: { account?: MailAccount; workspace: WorkspaceId; canGoBack: boolean; onBack: () => void; onDone: () => void }) {
+function Form({ account, workspace, only, canGoBack, onBack, onDone }: { account?: MailAccount; workspace: WorkspaceId; only: WorkspaceId[]; canGoBack: boolean; onBack: () => void; onDone: () => void }) {
   const { connect, edit } = useMailActions()
   const editing = !!account
   const [ws, setWs] = useState<WorkspaceId>(account?.workspace ?? workspace)
@@ -134,7 +134,7 @@ function Form({ account, workspace, canGoBack, onBack, onDone }: { account?: Mai
       </DialogHeader>
 
       <Field label="Workspace" hint="Where this mailbox shows up.">
-        <WorkspacePicker value={ws} onChange={setWs} />
+        <WorkspacePicker value={ws} onChange={setWs} only={only} />
       </Field>
 
       {!editing && (

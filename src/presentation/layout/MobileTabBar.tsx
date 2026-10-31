@@ -5,6 +5,7 @@ import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { cn } from '@/lib/utils'
 import { useAttention } from '@/presentation/app/attention'
 import { useEditor } from '@/presentation/app/create'
+import { usePages } from '@/presentation/app/pages'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { KIND_META } from '@/presentation/components/kinds'
 import { spring } from '@/presentation/motion/presets'
@@ -15,6 +16,7 @@ export function MobileTabBar() {
   const { open } = useEditor()
   const attention = useAttention()
   const { scope } = useWorkspaceFilter()
+  const { enabled } = usePages()
   // The last tab belongs to the workspace you are in.
   const own =
     scope === 'sb'
@@ -30,11 +32,11 @@ export function MobileTabBar() {
     null,
     { to: '/tasks', label: 'Tasks', icon: KIND_META.task.icon, badge: attention.overdueTasks.length + attention.dueFollowUps.length },
     own,
-  ]
+  ].filter((item) => item === null || enabled(scope, item.to.slice(1)))
 
   return (
     <nav aria-label="Primary" className="glass fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
-      <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center">
+      <div className="mx-auto grid h-16 max-w-md auto-cols-fr grid-flow-col items-center">
         {items.map((item) =>
           item === null ? (
             <ActionMenu
