@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
-import { Check, CheckCheck, X } from 'lucide-react'
+import { Check, CheckCheck, ThumbsUp, X } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import type { ReviewItem } from '@/domain/ai/AgentApi'
+import type { ExecutionItem, ReviewItem } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
 import { EmptyState, Section } from '@/presentation/components/layout'
+import { NotSpamDialog } from './NotSpamDialog'
 import { useReview, useWorkflow } from './useAgent'
 
 const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
@@ -23,10 +24,14 @@ export function ReviewTab() {
   /** A label picked in the list, before it is approved. */
   const [picked, setPicked] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  const [notSpam, setNotSpam] = useState<ExecutionItem | null>(null)
 
   if (isLoading || !w) return <Spinner label="Loading" />
   if (error) return <p role="alert" className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load the review queue.'}</p>
   const labels = w.config.labels.map((l) => l.name)
+  const trashLabel = w.config.action?.trashLabel
+  const keepLabel = w.config.labels.find((l) => l.name !== trashLabel)?.name ?? 'keep'
+  const asItem = (i: ReviewItem): ExecutionItem => ({ ...i, at: i.at, decidedAt: null })
 
   async function decide(ids: string[], action: 'approve' | 'dismiss', label?: string) {
     setBusy(true)
@@ -84,6 +89,11 @@ export function ReviewTab() {
                   </option>
                 ))}
               </select>
+              {trashLabel && i.label === trashLabel && (
+                <Button variant="outline" size="xs" disabled={busy} onClick={() => setNotSpam(asItem(i))} aria-label={`${i.title} is not spam`}>
+                  <ThumbsUp /> Not spam
+                </Button>
+              )}
               <Button variant="outline" size="icon-sm" aria-label={`Approve ${i.title}`} disabled={busy || !labelOf(i)} onClick={() => void decide([i.id], 'approve', labelOf(i) !== i.label ? labelOf(i) : undefined)}>
                 <Check />
               </Button>
@@ -99,6 +109,7 @@ export function ReviewTab() {
 
   return (
     <div className="grid gap-4">
+      <NotSpamDialog workflowId={w.id} keepLabel={keepLabel} item={notSpam} pending onClose={() => setNotSpam(null)} />
       <p className="text-sm text-muted-foreground">
         {w.config.action?.trashLabel
           ? `Approving a message labelled ${w.config.action.trashLabel} moves it to Trash (it can be put back from the mailbox). Dismissing leaves it where it is.`

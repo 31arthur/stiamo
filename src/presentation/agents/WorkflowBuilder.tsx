@@ -311,6 +311,12 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
         )}
 
         {mail && (
+          <Section title="What it has learned" description="Points added when you said an email wasn’t spam. They are added after your prompt, never in place of it. Remove any that are wrong.">
+            <Learned points={cfg.refinements ?? []} onChange={(refinements) => set({ refinements })} />
+          </Section>
+        )}
+
+        {mail && (
           <Section title={n(4, 'Keep safe')} description="These are checked in code before the model sees an email, so mail from them is never judged or moved.">
             <div className="grid gap-4">
               <SafeSendersCard rules={rules} setRules={setRules} accountIds={mailboxes} />
@@ -644,6 +650,40 @@ function SafeSendersCard({ rules, setRules, accountIds }: { rules: NonNullable<W
       <Field label="Also always keep these addresses" hint="For people you haven’t written to yet. Type an address and press Enter.">
         <TokenInput values={rules.protectedAddresses ?? []} onChange={(v) => setRules({ protectedAddresses: v })} placeholder="name@example.com" />
       </Field>
+    </div>
+  )
+}
+
+/** The points the agent has learned from corrections, with a way to remove one or write one yourself. */
+function Learned({ points, onChange }: { points: string[]; onChange: (p: string[]) => void }) {
+  const [draft, setDraft] = useState('')
+  const add = () => {
+    const p = draft.trim()
+    if (p && !points.some((x) => x.toLowerCase() === p.toLowerCase())) onChange([...points, p])
+    setDraft('')
+  }
+  return (
+    <div className="grid gap-3">
+      {points.length === 0 ? (
+        <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">Nothing yet. When the agent calls something spam and you press “Not spam” with a reason, what it learns appears here.</p>
+      ) : (
+        <ul className="grid gap-1.5">
+          {points.map((p, i) => (
+            <li key={`${i}-${p}`} className="flex items-start gap-2 rounded-lg border px-3 py-2 text-sm">
+              <span className="min-w-0 flex-1 break-words">{p}</span>
+              <Button variant="ghost" size="icon-xs" aria-label={`Remove: ${p}`} onClick={() => onChange(points.filter((_, j) => j !== i))}>
+                <Trash2 />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())} placeholder="Add a point yourself" aria-label="Add a point" maxLength={400} className="h-8" />
+        <Button variant="outline" size="sm" onClick={add} disabled={!draft.trim()}>
+          <Plus /> Add
+        </Button>
+      </div>
     </div>
   )
 }
