@@ -1,4 +1,4 @@
-import type { AgentApi, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -121,6 +121,18 @@ export class RemoteAgent implements AgentApi {
 
   runWorkflow(id: string, manual?: string) {
     return this.http.post<WorkflowRun>(`/v1/agent/workflows/${encodeURIComponent(id)}/run`, { manual })
+  }
+
+  async startSweep(id: string) {
+    return (await this.http.post<{ sweep: Sweep }>(`/v1/agent/workflows/${encodeURIComponent(id)}/sweep`)).sweep
+  }
+
+  async sweepStatus(id: string) {
+    return (await this.http.get<{ sweep: Sweep | null }>(`/v1/agent/workflows/${encodeURIComponent(id)}/sweep`)).sweep
+  }
+
+  async stopSweep(id: string) {
+    return (await this.http.post<{ sweep: Sweep | null }>(`/v1/agent/workflows/${encodeURIComponent(id)}/sweep/stop`)).sweep
   }
 
   async executions(id: string): Promise<Execution[]> {

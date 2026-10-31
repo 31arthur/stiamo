@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { EmptyState, Section } from '@/presentation/components/layout'
 import { Link } from '@/presentation/routing'
 import { ago, formatMs } from './format'
+import { SweepPanel } from './SweepPanel'
 import { useExecutions } from './useAgent'
 
 /** Every time the agent was run for real: when, how much it read and judged, and what became of it. Open one to see the emails. */
@@ -19,6 +20,8 @@ export function ExecutionsTab() {
   if (error) return <p role="alert" className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load the executions.'}</p>
   if (!data?.length) {
     return (
+      <div className="grid gap-3">
+      <SweepPanel agentId={agentId!} compact />
       <Section>
         <EmptyState
           title="No executions yet"
@@ -31,17 +34,21 @@ export function ExecutionsTab() {
           Each time you press Run now, the run is kept here with how many emails it read and judged, and every decision it made.
         </EmptyState>
       </Section>
+      </div>
     )
   }
 
   return (
-    <ul className="grid gap-2">
-      {data.map((e) => (
-        <li key={e.id}>
-          <Row execution={e} agentId={agentId!} />
-        </li>
-      ))}
-    </ul>
+    <div className="grid gap-3">
+      <SweepPanel agentId={agentId!} compact />
+      <ul className="grid gap-2">
+        {data.map((e) => (
+          <li key={e.id}>
+            <Row execution={e} agentId={agentId!} />
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
