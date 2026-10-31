@@ -99,7 +99,7 @@ function Chat({ agentId, suggestions }: { agentId: string; suggestions: string[]
         <EmptyState
           title="Connect a provider first"
           action={
-            <Button nativeButton={false} render={<Link to="/agents/providers" />}>
+            <Button nativeButton={false} render={<Link to="/agents/settings" />}>
               <KeyRound /> Add a provider
             </Button>
           }

@@ -33,8 +33,7 @@ const HistoryTab = lazy(() => import('@/presentation/agents/HistoryTab').then((m
 const NewAgentPage = lazy(() => import('@/presentation/agents/NewAgentPage').then((m) => ({ default: m.NewAgentPage })))
 const WorkflowRunTab = lazy(() => import('@/presentation/agents/WorkflowRunTab').then((m) => ({ default: m.WorkflowRunTab })))
 const ReviewTab = lazy(() => import('@/presentation/agents/ReviewTab').then((m) => ({ default: m.ReviewTab })))
-const DecisionsPage = lazy(() => import('@/presentation/agents/DecisionsPage').then((m) => ({ default: m.DecisionsPage })))
-const ProvidersPage = lazy(() => import('@/presentation/agents/ProvidersPage').then((m) => ({ default: m.ProvidersPage })))
+const AgentsSettingsPage = lazy(() => import('@/presentation/agents/AgentsSettingsPage').then((m) => ({ default: m.AgentsSettingsPage })))
 const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
 const GoalDetailPage = lazy(() => import('@/presentation/pages/GoalDetailPage').then((m) => ({ default: m.GoalDetailPage })))
 const GoalsPage = lazy(() => import('@/presentation/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
@@ -59,9 +58,8 @@ export default function App({ container }: { container: Container }) {
                   <Route path="overview" element={<OverviewPage />} />
                   <Route path="agents" element={<AgentsLayout />}>
                     <Route index element={<AgentsHome />} />
-                    <Route path="providers" element={<ProvidersPage />} />
+                    <Route path="settings" element={<AgentsSettingsPage />} />
                     <Route path="new" element={<NewAgentPage />} />
-                    <Route path="decisions" element={<DecisionsPage />} />
                     <Route path=":agentId" element={<AgentLayout />}>
                       <Route index element={<OverviewTab />} />
                       <Route path="try" element={<TryTab />} />

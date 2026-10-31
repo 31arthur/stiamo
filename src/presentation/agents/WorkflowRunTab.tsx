@@ -72,7 +72,7 @@ export function WorkflowRunTab() {
         <div role="alert" className="grid gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm">
           {error}
           {/choose a provider|add an openrouter key/i.test(error) && (
-            <Button variant="outline" size="sm" className="w-fit" nativeButton={false} render={<Link to={/openrouter/i.test(error) ? '/agents/providers' : `/agents/${w.id}/settings`} />}>
+            <Button variant="outline" size="sm" className="w-fit" nativeButton={false} render={<Link to={/openrouter/i.test(error) ? '/agents/settings' : `/agents/${w.id}/settings`} />}>
               <KeyRound /> {/openrouter/i.test(error) ? 'Providers' : 'Settings'}
             </Button>
           )}
