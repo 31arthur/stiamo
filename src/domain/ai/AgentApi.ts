@@ -143,12 +143,16 @@ export interface WorkflowLabel {
 
 /** What a person configures for an agent that sorts a source's items. */
 export interface WorkflowConfig {
-  source: { kind: 'manual' | 'table'; table?: string | null }
+  source: { kind: 'manual' | 'table' | 'mail'; table?: string | null; /** The mailbox, for `mail`. */ accountId?: string | null; folder?: string }
   filters: { sinceDays?: number | null; newOnly: boolean; contains?: string | null; limit: number }
   prompt: string
   labels: WorkflowLabel[]
   decider: WorkflowDecider
   defaultThreshold: number
+  /** Mail that is never judged, whatever the model would say. */
+  rules?: { protectedDomains: string[]; protectedPhrases: string[]; protectCorrespondents: boolean }
+  /** What is done with a label. Mail is only ever moved to Trash. */
+  action?: { trashLabel: string | null; auto: boolean }
 }
 
 export interface Workflow {
@@ -172,7 +176,10 @@ export interface DecisionItem {
   label: string | null
   confidence: number
   reason: string
-  status: 'proposed' | 'needs_review' | 'failed'
+  /** `kept`: judged fine, nothing to do. `applied`: moved to Trash. */
+  status: 'proposed' | 'needs_review' | 'failed' | 'kept' | 'applied'
+  /** What is (in a test run, would be) done with it. */
+  action?: 'trash'
   error?: string
   ms: number
 }
@@ -181,7 +188,7 @@ export interface DecisionItem {
 export interface WorkflowRun {
   runId: string | null
   mode: 'test' | 'run'
-  counts: { items: number; proposed: number; needsReview: number; failed: number }
+  counts: { items: number; proposed: number; needsReview: number; failed: number; kept?: number; applied?: number; protected?: number }
   /** How many items matched the filters before the cap. */
   matched: number
   usage: { inputTokens: number; outputTokens: number }
@@ -326,7 +333,7 @@ export interface AgentApi {
   testWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   runWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   review(id: string): Promise<ReviewItem[]>
-  decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string): Promise<{ changed: number }>
+  decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string): Promise<{ changed: number; moved?: number }>
   channels(): Promise<Channel[]>
   connectTelegram(botToken: string, agent?: string): Promise<Channel>
   connectWhatsApp(connection: WhatsAppConnection): Promise<Channel>

@@ -7,7 +7,10 @@ import { Spinner } from '@/components/ui/spinner'
 import type { WorkflowConfig, WorkflowRun } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
+import { Field, TokenInput } from '@/presentation/components/form'
 import { Section } from '@/presentation/components/layout'
+import { useMailAccounts, useMailAvailable } from '@/presentation/mail/useMail'
+import { WORKSPACES } from '@/domain/shared/workspace'
 import { Link } from '@/presentation/routing'
 import { TestResults } from './TestResults'
 import { TABLE_LABELS } from './workflowTemplates'
@@ -35,6 +38,8 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace
 /** Everything a person decides about an agent that sorts a source: what it reads, how it is told to judge, and the labels. */
 export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onDelete }: { initial: WorkflowDraft; saveLabel: string; saving: boolean; onSave: (d: WorkflowDraft) => void; extra?: ReactNode; onDelete?: () => void }) {
   const { agent } = useServices()
+  const mailAvailable = useMailAvailable()
+  const { accounts } = useMailAccounts()
   const [name, setName] = useState(initial.name)
   const [description, setDescription] = useState(initial.description)
   const [cfg, setCfg] = useState<WorkflowConfig>(initial.config)
@@ -47,6 +52,12 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
   const setFilters = (p: Partial<WorkflowConfig['filters']>) => setCfg((c) => ({ ...c, filters: { ...c.filters, ...p } }))
   const setLabel = (i: number, p: Partial<WorkflowConfig['labels'][number]>) => setCfg((c) => ({ ...c, labels: c.labels.map((l, j) => (j === i ? { ...l, ...p } : l)) }))
   const manual = cfg.source.kind === 'manual'
+  const mail = cfg.source.kind === 'mail'
+  const rules = cfg.rules ?? { protectedDomains: [], protectedPhrases: [], protectCorrespondents: true }
+  const action = cfg.action ?? { trashLabel: null, auto: false }
+  const setRules = (p: Partial<typeof rules>) => set({ rules: { ...rules, ...p } })
+  const setAction = (p: Partial<typeof action>) => set({ action: { ...action, ...p } })
+  const needsMailbox = mail && !cfg.source.accountId
   const dirty = JSON.stringify({ name, description, cfg }) !== JSON.stringify({ name: initial.name, description: initial.description, cfg: initial.config })
 
   async function test() {
@@ -78,36 +89,51 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
               {[
                 { kind: 'manual' as const, title: 'Text you paste', hint: 'To try an idea. Separate items with a line of ---.' },
                 { kind: 'table' as const, title: 'A Stiamo collection', hint: 'Your cases, tasks, follow-ups, meetings, clients or projects.' },
+                ...(mailAvailable || mail ? [{ kind: 'mail' as const, title: 'A mailbox', hint: 'A mailbox you connected in Mail. It reads the inbox, newest first.' }] : []),
               ].map((o) => (
                 <button
                   key={o.kind}
                   type="button"
                   role="radio"
                   aria-checked={cfg.source.kind === o.kind}
-                  onClick={() => set({ source: { kind: o.kind, table: o.kind === 'table' ? (cfg.source.table ?? 'tasks') : null }, filters: { ...cfg.filters, newOnly: o.kind === 'table' } })}
+                  onClick={() => set({ source: { kind: o.kind, table: o.kind === 'table' ? (cfg.source.table ?? 'tasks') : null, accountId: o.kind === 'mail' ? (cfg.source.accountId ?? accounts[0]?.id ?? null) : null, folder: 'INBOX' }, filters: { ...cfg.filters, newOnly: o.kind !== 'manual' } })}
                   className={cn('rounded-xl border p-3 text-left transition-colors', cfg.source.kind === o.kind ? 'border-foreground/40 bg-background shadow-float' : 'hover:border-foreground/20')}
                 >
                   <span className="block text-sm font-medium">{o.title}</span>
                   <span className="block text-xs text-muted-foreground">{o.hint}</span>
                 </button>
               ))}
-              <p className="text-xs text-muted-foreground sm:col-span-2">Email and news feeds are coming: they will be sources here too.</p>
+              <p className="text-xs text-muted-foreground sm:col-span-2">News feeds are coming: they will be sources here too.</p>
             </div>
 
             {!manual && (
               <div className="grid gap-3 sm:grid-cols-2">
+                {mail ? (
+                  <label className="grid gap-1 text-xs text-muted-foreground">
+                    Mailbox
+                    <select value={cfg.source.accountId ?? ''} onChange={(e) => set({ source: { ...cfg.source, accountId: e.target.value || null } })} className={SELECT}>
+                      <option value="">Choose a mailbox…</option>
+                      {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.label} ({WORKSPACES[a.workspace].short})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label className="grid gap-1 text-xs text-muted-foreground">
+                    Collection
+                    <select value={cfg.source.table ?? 'tasks'} onChange={(e) => set({ source: { kind: 'table', table: e.target.value } })} className={SELECT}>
+                      {Object.entries(TABLE_LABELS).map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="grid gap-1 text-xs text-muted-foreground">
-                  Collection
-                  <select value={cfg.source.table ?? 'tasks'} onChange={(e) => set({ source: { kind: 'table', table: e.target.value } })} className={SELECT}>
-                    {Object.entries(TABLE_LABELS).map(([v, l]) => (
-                      <option key={v} value={v}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                  Created or changed
+                  {mail ? 'Received' : 'Created or changed'}
                   <select value={cfg.filters.sinceDays ? String(cfg.filters.sinceDays) : ''} onChange={(e) => setFilters({ sinceDays: e.target.value ? Number(e.target.value) : null })} className={SELECT}>
                     {DAYS.map((d) => (
                       <option key={d.value} value={d.value}>
@@ -177,10 +203,47 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
           </div>
         </Section>
 
+        {mail && (
+          <Section title="What stays and what goes" description="Mail is only ever moved to Trash, never deleted. These rules are checked in code before the model is asked, so mail that matters is never at risk.">
+            <div className="grid gap-4">
+              <Field label="Always keep mail from these domains" hint="Type a domain and press Enter, for example example.org. Subdomains count too.">
+                <TokenInput values={rules.protectedDomains} onChange={(v) => setRules({ protectedDomains: v })} placeholder="example.org" />
+              </Field>
+              <Field label="Always keep mail that mentions" hint="Words or phrases in the sender, the subject or the start of the message.">
+                <TokenInput values={rules.protectedPhrases} onChange={(v) => setRules({ protectedPhrases: v })} placeholder="a name or phrase" />
+              </Field>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={rules.protectCorrespondents} onChange={(e) => setRules({ protectCorrespondents: e.target.checked })} className="size-4 accent-[var(--foreground)]" />
+                Always keep mail from people I have written to
+              </label>
+              <div className="grid gap-3 border-t pt-4">
+                <label className="grid gap-1 text-xs text-muted-foreground sm:max-w-xs">
+                  Move to Trash when it is labelled
+                  <select value={action.trashLabel ?? ''} onChange={(e) => setAction({ trashLabel: e.target.value || null, auto: e.target.value ? action.auto : false })} className={SELECT}>
+                    <option value="">Nothing: only label it</option>
+                    {cfg.labels.filter((l) => l.name).map((l) => (
+                      <option key={l.name} value={l.name}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={cn('flex items-start gap-2 text-sm', !action.trashLabel && 'opacity-50')}>
+                  <input type="checkbox" disabled={!action.trashLabel} checked={action.auto} onChange={(e) => setAction({ auto: e.target.checked })} className="mt-0.5 size-4 accent-[var(--foreground)]" />
+                  <span>
+                    Move it by itself when it is sure
+                    <span className="block text-xs text-muted-foreground">Off: it waits in Review until you approve it. A test run never moves anything.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </Section>
+        )}
+
         {extra}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => onSave({ name, description, config: cfg })} disabled={saving || !name.trim()}>
+          <Button onClick={() => onSave({ name, description, config: cfg })} disabled={saving || !name.trim() || needsMailbox}>
             {saving ? <Spinner size="xs" tone="current" decorative /> : <Save />} {saveLabel}
           </Button>
           {dirty && <span className="text-xs text-muted-foreground">Unsaved changes</span>}
@@ -196,7 +259,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
         <Section title="Try it" description="Runs this setup, as it is now, on a sample. Nothing is kept or changed.">
           <div className="grid gap-3">
             {manual && <textarea value={sample} onChange={(e) => setSample(e.target.value)} rows={6} placeholder={'Paste a few items to sort.\nSeparate them with a line of ---'} aria-label="Items to try" className={AREA} />}
-            <Button onClick={() => void test()} disabled={testing || (manual && !sample.trim())} className="w-fit">
+            <Button onClick={() => void test()} disabled={testing || (manual && !sample.trim()) || needsMailbox} className="w-fit">
               {testing ? <Spinner size="xs" tone="current" decorative /> : <Play />} Test run
             </Button>
             {error && (

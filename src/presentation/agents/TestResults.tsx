@@ -6,6 +6,8 @@ const STATUS: Record<DecisionItem['status'], { text: string; tone: string }> = {
   proposed: { text: 'Proposed', tone: 'bg-success/12 text-success' },
   needs_review: { text: 'Needs review', tone: 'bg-warning/15 text-warning' },
   failed: { text: 'Failed', tone: 'bg-destructive/10 text-destructive' },
+  kept: { text: 'Kept', tone: 'bg-muted text-muted-foreground' },
+  applied: { text: 'Moved to Trash', tone: 'bg-success/12 text-success' },
 }
 
 /** What a test or a run did, item by item: the label it chose, how sure it was, and why. */
@@ -23,6 +25,21 @@ export function TestResults({ run }: { run: WorkflowRun }) {
         <span className={counts.needsReview ? 'text-warning' : 'text-muted-foreground'}>
           <b className="tabular-nums">{counts.needsReview}</b> to review
         </span>
+        {!!counts.kept && (
+          <span className="text-muted-foreground">
+            <b className="tabular-nums">{counts.kept}</b> kept
+          </span>
+        )}
+        {!!counts.applied && (
+          <span className="text-success">
+            <b className="tabular-nums">{counts.applied}</b> moved to Trash
+          </span>
+        )}
+        {!!counts.protected && (
+          <span className="text-muted-foreground" title="Mail the rules always keep: it is not judged.">
+            <b className="tabular-nums">{counts.protected}</b> protected
+          </span>
+        )}
         {counts.failed > 0 && (
           <span className="text-destructive">
             <b className="tabular-nums">{counts.failed}</b> failed
@@ -59,7 +76,7 @@ export function TestResults({ run }: { run: WorkflowRun }) {
                     <span className="block text-right text-[10px] text-muted-foreground tabular-nums">{Math.round(it.confidence * 100)}%</span>
                   </span>
                 )}
-                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', STATUS[it.status].tone)}>{STATUS[it.status].text}</span>
+                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', STATUS[it.status].tone)}>{it.action === 'trash' && it.status === 'proposed' ? (run.mode === 'test' ? 'Would move to Trash' : 'Waits for approval') : STATUS[it.status].text}</span>
               </summary>
               <div className="grid gap-2 border-t px-3 py-2.5 text-xs">
                 {it.reason && (

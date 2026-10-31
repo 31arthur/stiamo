@@ -44,8 +44,8 @@ interface NavGroup {
   items: NavItem[]
   /** A small button beside the heading, for the thing you most often add here. */
   action?: { to: string; label: string; icon: LucideIcon }
-  /** A part of the group that folds away, shown after the first `at` items. */
-  fold?: { key: string; label: string; at: number; items: NavItem[] }
+  /** Parts of the group that fold away, shown after the first `at` items of the first one. */
+  folds?: { key: string; label: string; at: number; items: NavItem[]; empty: string; title?: string }[]
 }
 
 
@@ -177,7 +177,10 @@ function Sidebar() {
         : []
 
   // The agents listed here: all of them under "All workspaces", otherwise those assigned to this workspace.
-  const teamAgents = (agentSettings?.agents ?? []).filter((a) => scope === 'all' || a.workspaces.includes(scope))
+  // Chat agents are the team; the ones built to work through a source (a mailbox, a collection) are task forces.
+  const here = (agentSettings?.agents ?? []).filter((a) => scope === 'all' || a.workspaces.includes(scope))
+  const teamAgents = here.filter((a) => a.kind !== 'workflow')
+  const taskForce = here.filter((a) => a.kind === 'workflow')
 
   const groups: NavGroup[] = [
     {
@@ -214,7 +217,10 @@ function Sidebar() {
         { to: '/agents', label: 'Overview', icon: LayoutGrid, end: true },
         { to: '/agents/settings', label: 'Settings', icon: SlidersHorizontal },
       ],
-      fold: { key: 'team', label: 'Team', at: 1, items: teamAgents.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: a.kind === 'workflow' ? Workflow : Bot })) },
+      folds: [
+        { key: 'team', label: 'Team', at: 1, empty: 'No agents yet', items: teamAgents.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: Bot })) },
+        { key: 'ttf', label: 'TTF', at: 1, empty: 'No task force yet', title: 'Temporary Task Force: agents built for one job, like clearing a mailbox', items: taskForce.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: Workflow })) },
+      ],
     },
   ]
 
@@ -266,11 +272,11 @@ function Sidebar() {
               )}
             </div>
             <div className="grid gap-0.5">
-              {g.items.slice(0, g.fold?.at ?? g.items.length).map((item) => (
+              {g.items.slice(0, g.folds?.[0].at ?? g.items.length).map((item) => (
                 <NavRow key={item.to} item={item} />
               ))}
-              {g.fold && <Fold fold={g.fold} />}
-              {g.fold && g.items.slice(g.fold.at).map((item) => <NavRow key={item.to} item={item} />)}
+              {g.folds?.map((f) => <Fold key={f.key} fold={f} />)}
+              {g.folds && g.items.slice(g.folds[0].at).map((item) => <NavRow key={item.to} item={item} />)}
             </div>
           </div>
         ))}
@@ -311,7 +317,7 @@ function NavRow({ item, nested = false }: { item: NavItem; nested?: boolean }) {
 const FOLD_KEY = 'stiamo.nav.fold.'
 
 /** A part of the sidebar that folds away. It remembers whether it was open, and opens itself when you are inside it. */
-function Fold({ fold }: { fold: NonNullable<NavGroup['fold']> }) {
+function Fold({ fold }: { fold: NonNullable<NavGroup['folds']>[number] }) {
   const here = useLocation().pathname
   const [open, setOpen] = useState(() => {
     try {
@@ -332,7 +338,7 @@ function Fold({ fold }: { fold: NonNullable<NavGroup['fold']> }) {
   }
   return (
     <div>
-      <button type="button" onClick={toggle} aria-expanded={shown} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+      <button type="button" onClick={toggle} aria-expanded={shown} title={fold.title} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
         <ChevronRight className={cn('size-4 transition-transform', shown && 'rotate-90')} />
         <span className="flex-1 text-left">{fold.label}</span>
         <span className="rounded-full bg-muted px-1.5 text-[10px] leading-5 font-medium tabular-nums">{fold.items.length}</span>
@@ -341,7 +347,7 @@ function Fold({ fold }: { fold: NonNullable<NavGroup['fold']> }) {
         {shown && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
             <div className="mt-0.5 ml-[1.15rem] grid gap-0.5 border-l pl-2">
-              {fold.items.length === 0 ? <span className="px-2.5 py-1 text-xs text-muted-foreground">No agents yet</span> : fold.items.map((item) => <NavRow key={item.to} item={item} nested />)}
+              {fold.items.length === 0 ? <span className="px-2.5 py-1 text-xs text-muted-foreground">{fold.empty}</span> : fold.items.map((item) => <NavRow key={item.to} item={item} nested />)}
             </div>
           </motion.div>
         )}

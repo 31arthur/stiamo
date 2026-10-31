@@ -112,7 +112,7 @@ export class RemoteAgent implements AgentApi {
   }
 
   decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string) {
-    return this.http.post<{ changed: number }>(`/v1/agent/workflows/${encodeURIComponent(id)}/review`, { itemIds, action, label })
+    return this.http.post<{ changed: number; moved?: number }>(`/v1/agent/workflows/${encodeURIComponent(id)}/review`, { itemIds, action, label })
   }
 
   async channels(): Promise<Channel[]> {

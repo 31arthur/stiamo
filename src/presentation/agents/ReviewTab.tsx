@@ -31,9 +31,9 @@ export function ReviewTab() {
   async function decide(ids: string[], action: 'approve' | 'dismiss', label?: string) {
     setBusy(true)
     try {
-      const { changed } = await agent.decideReview(w!.id, ids, action, label)
+      const { changed, moved } = await agent.decideReview(w!.id, ids, action, label)
       if (changed === 0) toast.error('Choose a label first.')
-      else toast.success(action === 'approve' ? `Approved ${changed}` : `Dismissed ${changed}`)
+      else toast.success(action === 'approve' ? `Approved ${changed}${moved ? `, moved ${moved} to Trash` : ''}` : `Dismissed ${changed}`)
       for (const key of ['review', 'workflow']) void client.invalidateQueries({ queryKey: ['agent', key] })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Couldn’t save that')
@@ -99,7 +99,11 @@ export function ReviewTab() {
 
   return (
     <div className="grid gap-4">
-      <p className="text-sm text-muted-foreground">Approving records your decision. Changing the source itself (labelling mail, moving it) arrives with the email connector; nothing is changed anywhere yet.</p>
+      <p className="text-sm text-muted-foreground">
+        {w.config.action?.trashLabel
+          ? `Approving a message labelled ${w.config.action.trashLabel} moves it to Trash (it can be put back from the mailbox). Dismissing leaves it where it is.`
+          : 'Approving records your decision. Nothing is changed in the source itself.'}
+      </p>
       {unsure.length > 0 && group('Needs your eye', 'Under the confidence needed, or the answer couldn’t be read. Choose the right label.', unsure)}
       {proposed.length > 0 &&
         group(
