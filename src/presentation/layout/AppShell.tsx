@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, CalendarDays, CalendarRange, ChevronsUpDown, Mail, Menu, NotebookPen, Search, Sun } from 'lucide-react'
+import { Check, CalendarDays, CalendarRange, ChevronsUpDown, LayoutDashboard, Mail, Menu, NotebookPen, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -121,36 +121,44 @@ function Sidebar() {
   const attention = useAttention()
   const { scope, setScope } = useWorkspaceFilter()
 
+  // Each workspace owns its section; the others stay out of the way. "All workspaces" shows the overview instead.
+  const workspaceGroup: { label: string; items: NavItem[] } | null =
+    scope === 'sb'
+      ? {
+          label: WORKSPACES.sb.name,
+          items: [
+            { to: '/letters', label: 'Letters', icon: Mail },
+            { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length, tone: 'danger' },
+            { to: '/diary', label: 'Case diary', icon: NotebookPen },
+            { to: '/counsel', label: 'Counsel', icon: KIND_META.counsel.icon },
+          ],
+        }
+      : scope === 'fsa'
+        ? {
+            label: WORKSPACES.fsa.name,
+            items: [
+              { to: '/clients', label: 'Clients', icon: KIND_META.client.icon },
+              { to: '/projects', label: 'Projects', icon: KIND_META.project.icon },
+            ],
+          }
+        : null
+
   const groups: { label: string; items: NavItem[] }[] = [
     {
       label: 'Plan',
       items: [
+        ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
         { to: '/today', label: 'Today', icon: Sun },
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
       ],
     },
+    ...(workspaceGroup ? [workspaceGroup] : []),
     {
       label: 'Execute',
       items: [
         { to: '/tasks', label: 'Tasks', icon: KIND_META.task.icon, badge: attention.overdueTasks.length, tone: 'danger' },
         { to: '/follow-ups', label: 'Follow-ups', icon: KIND_META.followUp.icon, badge: attention.dueFollowUps.length },
         { to: '/meetings', label: 'Meetings', icon: KIND_META.meeting.icon, badge: attention.meetingsToRecord.length },
-      ],
-    },
-    {
-      label: 'Legal',
-      items: [
-        { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length, tone: 'danger' },
-        ...(scope === 'sb' ? [{ to: '/letters', label: 'Letters', icon: Mail }] : []),
-        { to: '/diary', label: 'Case diary', icon: NotebookPen },
-        { to: '/counsel', label: 'Counsel', icon: KIND_META.counsel.icon },
-      ],
-    },
-    {
-      label: 'FSA',
-      items: [
-        { to: '/clients', label: 'Clients', icon: KIND_META.client.icon },
-        { to: '/projects', label: 'Projects', icon: KIND_META.project.icon },
       ],
     },
     {
