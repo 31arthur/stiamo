@@ -17,7 +17,7 @@ import { WorkspaceDot } from '@/presentation/components/workspace'
 import { listDate, who } from './format'
 import { MailboxesDialog } from './MailboxesDialog'
 import { MessageReader } from './MessageReader'
-import { useFolders, useLiveFolder, useMailAccounts, useMailAvailable, useMessages } from './useMail'
+import { useFolders, useLiveFolders, useMailAccounts, useMailAvailable, useMessages, useUnifiedMessages } from './useMail'
 
 /** The mailboxes of the workspace you are in (all of them under "All workspaces"), read live from the mail server. */
 export function MailPage() {
@@ -87,12 +87,19 @@ export function MailPage() {
   )
 }
 
+const ALL = 'all'
+
 function Mailbox({ accounts }: { accounts: MailAccount[] }) {
   const [params, setParams] = useSearchParams()
-  const accountId = accounts.find((a) => a.id === params.get('a'))?.id ?? accounts[0].id
-  const account = accounts.find((a) => a.id === accountId)!
-  const folder = params.get('f') || 'INBOX'
+  const many = accounts.length > 1
+  // With several mailboxes the default is to see them together; one of them can be picked to see just that one.
+  const picked = accounts.find((a) => a.id === params.get('a'))
+  const everything = many && !picked
+  const account = picked ?? accounts[0]
+  const folder = everything ? 'INBOX' : params.get('f') || 'INBOX'
   const uid = Number(params.get('m')) || undefined
+  // Together, a message could be in any mailbox, so which one is kept beside its number.
+  const openAccount = everything ? accounts.find((a) => a.id === params.get('o')) : account
   const [typed, setTyped] = useState('')
   const [q, setQ] = useState('')
   useEffect(() => {
@@ -113,17 +120,22 @@ function Mailbox({ accounts }: { accounts: MailAccount[] }) {
       { replace: true },
     )
 
-  const folders = useFolders(accountId)
-  const live = useLiveFolder(accountId, folder)
-  const list = useMessages(accountId, folder, q)
+  const folders = useFolders(everything ? undefined : account.id)
+  const live = useLiveFolders(everything ? accounts.map((a) => a.id) : [account.id], folder)
+  const one = useMessages(everything ? undefined : account.id, folder, q)
+  const together = useUnifiedMessages(accounts, q, everything)
+  const list = everything ? { ...together, error: null as string | null } : { ...one, problems: [] as string[] }
+  const byId = new Map(accounts.map((a) => [a.id, a]))
+  const rows: (MailSummary & { accountId?: string })[] = list.messages
 
   return (
     <div className="grid h-[calc(100dvh-13rem)] min-h-[480px] overflow-hidden rounded-2xl border bg-card/80 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-      <section aria-label="Messages" className={cn('flex min-h-0 flex-col border-r', uid && 'max-lg:hidden')}>
+      <section aria-label="Messages" className={cn('flex min-h-0 flex-col border-r', uid && openAccount && 'max-lg:hidden')}>
         <div className="grid gap-2 border-b p-3">
           <div className="flex items-center gap-2">
-            {accounts.length > 1 ? (
-              <select aria-label="Mailbox" value={accountId} onChange={(e) => set({ a: e.target.value, f: null, m: null })} className="h-8 min-w-0 flex-1 rounded-lg border bg-background px-2 text-sm font-medium">
+            {many ? (
+              <select aria-label="Mailbox" value={everything ? ALL : account.id} onChange={(e) => set({ a: e.target.value === ALL ? null : e.target.value, f: null, m: null, o: null })} className="h-8 min-w-0 flex-1 rounded-lg border bg-background px-2 text-sm font-medium">
+                <option value={ALL}>All mailboxes ({accounts.length})</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.label} ({WORKSPACES[a.workspace].short})
@@ -139,15 +151,19 @@ function Mailbox({ accounts }: { accounts: MailAccount[] }) {
             <LiveBadge state={live} />
           </div>
           <div className="flex items-center gap-2">
-            <select aria-label="Folder" value={folder} onChange={(e) => set({ f: e.target.value, m: null })} className="h-8 w-36 shrink-0 rounded-lg border bg-background px-2 text-sm">
-              {(folders.data ?? [{ name: 'INBOX', label: 'Inbox', unseen: 0 }]).map((f) => (
-                <option key={f.name} value={f.name}>
-                  {f.label}
-                  {f.unseen > 0 ? ` (${f.unseen})` : ''}
-                </option>
-              ))}
-              {folders.data && !folders.data.some((f) => f.name === folder) && <option value={folder}>{folder}</option>}
-            </select>
+            {everything ? (
+              <span className="flex h-8 w-36 shrink-0 items-center rounded-lg border bg-muted/40 px-2.5 text-sm text-muted-foreground">Inboxes</span>
+            ) : (
+              <select aria-label="Folder" value={folder} onChange={(e) => set({ f: e.target.value, m: null })} className="h-8 w-36 shrink-0 rounded-lg border bg-background px-2 text-sm">
+                {(folders.data ?? [{ name: 'INBOX', label: 'Inbox', unseen: 0 }]).map((f) => (
+                  <option key={f.name} value={f.name}>
+                    {f.label}
+                    {f.unseen > 0 ? ` (${f.unseen})` : ''}
+                  </option>
+                ))}
+                {folders.data && !folders.data.some((f) => f.name === folder) && <option value={folder}>{folder}</option>}
+              </select>
+            )}
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input aria-label="Search this folder" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Search" className="h-8 pl-8" />
@@ -156,7 +172,10 @@ function Mailbox({ accounts }: { accounts: MailAccount[] }) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {account.error && !list.messages.length ? (
+          {list.problems.map((p) => (
+            <Notice key={p}>{p}</Notice>
+          ))}
+          {!everything && account.error && !rows.length ? (
             <Notice>{account.error}</Notice>
           ) : list.error ? (
             <Notice>{list.error}</Notice>
@@ -170,15 +189,18 @@ function Mailbox({ accounts }: { accounts: MailAccount[] }) {
                 </li>
               ))}
             </ul>
-          ) : list.messages.length === 0 ? (
+          ) : rows.length === 0 ? (
             <p className="px-6 py-12 text-center text-sm text-muted-foreground">{q ? `Nothing matches “${q}”.` : 'Nothing in this folder.'}</p>
           ) : (
             <ul className="divide-y">
-              {list.messages.map((m) => (
-                <li key={m.uid}>
-                  <Row message={m} active={m.uid === uid} onOpen={() => set({ m: String(m.uid) })} />
-                </li>
-              ))}
+              {rows.map((m) => {
+                const owner = everything && m.accountId ? byId.get(m.accountId) : undefined
+                return (
+                  <li key={`${m.accountId ?? ''}/${m.uid}`}>
+                    <Row message={m} mailbox={owner} active={m.uid === uid && (!everything || m.accountId === openAccount?.id)} onOpen={() => set(everything ? { m: String(m.uid), o: m.accountId ?? null } : { m: String(m.uid) })} />
+                  </li>
+                )
+              })}
               {list.more && (
                 <li className="p-3 text-center">
                   <Button size="sm" variant="ghost" disabled={list.loadingMore} onClick={list.loadMore}>
@@ -190,14 +212,16 @@ function Mailbox({ accounts }: { accounts: MailAccount[] }) {
           )}
         </div>
         <footer className="flex items-center justify-between border-t px-4 py-1.5 text-[11px] text-muted-foreground">
-          <span>{list.total} {q ? 'found' : 'messages'}</span>
+          <span>
+            {list.total} {q ? 'found' : 'messages'}
+          </span>
           {list.refreshing && <Spinner size="xs" tone="current" decorative />}
         </footer>
       </section>
 
-      <section aria-label="Message" className={cn('min-h-0', !uid && 'max-lg:hidden')}>
-        {uid ? (
-          <MessageReader key={`${accountId}/${folder}/${uid}`} accountId={accountId} folder={folder} uid={uid} onBack={() => set({ m: null })} />
+      <section aria-label="Message" className={cn('min-h-0', !(uid && openAccount) && 'max-lg:hidden')}>
+        {uid && openAccount ? (
+          <MessageReader key={`${openAccount.id}/${folder}/${uid}`} accountId={openAccount.id} folder={folder} uid={uid} onBack={() => set({ m: null, o: null })} />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
             <Inbox className="size-8" />
@@ -209,7 +233,7 @@ function Mailbox({ accounts }: { accounts: MailAccount[] }) {
   )
 }
 
-function Row({ message: m, active, onOpen }: { message: MailSummary; active: boolean; onOpen: () => void }) {
+function Row({ message: m, mailbox, active, onOpen }: { message: MailSummary; mailbox?: MailAccount; active: boolean; onOpen: () => void }) {
   return (
     <button type="button" onClick={onOpen} aria-current={active} className={cn('relative grid w-full gap-0.5 px-4 py-3 text-left transition-colors hover:bg-muted/60', active && 'bg-muted')}>
       {!m.seen && <span aria-label="Unread" className="absolute top-1/2 left-1.5 size-1.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -223,6 +247,12 @@ function Row({ message: m, active, onOpen }: { message: MailSummary; active: boo
         {m.hasAttachments && <Paperclip className="size-3 shrink-0 text-muted-foreground" aria-label="Has attachments" />}
       </div>
       {m.snippet && <p className="line-clamp-1 text-xs text-muted-foreground">{m.snippet}</p>}
+      {mailbox && (
+        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+          <WorkspaceDot ws={mailbox.workspace} />
+          <span className="truncate">{mailbox.label}</span>
+        </span>
+      )}
     </button>
   )
 }
