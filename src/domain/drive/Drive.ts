@@ -125,3 +125,30 @@ export function fileKind(mime: string, name: string): FileKind {
   if (mime.includes('excel') || mime.includes('spreadsheet') || mime === 'text/csv' || ['xls', 'xlsx', 'ods', 'csv'].includes(ext)) return 'excel'
   return 'other'
 }
+
+/** The short name of a format, for telling versions of one letter apart. */
+export const FILE_KIND_SHORT: Record<FileKind, string> = { doc: 'Doc', sheet: 'Sheet', slides: 'Slides', pdf: 'PDF', word: 'Word', excel: 'Excel', image: 'Image', other: 'File' }
+
+const KNOWN_EXTENSION = /\.(pdf|docx?|xlsx?|csv|pptx?|odt|rtf|txt|png|jpe?g)$/i
+
+/** A letter as it is in Drive: one title, in every format it was saved in (newest first). */
+export interface Letter {
+  key: string
+  title: string
+  files: DriveFile[]
+  /** When its newest version changed. */
+  modifiedTime?: string
+}
+
+/** The same letter saved as PDF and Word has the same name apart from the extension. */
+export const letterKey = (name: string) => name.replace(KNOWN_EXTENSION, '').replace(/\s+/g, ' ').trim().toLowerCase()
+
+/** Files that differ only in format become one letter with several versions; the order of first appearance is kept. */
+export function groupLetters(files: DriveFile[]): Letter[] {
+  const groups = new Map<string, DriveFile[]>()
+  for (const f of files) groups.set(letterKey(f.name), [...(groups.get(letterKey(f.name)) ?? []), f])
+  return [...groups].map(([key, versions]) => {
+    const sorted = [...versions].sort((a, b) => (b.modifiedTime ?? '').localeCompare(a.modifiedTime ?? ''))
+    return { key, title: sorted[0].name.replace(KNOWN_EXTENSION, '').replace(/\s+/g, ' ').trim(), files: sorted, modifiedTime: sorted[0].modifiedTime }
+  })
+}
