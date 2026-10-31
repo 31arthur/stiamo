@@ -70,7 +70,9 @@ export const TEMPLATES: WorkflowTemplate[] = [
     pitch: 'Reads a mailbox, protects people you know, and clears what is irrelevant.',
     config: {
       ...base,
-      source: { kind: 'mail', accountId: null, folder: 'INBOX' },
+      source: { kind: 'mail', accountIds: [], folder: 'INBOX' },
+      batchSize: 20,
+      decisionModel: null,
       decider: 'jev',
       defaultThreshold: 0.85,
       prompt:

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Check, ClipboardCopy, HelpCircle, Lightbulb, ListPlus } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { digestOf } from '@/domain/plans/planDoc'

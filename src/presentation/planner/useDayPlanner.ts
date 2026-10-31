@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/presentation/notifications/toast'
 import type { AgendaEntry } from '@/domain/agenda/agenda'
 import { buildDayPlan, clampBlock } from '@/domain/planner/dayPlan'
 import type { Block } from '@/domain/planner/dayPlan'

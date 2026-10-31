@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { toast } from '@/presentation/notifications/toast'
 import type { Container } from '@/di/container'
 import { buildAgenda } from '@/domain/agenda/agenda'
 import { RelationGraph } from '@/domain/relations/graph'

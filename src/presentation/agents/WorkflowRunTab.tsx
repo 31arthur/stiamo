@@ -8,6 +8,8 @@ import type { WorkflowRun } from '@/domain/ai/AgentApi'
 import { useServices } from '@/presentation/app/services'
 import { Section } from '@/presentation/components/layout'
 import { Link } from '@/presentation/routing'
+import { useMailAccounts } from '@/presentation/mail/useMail'
+import { announce, announceFailure } from './announce'
 import { TestResults } from './TestResults'
 import { useWorkflow } from './useAgent'
 import { TABLE_LABELS } from './workflowTemplates'
@@ -24,6 +26,7 @@ export function WorkflowRunTab() {
   const [run, setRun] = useState<WorkflowRun | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<'test' | 'run' | null>(null)
+  const { accounts } = useMailAccounts()
 
   if (isLoading || !w) return <Spinner label="Loading" />
   const cfg = w.config
@@ -33,10 +36,13 @@ export function WorkflowRunTab() {
     setBusy(mode)
     setError(null)
     try {
-      setRun(await (mode === 'test' ? agent.testWorkflow(w!.id, pasted ? manual : undefined) : agent.runWorkflow(w!.id, pasted ? manual : undefined)))
+      const result = await (mode === 'test' ? agent.testWorkflow(w!.id, pasted ? manual : undefined) : agent.runWorkflow(w!.id, pasted ? manual : undefined))
+      setRun(result)
+      announce(w!.name, mode, result)
     } catch (e) {
       setRun(null)
       setError(e instanceof Error ? e.message : 'It didn’t run.')
+      announceFailure(w!.name, mode, e)
     } finally {
       setBusy(null)
       // Both leave a line in the history; a run also fills the review queue.
@@ -51,7 +57,9 @@ export function WorkflowRunTab() {
         description={
           pasted
             ? 'Text you paste here each time. Separate items with a line of ---.'
-            : `${TABLE_LABELS[cfg.source.table ?? ''] ?? cfg.source.table}${cfg.filters.sinceDays ? `, created or changed in the last ${cfg.filters.sinceDays} days` : ''}${cfg.filters.contains ? `, containing “${cfg.filters.contains}”` : ''}${cfg.filters.newOnly ? ', skipping items it has decided before' : ''}. Up to ${cfg.filters.limit}.`
+            : cfg.source.kind === 'mail'
+              ? `${(cfg.source.accountIds ?? []).map((id) => accounts.find((a) => a.id === id)?.label ?? 'a mailbox').join(', ')}: the inbox, newest first${cfg.filters.sinceDays ? `, from the last ${cfg.filters.sinceDays} days` : ''}${cfg.filters.newOnly ? ', skipping mail it has judged before' : ''}. Up to ${cfg.filters.limit} new messages per run. It runs only when you press Run now, never on its own.`
+              : `${TABLE_LABELS[cfg.source.table ?? ''] ?? cfg.source.table}${cfg.filters.sinceDays ? `, created or changed in the last ${cfg.filters.sinceDays} days` : ''}${cfg.filters.contains ? `, containing “${cfg.filters.contains}”` : ''}${cfg.filters.newOnly ? ', skipping items it has decided before' : ''}. Up to ${cfg.filters.limit}.`
         }
       >
         <div className="grid gap-3">

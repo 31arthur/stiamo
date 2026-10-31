@@ -143,7 +143,7 @@ export interface WorkflowLabel {
 
 /** What a person configures for an agent that sorts a source's items. */
 export interface WorkflowConfig {
-  source: { kind: 'manual' | 'table' | 'mail'; table?: string | null; /** The mailbox, for `mail`. */ accountId?: string | null; folder?: string }
+  source: { kind: 'manual' | 'table' | 'mail'; table?: string | null; /** The mailboxes, for `mail`: one or several. */ accountIds?: string[]; folder?: string }
   filters: { sinceDays?: number | null; newOnly: boolean; contains?: string | null; limit: number }
   prompt: string
   labels: WorkflowLabel[]
@@ -153,6 +153,10 @@ export interface WorkflowConfig {
   rules?: { protectedDomains: string[]; protectedPhrases: string[]; protectCorrespondents: boolean }
   /** What is done with a label. Mail is only ever moved to Trash. */
   action?: { trashLabel: string | null; auto: boolean }
+  /** For the decision model: which one. Empty is the person's default. */
+  decisionModel?: string | null
+  /** How many items go to the model in one request; 1 asks about each alone. */
+  batchSize?: number
 }
 
 export interface Workflow {
@@ -192,9 +196,37 @@ export interface WorkflowRun {
   /** How many items matched the filters before the cap. */
   matched: number
   usage: { inputTokens: number; outputTokens: number }
+  stats?: RunStats
   summary: string
   durationMs: number
   items: DecisionItem[]
+}
+
+/** What a run did overall: how much it read, how it asked, and what it cost. */
+export interface RunStats {
+  scanned: number
+  protected: number
+  judged: number
+  requests: number
+  batchSize: number
+  decider: WorkflowDecider
+  provider: string
+  model: string
+  mailboxes: number
+  cost: number | null
+}
+
+/** Exactly what the model would be sent, filled with example emails. */
+export interface PromptPreview {
+  decider: WorkflowDecider
+  batchSize: number
+  batched: boolean
+  provider: string | null
+  model: string | null
+  /** The instructions sent first. Empty for the decision model, which takes a state and questions instead. */
+  system: string | null
+  user: string
+  questions: Record<string, unknown> | null
 }
 
 export interface ReviewItem {
@@ -330,6 +362,7 @@ export interface AgentApi {
   updateWorkflow(id: string, name: string, description: string, config: WorkflowConfig): Promise<Workflow>
   deleteWorkflow(id: string): Promise<void>
   testDraft(config: WorkflowConfig, manual?: string): Promise<WorkflowRun>
+  promptPreview(config: WorkflowConfig): Promise<PromptPreview>
   testWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   runWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   review(id: string): Promise<ReviewItem[]>

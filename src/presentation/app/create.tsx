@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from '@/presentation/routing'
-import { toast } from 'sonner'
+import { toast } from '@/presentation/notifications/toast'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { Hearing, LegalCase } from '@/domain/cases/LegalCase'
 import type { FollowUp } from '@/domain/followups/FollowUp'

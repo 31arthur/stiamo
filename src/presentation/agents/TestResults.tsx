@@ -2,6 +2,15 @@ import { cn } from '@/lib/utils'
 import type { DecisionItem, WorkflowRun } from '@/domain/ai/AgentApi'
 import { compact, formatMs } from './format'
 
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-lg bg-muted/50 px-2.5 py-1.5" title={hint}>
+      <dt className="text-[10px] tracking-widest text-muted-foreground uppercase">{label}</dt>
+      <dd className="truncate text-sm font-semibold tabular-nums">{value}</dd>
+    </div>
+  )
+}
+
 const STATUS: Record<DecisionItem['status'], { text: string; tone: string }> = {
   proposed: { text: 'Proposed', tone: 'bg-success/12 text-success' },
   needs_review: { text: 'Needs review', tone: 'bg-warning/15 text-warning' },
@@ -50,6 +59,17 @@ export function TestResults({ run }: { run: WorkflowRun }) {
           {(run.usage.inputTokens || run.usage.outputTokens) > 0 && ` · ${compact(run.usage.inputTokens)} in, ${compact(run.usage.outputTokens)} out`}
         </span>
       </div>
+
+      {run.stats && (
+        <dl className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          <Stat label="Read" value={`${run.stats.scanned}`} hint={`Messages looked through${run.stats.mailboxes > 1 ? ` in ${run.stats.mailboxes} mailboxes` : ''}`} />
+          <Stat label="Protected" value={`${run.stats.protected}`} hint="Kept by your rules, not judged" />
+          <Stat label="Judged" value={`${run.stats.judged}`} hint="Read by the model" />
+          <Stat label="Requests" value={`${run.stats.requests}`} hint={run.stats.batchSize > 1 ? `Up to ${run.stats.batchSize} per request` : 'One per item'} />
+          <Stat label="Model" value={run.stats.model || '—'} hint={run.stats.provider} />
+          <Stat label="Cost" value={run.stats.cost ? `$${run.stats.cost.toFixed(run.stats.cost < 0.01 ? 5 : 3)}` : '—'} hint="What the decision model charged, when it says" />
+        </dl>
+      )}
 
       {run.matched > counts.items && (
         <p className="text-xs text-muted-foreground">
