@@ -9,7 +9,9 @@ import type { LiveState, MailAccount, MailSummary } from '@/domain/mail/Mail'
 import { WORKSPACES } from '@/domain/shared/workspace'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import { cn } from '@/lib/utils'
+import { usePages } from '@/presentation/app/pages'
 import { useScope } from '@/presentation/app/workspaceFilter'
+import { workspacesWith } from '@/domain/shared/pages'
 import { EmptyState, PageHeader } from '@/presentation/components/layout'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 import { listDate, who } from './format'
@@ -24,8 +26,11 @@ export function MailPage() {
   const { accounts, loading, error } = useMailAccounts()
   const [managing, setManaging] = useState(false)
   const here = scope === 'all' ? null : WORKSPACES[scope]
-  const mine = accounts.filter((a) => scope === 'all' || a.workspace === scope)
-  const newWorkspace: WorkspaceId = scope === 'all' ? 'sb' : scope
+  const { hidden } = usePages()
+  // Only the workspaces that have Mail switched on show their mailboxes or take new ones.
+  const withMail = workspacesWith(hidden, 'mail')
+  const mine = accounts.filter((a) => withMail.includes(a.workspace) && (scope === 'all' || a.workspace === scope))
+  const newWorkspace: WorkspaceId = scope !== 'all' ? scope : (withMail[0] ?? 'sb')
 
   const header = (
     <PageHeader
@@ -77,7 +82,7 @@ export function MailPage() {
       ) : (
         <Mailbox accounts={mine} />
       )}
-      <MailboxesDialog open={managing} onOpenChange={setManaging} accounts={mine.length ? mine : accounts} workspace={newWorkspace} />
+      <MailboxesDialog open={managing} onOpenChange={setManaging} accounts={mine} workspace={newWorkspace} only={withMail} />
     </>
   )
 }

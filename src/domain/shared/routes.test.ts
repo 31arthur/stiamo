@@ -54,4 +54,10 @@ describe('links written the short way', () => {
     expect(resolveLink('https://example.com', 'sb')).toBe('https://example.com')
     expect(resolveLink('detail', 'sb')).toBe('detail')
   })
+
+  it('keeps Mail in the workspace you are in', () => {
+    expect(canonicalPath('/sb/mail', 'all')).toBe('/sb/mail')
+    expect(canonicalPath('/mail', 'fsa')).toBe('/fsa/mail')
+    expect(switchWorkspace('/sb/mail', 'media')).toBe('/media/mail')
+  })
 })
