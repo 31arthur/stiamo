@@ -22,6 +22,9 @@ const CounselDetailPage = lazy(() => import('@/presentation/pages/CounselDetailP
 const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
 const LettersPage = lazy(() => import('@/presentation/pages/LettersPage').then((m) => ({ default: m.LettersPage })))
 const OverviewPage = lazy(() => import('@/presentation/pages/OverviewPage').then((m) => ({ default: m.OverviewPage })))
+const AiLayout = lazy(() => import('@/presentation/ai/AiLayout').then((m) => ({ default: m.AiLayout })))
+const AgentPage = lazy(() => import('@/presentation/ai/AgentPage').then((m) => ({ default: m.AgentPage })))
+const ProvidersPage = lazy(() => import('@/presentation/ai/ProvidersPage').then((m) => ({ default: m.ProvidersPage })))
 const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
 const GoalDetailPage = lazy(() => import('@/presentation/pages/GoalDetailPage').then((m) => ({ default: m.GoalDetailPage })))
 const GoalsPage = lazy(() => import('@/presentation/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
@@ -44,6 +47,10 @@ export default function App({ container }: { container: Container }) {
                 <Route index element={<HomeRedirect />} />
                 <Route path="/:ws" element={<WorkspaceShell />}>
                   <Route path="overview" element={<OverviewPage />} />
+                  <Route path="ai" element={<AiLayout />}>
+                    <Route index element={<AgentPage />} />
+                    <Route path="providers" element={<ProvidersPage />} />
+                  </Route>
                   <Route path="today/:date?" element={<TodayPage />} />
                   <Route path="calendar" element={<CalendarPage />} />
                   <Route path="tasks" element={<TasksPage />} />

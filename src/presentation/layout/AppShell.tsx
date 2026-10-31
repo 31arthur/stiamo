@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, CalendarDays, CalendarRange, ChevronsUpDown, LayoutDashboard, Mail, Menu, NotebookPen, Search, Sun } from 'lucide-react'
+import { Check, CalendarDays, CalendarRange, ChevronsUpDown, LayoutDashboard, Mail, Menu, NotebookPen, Search, Sparkles, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -164,6 +164,7 @@ function Sidebar() {
         { to: '/meetings', label: 'Meetings', icon: KIND_META.meeting.icon, badge: attention.meetingsToRecord.length },
       ],
     },
+    ...(scope === 'all' ? [{ label: 'AI', items: [{ to: '/ai', label: 'AI agents', icon: Sparkles }] }] : []),
     {
       label: 'Direction',
       items: [
