@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Download, Flag, ImageOff, MailOpen, Paperclip } from 'lucide-react'
+import { ArrowLeft, Download, Flag, Image, ImageOff, MailOpen, Paperclip } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,7 +12,7 @@ import { useMailActions, useMessage } from './useMail'
 
 /**
  * A message. Its HTML has already been cleaned by the server and is shown here in a frame that cannot run scripts, submit forms or
- * reach this page, with remote images blocked until the person asks (they tell the sender you opened it).
+ * reach this page, with a switch to hide remote pictures when the sender isn't trusted.
  */
 export function MessageReader({ accountId, folder, uid, onBack }: { accountId: string; folder: string; uid: number; onBack: () => void }) {
   const { data: m, isLoading, error } = useMessage(accountId, folder, uid)
@@ -50,7 +50,7 @@ export function MessageReader({ accountId, folder, uid, onBack }: { accountId: s
 
 function Body({ m, accountId, folder }: { m: MailMessage; accountId: string; folder: string }) {
   const { mark } = useMailActions()
-  const [images, setImages] = useState(false) // the reader is keyed by message, so this starts closed for each one
+  const [images, setImages] = useState(true) // pictures show by default; the reader is keyed by message, so each starts the same way
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -91,12 +91,10 @@ function Body({ m, accountId, folder }: { m: MailMessage; accountId: string; fol
         )}
       </header>
 
-      {m.html && m.hasRemoteContent && !images && (
-        <div className="flex items-center gap-2 border-b bg-muted/40 px-5 py-2 text-xs text-muted-foreground">
-          <ImageOff className="size-3.5 shrink-0" />
-          <span className="flex-1">Pictures from the internet are hidden, so the sender can’t tell you opened this.</span>
-          <Button size="xs" variant="outline" onClick={() => setImages(true)}>
-            Show pictures
+      {m.html && m.hasRemoteContent && (
+        <div className="flex items-center justify-end border-b bg-muted/40 px-5 py-1.5">
+          <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => setImages((on) => !on)}>
+            {images ? <ImageOff /> : <Image />} {images ? 'Hide pictures' : 'Show pictures'}
           </Button>
         </div>
       )}
