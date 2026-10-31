@@ -162,7 +162,7 @@ export function WorkflowRunTab() {
       )}
 
       {run && (
-        <Section title={run.mode === 'test' ? 'Test result' : 'Run result'} actions={run.mode === 'run' && run.counts.proposed + run.counts.needsReview > 0 ? <ReviewLink id={w.id} /> : undefined}>
+        <Section title={run.mode === 'test' ? 'Test result' : 'Run result'} actions={run.mode === 'run' && run.runId ? <ExecutionLink id={w.id} runId={run.runId} /> : undefined}>
           <TestResults run={run} />
         </Section>
       )}
@@ -170,10 +170,10 @@ export function WorkflowRunTab() {
   )
 }
 
-function ReviewLink({ id }: { id: string }) {
+function ExecutionLink({ id, runId }: { id: string; runId: string }) {
   return (
-    <Link to={`/agents/${id}/review`} className="flex items-center gap-1 text-sm font-medium hover:underline">
-      Review them <ArrowRight className="size-3.5" />
+    <Link to={`/agents/${id}/executions/${runId}`} className="flex items-center gap-1 text-sm font-medium hover:underline">
+      Open this execution <ArrowRight className="size-3.5" />
     </Link>
   )
 }

@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import type { DecisionItem, WorkflowRun } from '@/domain/ai/AgentApi'
 import { compact, formatMs } from './format'
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+export function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-lg bg-muted/50 px-2.5 py-1.5" title={hint}>
       <dt className="text-[10px] tracking-widest text-muted-foreground uppercase">{label}</dt>

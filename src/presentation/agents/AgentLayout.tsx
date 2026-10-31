@@ -1,4 +1,4 @@
-import { Activity, Bot, History, ListChecks, MessagesSquare, Play, Settings2, Workflow } from 'lucide-react'
+import { Activity, Bot, History, ListChecks, ListTree, MessagesSquare, Play, Settings2, Workflow } from 'lucide-react'
 import { Outlet, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/presentation/components/layout'
@@ -18,6 +18,7 @@ const CHAT_TABS = [
 const WORKFLOW_TABS = [
   { path: '', label: 'Overview', icon: Activity },
   { path: '/run', label: 'Run', icon: Play },
+  { path: '/executions', label: 'Executions', icon: ListTree },
   { path: '/review', label: 'Review', icon: ListChecks, badge: true },
   { path: '/settings', label: 'Settings', icon: Settings2 },
   { path: '/history', label: 'History', icon: History },
@@ -45,7 +46,7 @@ export function AgentLayout() {
       />
       <nav aria-label={`${agent.name} sections`} className="scrollbar-none -mt-2 flex gap-1 overflow-x-auto border-b">
         {tabs.map((t) => (
-          <NavLink key={t.path} to={`/agents/${agent.id}${t.path}`} end className={({ isActive }) => cn('-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors', isActive ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
+          <NavLink key={t.path} to={`/agents/${agent.id}${t.path}`} end={t.path === ''} className={({ isActive }) => cn('-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors', isActive ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
             <t.icon className="size-4" /> {t.label}
             {'badge' in t && waiting > 0 && <span className="rounded-full bg-foreground px-1.5 text-[10px] leading-4 font-semibold text-background tabular-nums">{waiting}</span>}
           </NavLink>
