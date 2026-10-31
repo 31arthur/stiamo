@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CalendarClock, CheckCircle2, Circle, ListChecks, ListPlus } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Hearing } from '@/domain/cases/LegalCase'

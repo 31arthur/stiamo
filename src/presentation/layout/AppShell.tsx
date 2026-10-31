@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Check, CalendarDays, CalendarRange, ChevronsUpDown, LayoutDashboard, Mail, Menu, NotebookPen, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { NavLink, useLocation, useOutlet } from 'react-router-dom'
+import { useLocation, useOutlet } from 'react-router-dom'
+import { NavLink } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
@@ -52,11 +53,13 @@ function SyncGate({ children }: { children: ReactNode }) {
 export function AppShell() {
   const location = useLocation()
   const outlet = useOutlet()
-  const section = location.pathname.split('/')[1] ?? ''
+  // /:workspace/:section/…
+  const segments = location.pathname.split('/').filter(Boolean)
+  const section = segments[1] ?? ''
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   // Detail pages (e.g. /cases/:id) name the tab after the record themselves.
-  const isDetail = section !== 'today' && location.pathname.split('/').filter(Boolean).length > 1
+  const isDetail = section !== 'today' && segments.length > 2
   useDocumentTitle(isDetail ? undefined : (SECTION_TITLES[section] ?? ''))
 
   useEffect(() => setMobileOpen(false), [location.pathname])

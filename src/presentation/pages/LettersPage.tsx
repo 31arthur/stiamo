@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Check, ExternalLink, FolderPlus, Inbox, MousePointerClick, Search, X } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'

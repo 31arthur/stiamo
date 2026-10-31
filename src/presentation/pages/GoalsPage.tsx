@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { motion } from 'motion/react'
 import { ListChecks, Plus } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { goalProgress, HEALTH_LABELS, HORIZON_LABELS, keyResultProgress } from '@/domain/goals/Goal'

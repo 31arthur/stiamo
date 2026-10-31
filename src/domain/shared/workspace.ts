@@ -16,3 +16,8 @@ export const WORKSPACES: Record<WorkspaceId, WorkspaceInfo> = {
 }
 
 export const WORKSPACE_IDS = Object.keys(WORKSPACES) as WorkspaceId[]
+
+/** What the workspace switcher can be set to: one workspace, or all of them at once. */
+export type WorkspaceScope = WorkspaceId | 'all'
+
+export const isScope = (v: string | undefined): v is WorkspaceScope => v === 'all' || (!!v && (WORKSPACE_IDS as string[]).includes(v))
