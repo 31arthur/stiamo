@@ -22,12 +22,16 @@ const CounselDetailPage = lazy(() => import('@/presentation/pages/CounselDetailP
 const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
 const LettersPage = lazy(() => import('@/presentation/pages/LettersPage').then((m) => ({ default: m.LettersPage })))
 const OverviewPage = lazy(() => import('@/presentation/pages/OverviewPage').then((m) => ({ default: m.OverviewPage })))
-const AiLayout = lazy(() => import('@/presentation/ai/AiLayout').then((m) => ({ default: m.AiLayout })))
-const AgentPage = lazy(() => import('@/presentation/ai/AgentPage').then((m) => ({ default: m.AgentPage })))
-const PromptPage = lazy(() => import('@/presentation/ai/PromptPage').then((m) => ({ default: m.PromptPage })))
-const DecisionsPage = lazy(() => import('@/presentation/ai/DecisionsPage').then((m) => ({ default: m.DecisionsPage })))
-const ChannelsPage = lazy(() => import('@/presentation/ai/ChannelsPage').then((m) => ({ default: m.ChannelsPage })))
-const ProvidersPage = lazy(() => import('@/presentation/ai/ProvidersPage').then((m) => ({ default: m.ProvidersPage })))
+const AgentsLayout = lazy(() => import('@/presentation/agents/AgentsLayout').then((m) => ({ default: m.AgentsLayout })))
+const AgentsHome = lazy(() => import('@/presentation/agents/AgentsHome').then((m) => ({ default: m.AgentsHome })))
+const AgentLayout = lazy(() => import('@/presentation/agents/AgentLayout').then((m) => ({ default: m.AgentLayout })))
+const OverviewTab = lazy(() => import('@/presentation/agents/OverviewTab').then((m) => ({ default: m.OverviewTab })))
+const TryTab = lazy(() => import('@/presentation/agents/TryTab').then((m) => ({ default: m.TryTab })))
+const SettingsTab = lazy(() => import('@/presentation/agents/SettingsTab').then((m) => ({ default: m.SettingsTab })))
+const ChannelsTab = lazy(() => import('@/presentation/agents/ChannelsTab').then((m) => ({ default: m.ChannelsTab })))
+const HistoryTab = lazy(() => import('@/presentation/agents/HistoryTab').then((m) => ({ default: m.HistoryTab })))
+const DecisionsPage = lazy(() => import('@/presentation/agents/DecisionsPage').then((m) => ({ default: m.DecisionsPage })))
+const ProvidersPage = lazy(() => import('@/presentation/agents/ProvidersPage').then((m) => ({ default: m.ProvidersPage })))
 const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
 const GoalDetailPage = lazy(() => import('@/presentation/pages/GoalDetailPage').then((m) => ({ default: m.GoalDetailPage })))
 const GoalsPage = lazy(() => import('@/presentation/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
@@ -50,12 +54,17 @@ export default function App({ container }: { container: Container }) {
                 <Route index element={<HomeRedirect />} />
                 <Route path="/:ws" element={<WorkspaceShell />}>
                   <Route path="overview" element={<OverviewPage />} />
-                  <Route path="ai" element={<AiLayout />}>
-                    <Route index element={<AgentPage />} />
-                    <Route path="prompt" element={<PromptPage />} />
-                    <Route path="decisions" element={<DecisionsPage />} />
-                    <Route path="channels" element={<ChannelsPage />} />
+                  <Route path="agents" element={<AgentsLayout />}>
+                    <Route index element={<AgentsHome />} />
                     <Route path="providers" element={<ProvidersPage />} />
+                    <Route path="decisions" element={<DecisionsPage />} />
+                    <Route path=":agentId" element={<AgentLayout />}>
+                      <Route index element={<OverviewTab />} />
+                      <Route path="try" element={<TryTab />} />
+                      <Route path="settings" element={<SettingsTab />} />
+                      <Route path="channels" element={<ChannelsTab />} />
+                      <Route path="history" element={<HistoryTab />} />
+                    </Route>
                   </Route>
                   <Route path="today/:date?" element={<TodayPage />} />
                   <Route path="calendar" element={<CalendarPage />} />

@@ -1,4 +1,4 @@
-import type { AgentApi, AgentDetail, AgentSettings, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, AgentDetail, AgentSettings, AgentStats, RunDetail, RunPage, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -48,6 +48,25 @@ export class RemoteAgent implements AgentApi {
 
   chat(agentId: string, message: string, messages: unknown[]) {
     return this.http.post<ChatReply>(`/v1/agent/agents/${encodeURIComponent(agentId)}/chat`, { message, messages })
+  }
+
+  stats(agentId: string) {
+    return this.http.get<AgentStats>(`/v1/agent/agents/${encodeURIComponent(agentId)}/stats`)
+  }
+
+  runs(agentId: string, before?: string) {
+    return this.http.get<RunPage>(`/v1/agent/agents/${encodeURIComponent(agentId)}/runs`, { limit: 30, before })
+  }
+
+  async run(runId: string): Promise<RunDetail> {
+    // The server calls the steps `steps`; here they are `stepLog` so a summary's step count and a detail's steps don't share a name.
+    const r = await this.http.get<Omit<RunDetail, 'stepLog'> & { steps: RunDetail['stepLog'] }>(`/v1/agent/runs/${encodeURIComponent(runId)}`)
+    const { steps, ...rest } = r
+    return { ...rest, steps: steps.length, stepLog: steps }
+  }
+
+  async clearRuns(agentId: string) {
+    await this.http.delete(`/v1/agent/agents/${encodeURIComponent(agentId)}/runs`)
   }
 
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string) {

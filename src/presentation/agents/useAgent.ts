@@ -1,7 +1,6 @@
-import { useCallback, useSyncExternalStore } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import type { AgentApi, AgentDetail, AgentSettings, AgentSummary, Channel } from '@/domain/ai/AgentApi'
+import type { AgentApi, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -53,37 +52,17 @@ export function useAgentAction<TArgs, TResult>(run: (agent: AgentApi, args: TArg
   return { run: mutation.mutateAsync, pending: mutation.isPending }
 }
 
-// --- which agent a person is looking at -----------------------------------------------------------------------
-
-const AGENT_KEY = 'stiamo.ai.agent'
-const listeners = new Set<() => void>()
-const read = () => {
-  try {
-    return localStorage.getItem(AGENT_KEY) ?? ''
-  } catch {
-    return ''
-  }
-}
-const subscribe = (l: () => void) => {
-  listeners.add(l)
-  return () => void listeners.delete(l)
-}
-
-/** The agent chosen on the AI pages, remembered in this browser. Falls back to the server's default if it no longer exists. */
-export function useCurrentAgent() {
+/** One agent as the settings list it, by id. Undefined while loading, or when there is no such agent. */
+export function useAgentSummary(agentId: string | undefined): AgentSummary | undefined {
   const { settings } = useAgentSettings()
-  const stored = useSyncExternalStore(subscribe, read)
-  const agents: AgentSummary[] = settings?.agents ?? []
-  const current = agents.find((a) => a.id === stored) ?? agents.find((a) => a.id === settings?.defaultAgent) ?? agents[0]
-  const choose = useCallback((id: string) => {
-    try {
-      localStorage.setItem(AGENT_KEY, id)
-    } catch {
-      // Remembering it is a convenience.
-    }
-    listeners.forEach((l) => l())
-  }, [])
-  return { agents, agent: current, choose }
+  return settings?.agents.find((a) => a.id === agentId)
+}
+
+/** How an agent has been doing. */
+export function useAgentStats(agentId: string | undefined) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  return useQuery<AgentStats>({ queryKey: ['agent', 'stats', userId, agentId], queryFn: () => agent.stats(agentId!), enabled: !!agentId, staleTime: 15_000, retry: false })
 }
 
 /** One agent with its prompt, defaults and variables. */

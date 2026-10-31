@@ -8,31 +8,15 @@ import type { AgentDetail, PromptPackage, PromptSettings, ToolOverride } from '@
 import { useServices } from '@/presentation/app/services'
 import { Section } from '@/presentation/components/layout'
 import { useUserId } from '@/presentation/data/hooks'
-import { AgentPicker } from './AgentPicker'
-import { useAgentAction, useAgentDetail, useAgentSettings, useCurrentAgent } from './useAgent'
+import { useAgentAction, useAgentDetail, useAgentSettings } from './useAgent'
 
-/** Edit exactly what the agent is told: its instructions, how your question is wrapped, and each tool it may use. */
-export function PromptPage() {
-  const { loading, error } = useAgentSettings()
-  const { agents, agent, choose } = useCurrentAgent()
-  const detail = useAgentDetail(agent?.id)
-  if (loading || detail.isLoading) return <Spinner label="Loading" />
-  if (!agent || !detail.data) {
-    const message = error ?? (detail.error instanceof Error ? detail.error.message : null)
-    return message ? <p role="alert" className="text-sm text-destructive">{message}</p> : null
-  }
-  return (
-    <div className="grid gap-4">
-      {agents.length > 1 && (
-        <div className="flex flex-wrap items-center gap-3">
-          <AgentPicker agents={agents} value={agent.id} onChange={choose} label="Editing the prompt of" />
-          <span className="text-xs text-muted-foreground">{agent.description} Each agent has its own prompt.</span>
-        </div>
-      )}
-      {/* Saving (or resetting) changes the saved prompt, which starts the editor again from what was saved. */}
-      <PromptEditor key={agent.id + JSON.stringify(detail.data.prompt)} agentId={agent.id} detail={detail.data} />
-    </div>
-  )
+/** Edit exactly what an agent is told: its instructions, how your question is wrapped, and each tool it may use. */
+export function PromptEditor({ agentId }: { agentId: string }) {
+  const detail = useAgentDetail(agentId)
+  if (detail.isLoading) return <Spinner label="Loading" />
+  if (!detail.data) return <p role="alert" className="text-sm text-destructive">{detail.error instanceof Error ? detail.error.message : 'Couldn’t load the prompt.'}</p>
+  // Saving (or resetting) changes the saved prompt, which starts the editor again from what was saved.
+  return <Editor key={JSON.stringify(detail.data.prompt)} agentId={agentId} detail={detail.data} />
 }
 
 const AREA = 'w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-[13px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
@@ -41,7 +25,7 @@ const AREA = 'w-full resize-y rounded-lg border border-input bg-transparent px-3
 const compact = (tools: Record<string, ToolOverride>): Record<string, ToolOverride> =>
   Object.fromEntries(Object.entries(tools).filter(([, t]) => !t.enabled || !!t.description?.trim()).map(([k, t]) => [k, { enabled: t.enabled, description: t.description?.trim() || null }]))
 
-function PromptEditor({ agentId, detail }: { agentId: string; detail: AgentDetail }) {
+function Editor({ agentId, detail }: { agentId: string; detail: AgentDetail }) {
   const { settings } = useAgentSettings()
   const { agent } = useServices()
   const userId = useUserId()
