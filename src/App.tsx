@@ -1,16 +1,13 @@
 import { lazy } from 'react'
 import { MotionConfig } from 'motion/react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import type { Container } from '@/di/container'
-import { EditorHost } from '@/presentation/app/create'
 import { ServicesProvider } from '@/presentation/app/services'
-import { WorkspaceFilterProvider } from '@/presentation/app/workspaceFilter'
 import { AuthProvider } from '@/presentation/auth/AuthProvider'
 import { ProtectedRoute } from '@/presentation/auth/ProtectedRoute'
-import { LiveDataProvider } from '@/presentation/data/live'
-import { AppShell } from '@/presentation/layout/AppShell'
 import { LoginPage } from '@/presentation/pages/LoginPage'
+import { HomeRedirect, WorkspaceShell } from '@/presentation/routing/WorkspaceShell'
 
 // Each section is its own chunk; the shell and login load first.
 const CalendarPage = lazy(() => import('@/presentation/pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
@@ -44,40 +41,29 @@ export default function App({ container }: { container: Container }) {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route element={<ProtectedRoute />}>
-                <Route
-                  element={
-                    <LiveDataProvider>
-                      <WorkspaceFilterProvider>
-                        <EditorHost>
-                          <AppShell />
-                        </EditorHost>
-                      </WorkspaceFilterProvider>
-                    </LiveDataProvider>
-                  }
-                >
-                  <Route index element={<Navigate to="/today" replace />} />
-                  <Route path="/overview" element={<OverviewPage />} />
-                  <Route path="/today/:date?" element={<TodayPage />} />
-                  <Route path="/calendar" element={<CalendarPage />} />
-                  <Route path="/tasks" element={<TasksPage />} />
-                  <Route path="/follow-ups" element={<FollowUpsPage />} />
-                  <Route path="/meetings" element={<MeetingsPage />} />
-                  <Route path="/meetings/:id" element={<MeetingDetailPage />} />
-                  <Route path="/cases" element={<CasesPage />} />
-                  <Route path="/cases/:id" element={<CaseDetailPage />} />
-                  <Route path="/letters" element={<LettersPage />} />
-                  <Route path="/diary" element={<DiaryPage />} />
-                  <Route path="/counsel" element={<CounselPage />} />
-                  <Route path="/counsel/:id" element={<CounselDetailPage />} />
-                  <Route path="/clients" element={<ClientsPage />} />
-                  <Route path="/clients/:id" element={<ClientDetailPage />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                  <Route path="/plans" element={<PlansPage />} />
-                  <Route path="/plans/:id" element={<PlanDetailPage />} />
-                  <Route path="/goals" element={<GoalsPage />} />
-                  <Route path="/goals/:id" element={<GoalDetailPage />} />
-                  <Route path="*" element={<Navigate to="/today" replace />} />
+                <Route index element={<HomeRedirect />} />
+                <Route path="/:ws" element={<WorkspaceShell />}>
+                  <Route path="overview" element={<OverviewPage />} />
+                  <Route path="today/:date?" element={<TodayPage />} />
+                  <Route path="calendar" element={<CalendarPage />} />
+                  <Route path="tasks" element={<TasksPage />} />
+                  <Route path="follow-ups" element={<FollowUpsPage />} />
+                  <Route path="meetings" element={<MeetingsPage />} />
+                  <Route path="meetings/:id" element={<MeetingDetailPage />} />
+                  <Route path="cases" element={<CasesPage />} />
+                  <Route path="cases/:id" element={<CaseDetailPage />} />
+                  <Route path="letters" element={<LettersPage />} />
+                  <Route path="diary" element={<DiaryPage />} />
+                  <Route path="counsel" element={<CounselPage />} />
+                  <Route path="counsel/:id" element={<CounselDetailPage />} />
+                  <Route path="clients" element={<ClientsPage />} />
+                  <Route path="clients/:id" element={<ClientDetailPage />} />
+                  <Route path="projects" element={<ProjectsPage />} />
+                  <Route path="projects/:id" element={<ProjectDetailPage />} />
+                  <Route path="plans" element={<PlansPage />} />
+                  <Route path="plans/:id" element={<PlanDetailPage />} />
+                  <Route path="goals" element={<GoalsPage />} />
+                  <Route path="goals/:id" element={<GoalDetailPage />} />
                 </Route>
               </Route>
             </Routes>

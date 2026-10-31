@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import { CalendarClock, Plus, Search } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CLIENT_KIND_LABELS, CLIENT_STATUS_LABELS, isOngoing, PROJECT_STATUS_LABELS, projectRank } from '@/domain/clients/Client'

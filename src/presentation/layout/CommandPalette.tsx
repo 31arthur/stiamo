@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CalendarDays, NotebookPen, Sun } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '@/presentation/routing'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from '@/components/ui/command'
 import { Command } from '@/components/ui/command'
 import { counselLabel } from '@/domain/counsel/Counsel'

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import { Plus, Target } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PLAN_STATUS_LABELS, planProgress } from '@/domain/plans/ActionPlan'

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import { HeartHandshake, MapPin, Plus, Search } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CASE_TYPES } from '@/domain/cases/LegalCase'

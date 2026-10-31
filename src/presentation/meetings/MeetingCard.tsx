@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { MapPin, Phone, Video } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from '@/presentation/routing'
 import { cn } from '@/lib/utils'
 import type { FollowUp } from '@/domain/followups/FollowUp'
 import { CONFIRMATION_LABELS, MEETING_KINDS } from '@/domain/meetings/Meeting'

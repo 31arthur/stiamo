@@ -1,6 +1,6 @@
 import { motion } from 'motion/react'
 import { CalendarDays, LayoutDashboard, Plus, Sun } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { NavLink } from '@/presentation/routing'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { cn } from '@/lib/utils'
 import { useAttention } from '@/presentation/app/attention'

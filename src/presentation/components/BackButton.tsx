@@ -1,5 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
+import { useNavigate } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 
 /**

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { motion } from 'motion/react'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { buildDigests } from '@/domain/shared/digest'
@@ -9,7 +9,6 @@ import type { DigestStat, WorkspaceDigest } from '@/domain/shared/digest'
 import { fileKind } from '@/domain/drive/Drive'
 import { WORKSPACES } from '@/domain/shared/workspace'
 import { useAttention } from '@/presentation/app/attention'
-import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { EmptyState, PageHeader, Section } from '@/presentation/components/layout'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 import { useEntities, useToday } from '@/presentation/data/hooks'
@@ -24,7 +23,6 @@ const TONE: Record<NonNullable<DigestStat['tone']>, string> = { danger: 'text-de
 export function OverviewPage() {
   const today = useToday()
   const attention = useAttention()
-  const { setScope } = useWorkspaceFilter()
   const navigate = useNavigate()
   const { data: tasks } = useEntities('task')
   const { data: followUps } = useEntities('followUp')
@@ -39,10 +37,8 @@ export function OverviewPage() {
   // A workspace with nothing in it has nothing to say yet.
   const relevant = digests.filter((d) => d.next || d.stats.some((s) => s.value > 0))
 
-  const open = (d: WorkspaceDigest, to = d.to) => {
-    setScope(d.id)
-    navigate(to)
-  }
+  // The workspace is the first part of the address, so going there is all it takes.
+  const open = (d: WorkspaceDigest, to = d.to) => navigate(`/${d.id}${to}`)
 
   const needs = [
     { label: 'overdue tasks', count: attention.overdueTasks.length, to: '/tasks' },
