@@ -144,13 +144,13 @@ export interface WorkflowLabel {
 /** What a person configures for an agent that sorts a source's items. */
 export interface WorkflowConfig {
   source: { kind: 'manual' | 'table' | 'mail'; table?: string | null; /** The mailboxes, for `mail`: one or several. */ accountIds?: string[]; folder?: string }
-  filters: { sinceDays?: number | null; newOnly: boolean; contains?: string | null; limit: number }
+  filters: { sinceDays?: number | null; /** A date range instead: from this day (included)… */ after?: string | null; /** …up to this day (not included). */ before?: string | null; newOnly: boolean; contains?: string | null; limit: number }
   prompt: string
   labels: WorkflowLabel[]
   decider: WorkflowDecider
   defaultThreshold: number
   /** Mail that is never judged, whatever the model would say. */
-  rules?: { protectedDomains: string[]; protectedPhrases: string[]; protectCorrespondents: boolean }
+  rules?: { protectedDomains: string[]; protectedPhrases: string[]; /** The safe-senders shield: anyone written to from the mailbox is kept. */ protectCorrespondents: boolean; protectedAddresses?: string[] }
   /** What is done with a label. Mail is only ever moved to Trash. */
   action?: { trashLabel: string | null; auto: boolean }
   /** For the decision model: which one. Empty is the person's default. */
@@ -214,6 +214,18 @@ export interface RunStats {
   model: string
   mailboxes: number
   cost: number | null
+  /** Messages in the date range at all. */
+  inRange?: number
+  /** Still waiting for a later run. */
+  remaining?: number
+}
+
+/** Who the safe-senders shield protects in one mailbox. */
+export interface SafeSenders {
+  accountId: string
+  count: number
+  sample: string[]
+  error: string | null
 }
 
 /** Exactly what the model would be sent, filled with example emails. */
@@ -363,6 +375,7 @@ export interface AgentApi {
   deleteWorkflow(id: string): Promise<void>
   testDraft(config: WorkflowConfig, manual?: string): Promise<WorkflowRun>
   promptPreview(config: WorkflowConfig): Promise<PromptPreview>
+  safeSenders(accountIds: string[]): Promise<SafeSenders[]>
   testWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   runWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   review(id: string): Promise<ReviewItem[]>

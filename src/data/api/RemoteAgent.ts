@@ -1,4 +1,4 @@
-import type { AgentApi, PromptPreview, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -93,6 +93,10 @@ export class RemoteAgent implements AgentApi {
 
   async deleteWorkflow(id: string) {
     await this.http.delete(`/v1/agent/workflows/${encodeURIComponent(id)}`)
+  }
+
+  async safeSenders(accountIds: string[]) {
+    return (await this.http.post<{ items: SafeSenders[] }>('/v1/agent/workflows/safe-senders', { accountIds })).items
   }
 
   promptPreview(config: WorkflowConfig) {
