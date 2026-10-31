@@ -380,7 +380,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
         </div>
       </div>
 
-      <div className="lg:sticky lg:top-4 lg:self-start">
+      <div className="lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain">
         <Section title="Try it" description="Runs this setup, as it is now, on a sample. Nothing is kept or changed.">
           <div className="grid gap-3">
             {manual && <textarea value={sample} onChange={(e) => setSample(e.target.value)} rows={6} placeholder={'Paste a few items to sort.\nSeparate them with a line of ---'} aria-label="Items to try" className={AREA} />}
