@@ -13,6 +13,10 @@ export class RemoteDrive implements DriveApi {
     return this.http.get<DrivePage>('/v1/drive/search', { q: query, pageToken, limit: 20 })
   }
 
+  content(fileId: string): Promise<Blob> {
+    return this.http.blob(`/v1/drive/files/${encodeURIComponent(fileId)}/content`)
+  }
+
   async suggest(terms: string[]): Promise<DriveMatch[]> {
     if (terms.length === 0) return []
     return (await this.http.post<{ items: DriveMatch[] }>('/v1/drive/suggest', { terms })).items

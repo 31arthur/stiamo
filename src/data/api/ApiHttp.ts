@@ -28,6 +28,8 @@ export interface RequestOptions {
   /** Skip the Authorization header (sign-in and sign-up). Default: signed requests. */
   auth?: boolean
   signal?: AbortSignal
+  /** Read the answer as raw bytes instead of JSON. */
+  as?: 'blob'
 }
 
 export interface HttpDeps {
@@ -66,6 +68,10 @@ export class ApiHttp {
   get<T>(path: string, query?: RequestOptions['query']) {
     return this.request<T>('GET', path, { query })
   }
+  /** The raw bytes of a file the backend serves. */
+  blob(path: string) {
+    return this.request<Blob>('GET', path, { as: 'blob' })
+  }
   post<T>(path: string, json?: unknown, query?: RequestOptions['query']) {
     return this.request<T>('POST', path, { json, query })
   }
@@ -99,6 +105,7 @@ export class ApiHttp {
     }
     if (!response.ok) throw await toApiError(response)
     if (response.status === 204) return undefined as T
+    if (options.as === 'blob') return (await response.blob()) as T
     return (await response.json()) as T
   }
 
