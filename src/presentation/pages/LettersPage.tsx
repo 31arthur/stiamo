@@ -214,7 +214,7 @@ export function LettersPage() {
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           {shown.webViewLink && (
-                            <Button variant="ghost" size="icon-sm" aria-label="Open in Google Drive" render={<a href={shown.webViewLink} target="_blank" rel="noreferrer" />}>
+                            <Button variant="ghost" size="icon-sm" aria-label="Open in Google Drive" nativeButton={false} render={<a href={shown.webViewLink} target="_blank" rel="noreferrer" />}>
                               <ExternalLink />
                             </Button>
                           )}
