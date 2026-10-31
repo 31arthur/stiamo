@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils'
 import { Section, Stat } from '@/presentation/components/layout'
 import { Link } from '@/presentation/routing'
 import { ago, compact, formatMs, triggerLabel } from './format'
-import { useAgentDetail, useAgentStats, useAgentSummary, useChannels } from './useAgent'
+import { useAgentDetail, useAgentStats, useAgentSummary, useChannels, useWorkflow } from './useAgent'
+import { TABLE_LABELS } from './workflowTemplates'
 
 /** How the agent has been doing, when it was last called, and what is still to set up. */
 export function OverviewTab() {
@@ -45,7 +46,7 @@ export function OverviewTab() {
           </Section>
         </div>
 
-        <Setup agent={agent} />
+        {agent.kind === 'workflow' ? <WorkflowSetup agent={agent} /> : <Setup agent={agent} />}
       </div>
     </div>
   )
@@ -120,6 +121,39 @@ function Setup({ agent }: { agent: AgentSummary }) {
           Can use: {detail.data.packs.join(', ')}.
         </p>
       )}
+    </Section>
+  )
+}
+
+/** The checklist for an agent someone built: what it reads, how it decides, and what is waiting for them. */
+function WorkflowSetup({ agent }: { agent: AgentSummary }) {
+  const { data: w } = useWorkflow(agent.id)
+  if (!w) return <Section title="Setup"><Spinner label="Loading" /></Section>
+  const c = w.config
+  const rows = [
+    { done: true, label: 'Reads', value: c.source.kind === 'manual' ? 'Text you paste' : `${TABLE_LABELS[c.source.table ?? ''] ?? c.source.table}${c.filters.sinceDays ? `, last ${c.filters.sinceDays} days` : ''}`, to: 'settings' },
+    { done: true, label: 'Sorts into', value: c.labels.map((l) => l.name).join(', '), to: 'settings' },
+    c.decider === 'jev'
+      ? { done: true, label: 'Decides with', value: 'Jev, the decision model', to: 'settings' }
+      : { done: !!agent.selection, label: 'Decides with', value: agent.selection ? `${agent.selection.modelId} · ${agent.selection.providerId}` : 'No model chosen yet', to: 'settings' },
+    { done: w.pending === 0, label: 'Review', value: w.pending ? `${w.pending} waiting for you` : 'Nothing waiting', to: 'review', optional: w.pending === 0 },
+  ]
+  return (
+    <Section title="Setup" description={`Version ${w.version}`}>
+      <ul className="grid gap-1">
+        {rows.map((r) => (
+          <li key={r.label}>
+            <Link to={`/agents/${agent.id}/${r.to}`} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50">
+              <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-full', r.done ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning')}>{r.done ? <Check className="size-3" /> : <CircleAlert className="size-3" />}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{r.label}</span>
+                <span className="block truncate text-xs text-muted-foreground">{r.value}</span>
+              </span>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Section>
   )
 }

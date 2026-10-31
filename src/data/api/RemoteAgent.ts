@@ -1,4 +1,4 @@
-import type { AgentApi, AgentDetail, AgentSettings, AgentStats, RunDetail, RunPage, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -71,6 +71,42 @@ export class RemoteAgent implements AgentApi {
 
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string) {
     return this.http.post<DecisionResult>('/v1/agent/decide', { state, questions, modelId })
+  }
+
+  workflow(id: string) {
+    return this.http.get<Workflow>(`/v1/agent/workflows/${encodeURIComponent(id)}`)
+  }
+
+  createWorkflow(name: string, description: string, config: WorkflowConfig) {
+    return this.http.post<Workflow>('/v1/agent/workflows', { name, description, config })
+  }
+
+  updateWorkflow(id: string, name: string, description: string, config: WorkflowConfig) {
+    return this.http.put<Workflow>(`/v1/agent/workflows/${encodeURIComponent(id)}`, { name, description, config })
+  }
+
+  async deleteWorkflow(id: string) {
+    await this.http.delete(`/v1/agent/workflows/${encodeURIComponent(id)}`)
+  }
+
+  testDraft(config: WorkflowConfig, manual?: string) {
+    return this.http.post<WorkflowRun>('/v1/agent/workflows/test', { config, manual })
+  }
+
+  testWorkflow(id: string, manual?: string) {
+    return this.http.post<WorkflowRun>(`/v1/agent/workflows/${encodeURIComponent(id)}/test`, { manual })
+  }
+
+  runWorkflow(id: string, manual?: string) {
+    return this.http.post<WorkflowRun>(`/v1/agent/workflows/${encodeURIComponent(id)}/run`, { manual })
+  }
+
+  async review(id: string): Promise<ReviewItem[]> {
+    return (await this.http.get<{ items: ReviewItem[] }>(`/v1/agent/workflows/${encodeURIComponent(id)}/review`)).items
+  }
+
+  decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string) {
+    return this.http.post<{ changed: number }>(`/v1/agent/workflows/${encodeURIComponent(id)}/review`, { itemIds, action, label })
   }
 
   async channels(): Promise<Channel[]> {

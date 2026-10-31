@@ -30,6 +30,9 @@ const TryTab = lazy(() => import('@/presentation/agents/TryTab').then((m) => ({ 
 const SettingsTab = lazy(() => import('@/presentation/agents/SettingsTab').then((m) => ({ default: m.SettingsTab })))
 const ChannelsTab = lazy(() => import('@/presentation/agents/ChannelsTab').then((m) => ({ default: m.ChannelsTab })))
 const HistoryTab = lazy(() => import('@/presentation/agents/HistoryTab').then((m) => ({ default: m.HistoryTab })))
+const NewAgentPage = lazy(() => import('@/presentation/agents/NewAgentPage').then((m) => ({ default: m.NewAgentPage })))
+const WorkflowRunTab = lazy(() => import('@/presentation/agents/WorkflowRunTab').then((m) => ({ default: m.WorkflowRunTab })))
+const ReviewTab = lazy(() => import('@/presentation/agents/ReviewTab').then((m) => ({ default: m.ReviewTab })))
 const DecisionsPage = lazy(() => import('@/presentation/agents/DecisionsPage').then((m) => ({ default: m.DecisionsPage })))
 const ProvidersPage = lazy(() => import('@/presentation/agents/ProvidersPage').then((m) => ({ default: m.ProvidersPage })))
 const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
@@ -57,10 +60,13 @@ export default function App({ container }: { container: Container }) {
                   <Route path="agents" element={<AgentsLayout />}>
                     <Route index element={<AgentsHome />} />
                     <Route path="providers" element={<ProvidersPage />} />
+                    <Route path="new" element={<NewAgentPage />} />
                     <Route path="decisions" element={<DecisionsPage />} />
                     <Route path=":agentId" element={<AgentLayout />}>
                       <Route index element={<OverviewTab />} />
                       <Route path="try" element={<TryTab />} />
+                      <Route path="run" element={<WorkflowRunTab />} />
+                      <Route path="review" element={<ReviewTab />} />
                       <Route path="settings" element={<SettingsTab />} />
                       <Route path="channels" element={<ChannelsTab />} />
                       <Route path="history" element={<HistoryTab />} />
