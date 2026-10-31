@@ -5,8 +5,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { Channel } from '@/domain/ai/AgentApi'
+import type { AgentSummary, Channel } from '@/domain/ai/AgentApi'
 import { Section } from '@/presentation/components/layout'
+import { AgentPicker } from './AgentPicker'
 import { useAgentAction, useAgentSettings, useChannels } from './useAgent'
 
 const copy = (text: string, what: string) => navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`), () => toast.error('Couldn’t copy. Select it and copy by hand.'))
@@ -14,7 +15,9 @@ const copy = (text: string, what: string) => navigator.clipboard.writeText(text)
 /** Talk to the agent from your phone: connect a Telegram bot and a WhatsApp number, right from here. */
 export function ChannelsPage() {
   const { channels, loading, error } = useChannels()
-  const { connected } = useAgentSettings()
+  const { connected, settings } = useAgentSettings()
+  const agents = settings?.agents ?? []
+  const defaultAgent = settings?.defaultAgent ?? ''
   const telegram = channels.find((c) => c.kind === 'telegram')
   const whatsapp = channels.find((c) => c.kind === 'whatsapp')
   return (
@@ -29,8 +32,8 @@ export function ChannelsPage() {
         <Spinner label="Loading" />
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-2">
-          <TelegramCard channel={telegram} />
-          <WhatsAppCard channel={whatsapp} />
+          <TelegramCard channel={telegram} agents={agents} defaultAgent={defaultAgent} />
+          <WhatsAppCard channel={whatsapp} agents={agents} defaultAgent={defaultAgent} />
         </div>
       )}
     </div>
@@ -59,10 +62,18 @@ function Error({ message }: { message: string | null }) {
 
 // --- Telegram -----------------------------------------------------------------------------------------------
 
-function TelegramCard({ channel }: { channel?: Channel }) {
+/** Which agent answers on a channel: chosen when connecting, changeable after. */
+function AnswersWith({ channel, agents }: { channel: Channel; agents: AgentSummary[] }) {
+  const change = useAgentAction((a, agent: string) => a.setChannelAgent(channel.id, agent), { success: 'Changed' })
+  if (agents.length < 2) return null
+  return <AgentPicker agents={agents} value={channel.agent} onChange={(id) => void change.run(id)} label="Answered by" />
+}
+
+function TelegramCard({ channel, agents, defaultAgent }: { channel?: Channel; agents: AgentSummary[]; defaultAgent: string }) {
   const [token, setToken] = useState('')
+  const [chosen, setChosen] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const connect = useAgentAction((a, t: string) => a.connectTelegram(t), { success: 'Telegram bot connected' })
+  const connect = useAgentAction((a, t: string) => a.connectTelegram(t, chosen ?? defaultAgent), { success: 'Telegram bot connected' })
   const newCode = useAgentAction((a, id: string) => a.newPairingCode(id))
   const unpair = useAgentAction((a, v: { id: string; chat: string }) => a.unpair(v.id, v.chat), { success: 'Chat unlinked' })
   const test = useAgentAction((a, id: string) => a.sendTest(id), { success: 'Sent. Check Telegram.' })
@@ -92,9 +103,12 @@ function TelegramCard({ channel }: { channel?: Channel }) {
           </Steps>
           <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="123456:ABC-DEF…" autoComplete="off" spellCheck={false} aria-label="Bot token" aria-invalid={!!error} className="font-mono" />
           <Error message={error} />
-          <Button type="submit" className="w-fit" disabled={!token.trim() || connect.pending}>
-            {connect.pending && <Spinner size="xs" tone="current" decorative />} Connect bot
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <AgentPicker agents={agents} value={chosen ?? defaultAgent} onChange={setChosen} label="Answered by" />
+            <Button type="submit" disabled={!token.trim() || connect.pending}>
+              {connect.pending && <Spinner size="xs" tone="current" decorative />} Connect bot
+            </Button>
+          </div>
         </form>
       ) : (
         <div className="grid gap-4">
@@ -141,6 +155,8 @@ function TelegramCard({ channel }: { channel?: Channel }) {
             )}
           </div>
 
+          <AnswersWith channel={channel} agents={agents} />
+
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={!channel.paired?.length || test.pending} onClick={() => void test.run(channel.id)}>
               <Send /> Send a test message
@@ -159,11 +175,11 @@ function TelegramCard({ channel }: { channel?: Channel }) {
 
 const splitNumbers = (text: string) => text.split(/[\n,;]+/).map((n) => n.trim()).filter(Boolean)
 
-function WhatsAppCard({ channel }: { channel?: Channel }) {
-  const [form, setForm] = useState({ accountSid: '', authToken: '', sender: '+14155238886', numbers: '' })
+function WhatsAppCard({ channel, agents, defaultAgent }: { channel?: Channel; agents: AgentSummary[]; defaultAgent: string }) {
+  const [form, setForm] = useState({ accountSid: '', authToken: '', sender: '+14155238886', numbers: '', agent: '' })
   const [numbers, setNumbers] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const connect = useAgentAction((a, f: typeof form) => a.connectWhatsApp({ accountSid: f.accountSid, authToken: f.authToken, sender: f.sender, allowed: splitNumbers(f.numbers) }), { success: 'WhatsApp connected' })
+  const connect = useAgentAction((a, f: typeof form) => a.connectWhatsApp({ accountSid: f.accountSid, authToken: f.authToken, sender: f.sender, allowed: splitNumbers(f.numbers), agent: f.agent || defaultAgent }), { success: 'WhatsApp connected' })
   const allow = useAgentAction((a, v: { id: string; numbers: string }) => a.setAllowed(v.id, splitNumbers(v.numbers)), { success: 'Numbers saved' })
   const test = useAgentAction((a, id: string) => a.sendTest(id), { success: 'Sent. Check WhatsApp.' })
   const remove = useAgentAction((a, id: string) => a.removeChannel(id), { success: 'WhatsApp disconnected' })
@@ -198,9 +214,12 @@ function WhatsAppCard({ channel }: { channel?: Channel }) {
             <Input value={form.numbers} onChange={(e) => set({ numbers: e.target.value })} placeholder="Your WhatsApp number (+91…)" aria-label="Your WhatsApp number" className="font-mono" />
           </div>
           <Error message={error} />
-          <Button type="submit" className="w-fit" disabled={!form.accountSid.trim() || !form.authToken.trim() || !form.numbers.trim() || connect.pending}>
-            {connect.pending && <Spinner size="xs" tone="current" decorative />} Connect WhatsApp
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <AgentPicker agents={agents} value={form.agent || defaultAgent} onChange={(id) => set({ agent: id })} label="Answered by" />
+            <Button type="submit" disabled={!form.accountSid.trim() || !form.authToken.trim() || !form.numbers.trim() || connect.pending}>
+              {connect.pending && <Spinner size="xs" tone="current" decorative />} Connect WhatsApp
+            </Button>
+          </div>
         </form>
       ) : (
         <div className="grid gap-4">
@@ -238,6 +257,8 @@ function WhatsAppCard({ channel }: { channel?: Channel }) {
             </div>
             <p className="text-[11px] text-muted-foreground">Anyone else is ignored without a reply.</p>
           </div>
+
+          <AnswersWith channel={channel} agents={agents} />
 
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={test.pending} onClick={() => void test.run(channel.id)}>

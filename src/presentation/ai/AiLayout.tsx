@@ -6,7 +6,7 @@ import { NavLink } from '@/presentation/routing'
 import { useAgentAvailable } from './useAgent'
 
 const TABS = [
-  { to: '/ai', label: 'Case agent', icon: Bot, end: true },
+  { to: '/ai', label: 'Agents', icon: Bot, end: true },
   { to: '/ai/prompt', label: 'Prompt', icon: FileCode2, end: false },
   { to: '/ai/decisions', label: 'Decisions', icon: Scale, end: false },
   { to: '/ai/channels', label: 'Channels', icon: MessagesSquare, end: false },

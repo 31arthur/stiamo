@@ -4,19 +4,35 @@ import { Eye, RotateCcw, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { AgentSettings, PromptPackage, PromptSettings, ToolOverride } from '@/domain/ai/AgentApi'
+import type { AgentDetail, PromptPackage, PromptSettings, ToolOverride } from '@/domain/ai/AgentApi'
 import { useServices } from '@/presentation/app/services'
 import { Section } from '@/presentation/components/layout'
 import { useUserId } from '@/presentation/data/hooks'
-import { useAgentAction, useAgentSettings } from './useAgent'
+import { AgentPicker } from './AgentPicker'
+import { useAgentAction, useAgentDetail, useAgentSettings, useCurrentAgent } from './useAgent'
 
 /** Edit exactly what the agent is told: its instructions, how your question is wrapped, and each tool it may use. */
 export function PromptPage() {
-  const { settings, loading, error } = useAgentSettings()
-  if (loading) return <Spinner label="Loading" />
-  if (!settings) return error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null
-  // Saving (or resetting) changes the saved prompt, which starts the editor again from what was saved.
-  return <PromptEditor key={JSON.stringify(settings.prompt)} settings={settings} />
+  const { loading, error } = useAgentSettings()
+  const { agents, agent, choose } = useCurrentAgent()
+  const detail = useAgentDetail(agent?.id)
+  if (loading || detail.isLoading) return <Spinner label="Loading" />
+  if (!agent || !detail.data) {
+    const message = error ?? (detail.error instanceof Error ? detail.error.message : null)
+    return message ? <p role="alert" className="text-sm text-destructive">{message}</p> : null
+  }
+  return (
+    <div className="grid gap-4">
+      {agents.length > 1 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <AgentPicker agents={agents} value={agent.id} onChange={choose} label="Editing the prompt of" />
+          <span className="text-xs text-muted-foreground">{agent.description} Each agent has its own prompt.</span>
+        </div>
+      )}
+      {/* Saving (or resetting) changes the saved prompt, which starts the editor again from what was saved. */}
+      <PromptEditor key={agent.id + JSON.stringify(detail.data.prompt)} agentId={agent.id} detail={detail.data} />
+    </div>
+  )
 }
 
 const AREA = 'w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-[13px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
@@ -25,10 +41,11 @@ const AREA = 'w-full resize-y rounded-lg border border-input bg-transparent px-3
 const compact = (tools: Record<string, ToolOverride>): Record<string, ToolOverride> =>
   Object.fromEntries(Object.entries(tools).filter(([, t]) => !t.enabled || !!t.description?.trim()).map(([k, t]) => [k, { enabled: t.enabled, description: t.description?.trim() || null }]))
 
-function PromptEditor({ settings }: { settings: AgentSettings }) {
+function PromptEditor({ agentId, detail }: { agentId: string; detail: AgentDetail }) {
+  const { settings } = useAgentSettings()
   const { agent } = useServices()
   const userId = useUserId()
-  const saved = settings.prompt
+  const saved = detail.prompt
   const [system, setSystem] = useState(saved.system)
   const [inputTemplate, setInputTemplate] = useState(saved.inputTemplate)
   const [tools, setTools] = useState<Record<string, ToolOverride>>(saved.tools)
@@ -42,15 +59,15 @@ function PromptEditor({ settings }: { settings: AgentSettings }) {
 
   const draft: PromptSettings = { system, inputTemplate, tools: compact(tools) }
   const dirty = system !== saved.system || inputTemplate !== saved.inputTemplate || JSON.stringify(compact(tools)) !== JSON.stringify(compact(saved.tools))
-  const isDefault = saved.system === settings.defaults.system && saved.inputTemplate === settings.defaults.inputTemplate && Object.keys(compact(saved.tools)).length === 0
+  const isDefault = saved.system === detail.defaults.system && saved.inputTemplate === detail.defaults.inputTemplate && Object.keys(compact(saved.tools)).length === 0
 
-  const save = useAgentAction((a, p: PromptSettings) => a.setPrompt(p), { success: 'Prompt saved' })
-  const reset = useAgentAction((a) => a.resetPrompt(), { success: 'Back to the default prompt' })
+  const save = useAgentAction((a, p: PromptSettings) => a.setPrompt(agentId, p), { success: 'Prompt saved' })
+  const reset = useAgentAction((a) => a.resetPrompt(agentId), { success: 'Back to the default prompt' })
 
   // What each tool is by default, so an override can be judged against it.
   const defaults = useQuery({
-    queryKey: ['agent', 'tool-defaults', userId, settings.decision.enabled],
-    queryFn: () => agent.preview('', { system: settings.defaults.system, inputTemplate: settings.defaults.inputTemplate, tools: {} }),
+    queryKey: ['agent', 'tool-defaults', userId, agentId, settings?.decision.enabled],
+    queryFn: () => agent.preview(agentId, '', { system: detail.defaults.system, inputTemplate: detail.defaults.inputTemplate, tools: {} }),
     staleTime: 5 * 60_000,
     retry: false,
   })
@@ -72,7 +89,7 @@ function PromptEditor({ settings }: { settings: AgentSettings }) {
     setPreviewing(true)
     setPreviewError(null)
     try {
-      setPkg(await agent.preview(question, draft))
+      setPkg(await agent.preview(agentId, question, draft))
     } catch (e) {
       setPkg(null)
       setPreviewError(e instanceof Error ? e.message : 'Couldn’t build the preview.')
@@ -167,7 +184,7 @@ function PromptEditor({ settings }: { settings: AgentSettings }) {
       <div className="grid content-start gap-4 lg:sticky lg:top-4">
         <Section title="Variables" description="Click one to put it where your cursor is.">
           <ul className="grid gap-2">
-            {Object.entries(settings.variables).map(([name, what]) => (
+            {Object.entries(detail.variables).map(([name, what]) => (
               <li key={name}>
                 <button type="button" onClick={() => insert(name)} className="group w-full rounded-lg border px-2.5 py-1.5 text-left transition-colors hover:border-foreground/30 hover:bg-muted/50">
                   <code className="font-mono text-xs font-medium">{`{{${name}}}`}</code>

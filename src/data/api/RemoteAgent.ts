@@ -1,4 +1,4 @@
-import type { AgentApi, AgentSettings, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, AgentDetail, AgentSettings, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -22,28 +22,32 @@ export class RemoteAgent implements AgentApi {
     return (await this.http.get<{ items: ModelInfo[] }>(`/v1/agent/providers/${provider}/models`)).items
   }
 
-  async setSelection(s: AiSelection) {
-    await this.http.put('/v1/agent/selection', { providerId: s.providerId, modelId: s.modelId, thinking: s.thinking })
-  }
-
   async setDecision(enabled: boolean, modelId: string) {
     await this.http.put('/v1/agent/decision', { enabled, modelId })
   }
 
-  async setPrompt(prompt: PromptSettings) {
-    await this.http.put('/v1/agent/prompt', prompt)
+  agent(agentId: string) {
+    return this.http.get<AgentDetail>(`/v1/agent/agents/${encodeURIComponent(agentId)}`)
   }
 
-  async resetPrompt() {
-    await this.http.delete('/v1/agent/prompt')
+  async setSelection(agentId: string, s: AiSelection) {
+    await this.http.put(`/v1/agent/agents/${encodeURIComponent(agentId)}/selection`, { providerId: s.providerId, modelId: s.modelId, thinking: s.thinking })
   }
 
-  preview(question: string, prompt?: PromptSettings) {
-    return this.http.post<PromptPackage>('/v1/agent/prompt/preview', { question, prompt })
+  async setPrompt(agentId: string, prompt: PromptSettings) {
+    await this.http.put(`/v1/agent/agents/${encodeURIComponent(agentId)}/prompt`, prompt)
   }
 
-  chat(message: string, messages: unknown[]) {
-    return this.http.post<ChatReply>('/v1/agent/chat', { message, messages })
+  async resetPrompt(agentId: string) {
+    await this.http.delete(`/v1/agent/agents/${encodeURIComponent(agentId)}/prompt`)
+  }
+
+  preview(agentId: string, question: string, prompt?: PromptSettings) {
+    return this.http.post<PromptPackage>(`/v1/agent/agents/${encodeURIComponent(agentId)}/prompt/preview`, { question, prompt })
+  }
+
+  chat(agentId: string, message: string, messages: unknown[]) {
+    return this.http.post<ChatReply>(`/v1/agent/agents/${encodeURIComponent(agentId)}/chat`, { message, messages })
   }
 
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string) {
@@ -54,8 +58,12 @@ export class RemoteAgent implements AgentApi {
     return (await this.http.get<{ items: Channel[] }>('/v1/agent/channels')).items
   }
 
-  connectTelegram(botToken: string) {
-    return this.http.post<Channel>('/v1/agent/channels/telegram', { botToken })
+  connectTelegram(botToken: string, agent?: string) {
+    return this.http.post<Channel>('/v1/agent/channels/telegram', { botToken, agent })
+  }
+
+  setChannelAgent(channelId: string, agent: string) {
+    return this.http.put<Channel>(`/v1/agent/channels/${channelId}/agent`, { agent })
   }
 
   connectWhatsApp(c: WhatsAppConnection) {

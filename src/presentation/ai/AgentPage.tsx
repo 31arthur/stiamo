@@ -4,7 +4,7 @@ import { ArrowUp, Brain, ChevronDown, KeyRound, Sparkles, Square, Wrench } from 
 import { Button } from '@/components/ui/button'
 import { Command, CommandDialog, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Spinner } from '@/components/ui/spinner'
-import type { AgentStep, Found } from '@/domain/ai/AgentApi'
+import type { AgentStep, AgentSummary, Found } from '@/domain/ai/AgentApi'
 import { PROVIDERS, THINKING_LABELS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId, ThinkingLevel } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -12,7 +12,8 @@ import { EmptyState, Section } from '@/presentation/components/layout'
 import { useDriveStatus } from '@/presentation/drive/useDrive'
 import { Link } from '@/presentation/routing'
 import { FoundCards } from './FoundCards'
-import { useAgentAction, useAgentSettings, useModels } from './useAgent'
+import { AgentPicker } from './AgentPicker'
+import { useAgentAction, useAgentSettings, useCurrentAgent, useModels } from './useAgent'
 
 interface Turn {
   id: number
@@ -25,21 +26,27 @@ interface Turn {
   pending: boolean
 }
 
-const SUGGESTIONS = ['Which cases have a hearing in the next two weeks?', 'Find the open cases against NHAI', 'What documents do we have for the Alur case?', 'Which active cases have nothing filed under them?']
-
 const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
 
 /** The default level for a model: a middling one where there is a choice, otherwise whatever it allows. */
 const defaultThinking = (m?: ModelInfo): ThinkingLevel => (m?.thinking.includes('medium') ? 'medium' : (m?.thinking[0] ?? 'off'))
 
-/** Ask about cases; the agent (on the server) searches them and the Drive, and shows what it found. */
+/** Ask an agent. Which one is chosen here; each has its own model and prompt, and the server decides what exists. */
 export function AgentPage() {
+  const { loading } = useAgentSettings()
+  const { agents, agent, choose } = useCurrentAgent()
+  if (loading || !agent) return <Spinner label="Loading" />
+  // A different agent is a different conversation, so the chat starts again.
+  return <AgentChat key={agent.id} def={agent} agents={agents} onChoose={choose} />
+}
+
+function AgentChat({ def, agents, onChoose }: { def: AgentSummary; agents: AgentSummary[]; onChoose: (id: string) => void }) {
   const { agent } = useServices()
   const drive = useDriveStatus()
-  const { settings, connected, loading } = useAgentSettings()
-  const setSelection = useAgentAction((a, s: { providerId: ProviderId; modelId: string; thinking: ThinkingLevel }) => a.setSelection(s))
+  const { connected, loading } = useAgentSettings()
+  const setSelection = useAgentAction((a, s: { providerId: ProviderId; modelId: string; thinking: ThinkingLevel }) => a.setSelection(def.id, s))
 
-  const selection = settings?.selection ?? null
+  const selection = def.selection
   const provider: ProviderId | undefined = selection && connected.includes(selection.providerId) ? selection.providerId : connected[0]
   const models = useModels(provider, !!provider)
   const model = models.data?.find((m) => m.id === selection?.modelId)
@@ -67,7 +74,7 @@ export function AgentPage() {
     setTurns((all) => [...all, { id, question, steps: [], found: [], pending: true }])
     setText('')
     try {
-      const reply = await agent.chat(question, history)
+      const reply = await agent.chat(def.id, question, history)
       if (stopped.current.has(id)) return // the person stopped waiting; the turn is already marked
       setHistory(reply.messages)
       patch(id, { answer: reply.answer || 'I found nothing to say about that.', steps: reply.steps, found: reply.found, pending: false })
@@ -127,6 +134,7 @@ export function AgentPage() {
   return (
     <div className="grid gap-4 pb-20 lg:pb-8">
       <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card/70 p-2">
+        <AgentPicker agents={agents} value={def.id} onChange={onChoose} />
         <select aria-label="Provider" value={provider} onChange={(e) => pickProvider(e.target.value as ProviderId)} className={SELECT}>
           {connected.map((id) => (
             <option key={id} value={id}>
@@ -181,10 +189,14 @@ export function AgentPage() {
         <div className="grid gap-3 py-6">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Sparkles className="size-5" />
-            <span className="font-display text-2xl text-foreground italic">What would you like to find?</span>
+            <span className="font-display text-2xl text-foreground italic">{def.name}</span>
           </div>
+          <p className="-mt-1 text-sm text-muted-foreground">
+            {def.description}
+            {def.selectionInherited && ' Using the model you chose last; pick one above to give this agent its own.'}
+          </p>
           <div className="flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => (
+            {def.suggestions.map((s) => (
               <button key={s} type="button" disabled={!ready} onClick={() => void ask(s)} className="rounded-full border bg-card/70 px-3 py-1.5 text-left text-sm transition-colors hover:border-foreground/30 hover:bg-card disabled:opacity-50">
                 {s}
               </button>
