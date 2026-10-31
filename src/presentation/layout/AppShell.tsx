@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, CalendarDays, CalendarRange, ChevronsUpDown, LayoutDashboard, Mail, Menu, NotebookPen, Search, Sparkles, Sun } from 'lucide-react'
+import { Bot, Check, CalendarDays, CalendarRange, ChevronsUpDown, KeyRound, LayoutDashboard, LayoutGrid, Mail, Menu, NotebookPen, Scale, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { WORKSPACE_IDS, WORKSPACES } from '@/domain/shared/workspace'
 import { useAttention } from '@/presentation/app/attention'
+import { useAgentSettings } from '@/presentation/agents/useAgent'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
@@ -30,6 +31,8 @@ interface NavItem {
   icon: LucideIcon
   badge?: number
   tone?: 'danger' | 'default'
+  /** Active only on exactly this address, not on what is under it. */
+  end?: boolean
 }
 
 
@@ -123,6 +126,7 @@ export function AppShell() {
 function Sidebar() {
   const attention = useAttention()
   const { scope, setScope } = useWorkspaceFilter()
+  const { settings: agentSettings } = useAgentSettings()
 
   // Each workspace owns its section; the others stay out of the way. "All workspaces" shows the overview instead.
   const workspaceGroup: { label: string; items: NavItem[] } | null =
@@ -164,7 +168,20 @@ function Sidebar() {
         { to: '/meetings', label: 'Meetings', icon: KIND_META.meeting.icon, badge: attention.meetingsToRecord.length },
       ],
     },
-    ...(scope === 'all' ? [{ label: 'AI', items: [{ to: '/ai', label: 'AI agents', icon: Sparkles }] }] : []),
+    // Every agent is its own entry; the providers they share are below them.
+    ...(scope === 'all'
+      ? [
+          {
+            label: 'Agents',
+            items: [
+              { to: '/agents', label: 'All agents', icon: LayoutGrid, end: true },
+              ...(agentSettings?.agents ?? []).map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: Bot })),
+              { to: '/agents/providers', label: 'Providers', icon: KeyRound },
+              { to: '/agents/decisions', label: 'Decision models', icon: Scale },
+            ] as NavItem[],
+          },
+        ]
+      : []),
     {
       label: 'Direction',
       items: [
@@ -213,7 +230,7 @@ function Sidebar() {
             <div className="mb-1 px-2.5 text-[10px] font-semibold tracking-widest text-muted-foreground/80 uppercase">{g.label}</div>
             <div className="grid gap-0.5">
               {g.items.map((item) => (
-                <NavLink key={item.to} to={item.to} className="group relative">
+                <NavLink key={item.to} to={item.to} end={item.end} className="group relative">
                   {({ isActive }) => (
                     <span className={cn('relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', isActive ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
                       {isActive && <motion.span layoutId="sidebar-active" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-background shadow-float" />}

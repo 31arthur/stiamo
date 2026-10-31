@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { PROVIDER_IDS, PROVIDERS } from '@/domain/ai/types'
 import type { ProviderId } from '@/domain/ai/types'
-import { Section } from '@/presentation/components/layout'
+import { PageHeader, Section } from '@/presentation/components/layout'
 import { useAgentAction, useAgentSettings, useModels } from './useAgent'
 
 /** Add the providers the agent can use. A key is checked against the provider before the server keeps it. */
@@ -14,6 +14,7 @@ export function ProvidersPage() {
   const { settings, loading, error } = useAgentSettings()
   return (
     <div className="grid gap-4">
+      <PageHeader eyebrow="Agents" title="Providers" description="The AI providers every agent can run on. Each agent chooses its own model from them." />
       <p className="flex items-start gap-2 rounded-xl border bg-card/70 px-3.5 py-3 text-sm text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />
         <span>

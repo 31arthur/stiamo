@@ -1,0 +1,125 @@
+import { Check, ChevronRight, CircleAlert } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import { Spinner } from '@/components/ui/spinner'
+import type { AgentSummary, RunSummary } from '@/domain/ai/AgentApi'
+import { cn } from '@/lib/utils'
+import { Section, Stat } from '@/presentation/components/layout'
+import { Link } from '@/presentation/routing'
+import { ago, compact, formatMs, triggerLabel } from './format'
+import { useAgentDetail, useAgentStats, useAgentSummary, useChannels } from './useAgent'
+
+/** How the agent has been doing, when it was last called, and what is still to set up. */
+export function OverviewTab() {
+  const { agentId } = useParams()
+  const agent = useAgentSummary(agentId)!
+  const { data: s, isLoading } = useAgentStats(agentId)
+  if (isLoading || !s) return <Spinner label="Loading" />
+  const rate = s.runs ? Math.round((s.ok / s.runs) * 100) : null
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label={`Runs, last ${s.windowDays} days`} value={s.runs} />
+        <Stat label="Succeeded" value={rate === null ? '—' : `${rate}%`} tone={rate === null ? 'default' : rate >= 95 ? 'success' : rate >= 80 ? 'warning' : 'danger'} />
+        <Stat label="Average time" value={s.avgDurationMs ? formatMs(s.avgDurationMs) : '—'} />
+        <Stat label="Tokens in · out" value={s.inputTokens || s.outputTokens ? `${compact(s.inputTokens)} · ${compact(s.outputTokens)}` : '—'} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <div className="grid content-start gap-4">
+          <Section title="Last 14 days" description={s.totalRuns ? `${s.totalRuns} runs in all` : undefined}>
+            <Bars daily={s.daily} />
+            {Object.keys(s.byTrigger).length > 0 && (
+              <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {Object.entries(s.byTrigger).map(([t, n]) => (
+                  <span key={t}>
+                    {triggerLabel(t)} <span className="font-medium text-foreground tabular-nums">{n}</span>
+                  </span>
+                ))}
+              </p>
+            )}
+          </Section>
+
+          <Section title="Last called">
+            {s.lastRun ? <LastRun run={s.lastRun} agentId={agent.id} /> : <p className="text-sm text-muted-foreground">Not called yet. Try it, or connect a channel.</p>}
+          </Section>
+        </div>
+
+        <Setup agent={agent} />
+      </div>
+    </div>
+  )
+}
+
+function Bars({ daily }: { daily: { date: string; runs: number; errors: number }[] }) {
+  const max = Math.max(1, ...daily.map((d) => d.runs))
+  return (
+    <div role="img" aria-label="Runs per day over the last 14 days" className="flex h-24 items-end gap-1.5">
+      {daily.map((d) => (
+        <div key={d.date} title={`${d.date}: ${d.runs} run${d.runs === 1 ? '' : 's'}${d.errors ? `, ${d.errors} failed` : ''}`} className="flex h-full flex-1 flex-col justify-end">
+          <div className="flex min-h-px flex-col overflow-hidden rounded-t-sm" style={{ height: `${(d.runs / max) * 100}%` }}>
+            {d.errors > 0 && <span className="bg-destructive/70" style={{ flex: d.errors }} />}
+            <span className="bg-foreground/80" style={{ flex: Math.max(0, d.runs - d.errors) }} />
+          </div>
+          {d.runs === 0 && <span className="h-px bg-border" />}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function LastRun({ run, agentId }: { run: RunSummary; agentId: string }) {
+  return (
+    <Link to={`/agents/${agentId}/history?run=${run.id}`} className="grid gap-2 rounded-xl border p-3 transition-colors hover:bg-muted/40">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span className={cn('size-2 rounded-full', run.status === 'ok' ? 'bg-success' : 'bg-destructive')} aria-label={run.status === 'ok' ? 'Succeeded' : 'Failed'} />
+        <span className="font-medium text-foreground">{ago(run.startedAt)}</span>
+        <span className="rounded-full bg-muted px-1.5 py-px">{triggerLabel(run.trigger)}</span>
+        <span>{formatMs(run.durationMs)}</span>
+        <ChevronRight className="ml-auto size-4" />
+      </div>
+      <p className="line-clamp-2 text-sm">
+        <span className="text-muted-foreground">Asked </span>
+        {run.input}
+      </p>
+      {run.error ? <p className="line-clamp-2 text-sm text-destructive">{run.error}</p> : <p className="line-clamp-2 text-sm text-muted-foreground">{run.output || 'No answer.'}</p>}
+    </Link>
+  )
+}
+
+/** What is left to do, as a short checklist with a way in to each. */
+function Setup({ agent }: { agent: AgentSummary }) {
+  const detail = useAgentDetail(agent.id)
+  const { channels } = useChannels()
+  const mine = channels.filter((c) => c.agent === agent.id)
+  const rows = [
+    { done: !!agent.selection, label: 'Model', value: agent.selection ? `${agent.selection.modelId} · ${agent.selection.providerId}${agent.selectionInherited ? ' (the last one you chose)' : ''}` : 'Not chosen yet', to: 'settings' },
+    { done: true, label: 'Prompt', value: agent.customPrompt ? 'Your own' : 'The default', to: 'settings' },
+    { done: mine.length > 0, label: 'Channels', value: mine.length ? mine.map((c) => (c.kind === 'telegram' ? `@${c.username}` : 'WhatsApp')).join(', ') : 'None connected', to: 'channels', optional: true },
+  ]
+  return (
+    <Section title="Setup">
+      <ul className="grid gap-1">
+        {rows.map((r) => (
+          <li key={r.label}>
+            <Link to={`/agents/${agent.id}/${r.to}`} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50">
+              <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-full', r.done ? 'bg-success/15 text-success' : r.optional ? 'bg-muted text-muted-foreground' : 'bg-warning/15 text-warning')}>
+                {r.done ? <Check className="size-3" /> : <CircleAlert className="size-3" />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{r.label}</span>
+                <span className="block truncate text-xs text-muted-foreground">{r.value}</span>
+              </span>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {detail.data && (
+        <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
+          Can use: {detail.data.packs.join(', ')}.
+        </p>
+      )}
+    </Section>
+  )
+}

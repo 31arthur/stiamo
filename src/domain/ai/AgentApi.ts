@@ -127,6 +127,71 @@ export interface DecisionResult {
   cost?: number
 }
 
+/** Where a question came from. */
+export type RunTrigger = 'chat' | 'telegram' | 'whatsapp' | 'test' | 'schedule'
+
+/** One time an agent was asked, as the history list shows it. */
+export interface RunSummary {
+  id: string
+  agentId: string
+  trigger: RunTrigger | string
+  status: 'ok' | 'error'
+  startedAt: string
+  durationMs: number
+  provider: string
+  model: string
+  /** The start of what was asked, and of the answer. */
+  input: string
+  output: string
+  found: number
+  steps: number
+  error?: string
+}
+
+/** What the agent did with one tool. */
+export interface RunStep {
+  tool: string
+  label: string
+  args: Record<string, unknown>
+  found: number
+  ms: number
+  /** What the tool gave back, shortened. */
+  result: string
+  error?: string
+}
+
+/** One run in full: what the model was given, each step, and the answer. */
+export interface RunDetail extends RunSummary {
+  thinking: string
+  /** The message as the model got it, after the agent's template. */
+  userMessage: string
+  systemPrompt: string
+  tools: string[]
+  stepLog: RunStep[]
+  usage: { inputTokens?: number; outputTokens?: number }
+  channel?: string | null
+}
+
+export interface RunPage {
+  items: RunSummary[]
+  /** Pass as `before` to get the next, older page; null when there are no more. */
+  next: string | null
+}
+
+export interface AgentStats {
+  totalRuns: number
+  windowDays: number
+  runs: number
+  ok: number
+  errors: number
+  avgDurationMs: number
+  inputTokens: number
+  outputTokens: number
+  byTrigger: Record<string, number>
+  daily: { date: string; runs: number; errors: number }[]
+  lastRun: RunSummary | null
+}
+
 export interface ChannelPairing {
   id: number | string
   name: string
@@ -173,6 +238,10 @@ export interface AgentApi {
   resetPrompt(agentId: string): Promise<void>
   preview(agentId: string, question: string, prompt?: PromptSettings): Promise<PromptPackage>
   chat(agentId: string, message: string, messages: unknown[]): Promise<ChatReply>
+  stats(agentId: string): Promise<AgentStats>
+  runs(agentId: string, before?: string): Promise<RunPage>
+  run(runId: string): Promise<RunDetail>
+  clearRuns(agentId: string): Promise<void>
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string): Promise<DecisionResult>
   channels(): Promise<Channel[]>
   connectTelegram(botToken: string, agent?: string): Promise<Channel>

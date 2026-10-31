@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { DecisionAnswer, DecisionKind, DecisionQuestion, DecisionResult } from '@/domain/ai/AgentApi'
 import { useServices } from '@/presentation/app/services'
-import { Section } from '@/presentation/components/layout'
+import { PageHeader, Section } from '@/presentation/components/layout'
 import { Link } from '@/presentation/routing'
 import { useAgentAction, useAgentSettings } from './useAgent'
 
@@ -76,6 +76,7 @@ export function DecisionsPage() {
 
   return (
     <div className="grid gap-4">
+      <PageHeader eyebrow="Agents" title="Decision models" description="Models that answer typed questions with probabilities. Try one here, or let your agents ask it." />
       <Section title="Jev, a decision model" description="Not a chat model: you give it some text and typed questions, and it answers each with probabilities. It runs through your OpenRouter key and charges for what you send, not for what it answers.">
         {!connected ? (
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">

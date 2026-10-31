@@ -14,7 +14,7 @@ const HOME: Record<string, WorkspaceScope> = {
   clients: 'fsa',
   projects: 'fsa',
   overview: 'all',
-  ai: 'all',
+  agents: 'all',
 }
 const SHARED = ['today', 'calendar', 'tasks', 'follow-ups', 'meetings', 'plans', 'goals']
 
