@@ -47,16 +47,38 @@ export interface DecisionModel {
   name: string
 }
 
-export interface AgentSettings {
-  providers: Record<ProviderId, ProviderState>
+/** One agent, as the list shows it. Agents are defined on the server; whatever it offers is what appears. */
+export interface AgentSummary {
+  id: string
+  name: string
+  description: string
+  /** Example questions for an empty chat. */
+  suggestions: string[]
   selection: AiSelection | null
-  decision: { enabled: boolean; modelId: string }
-  decisionModels: DecisionModel[]
+  /** True when the agent has no choice of its own and follows the one made last. */
+  selectionInherited: boolean
+  /** True when the person has written their own prompt for it. */
+  customPrompt: boolean
+}
+
+/** One agent with everything the prompt editor needs. */
+export interface AgentDetail extends AgentSummary {
   prompt: PromptSettings
   defaults: { system: string; inputTemplate: string }
-  /** What can go between double braces in a prompt, and what each stands for. */
+  /** What can go between double braces in this agent's prompt, and what each stands for. */
   variables: Record<string, string>
+  /** The tool packs it draws on. */
+  packs: string[]
+}
+
+/** What every agent shares: the providers and the decision model. */
+export interface AgentSettings {
+  providers: Record<ProviderId, ProviderState>
+  decision: { enabled: boolean; modelId: string }
+  decisionModels: DecisionModel[]
   thinkingLevels: ThinkingLevel[]
+  agents: AgentSummary[]
+  defaultAgent: string
 }
 
 export interface AgentStep {
@@ -113,6 +135,8 @@ export interface ChannelPairing {
 export interface Channel {
   id: string
   kind: 'telegram' | 'whatsapp'
+  /** The agent that answers on it. */
+  agent: string
   /** Where the channel's messages are delivered to (for WhatsApp this goes into the Twilio console). */
   webhookUrl?: string | null
   // Telegram
@@ -129,6 +153,7 @@ export interface Channel {
 }
 
 export interface WhatsAppConnection {
+  agent?: string
   accountSid: string
   authToken: string
   sender: string
@@ -141,16 +166,18 @@ export interface AgentApi {
   putKey(provider: ProviderId, apiKey: string): Promise<ModelInfo[]>
   removeKey(provider: ProviderId): Promise<void>
   models(provider: ProviderId): Promise<ModelInfo[]>
-  setSelection(selection: AiSelection): Promise<void>
   setDecision(enabled: boolean, modelId: string): Promise<void>
-  setPrompt(prompt: PromptSettings): Promise<void>
-  resetPrompt(): Promise<void>
-  preview(question: string, prompt?: PromptSettings): Promise<PromptPackage>
-  chat(message: string, messages: unknown[]): Promise<ChatReply>
+  agent(agentId: string): Promise<AgentDetail>
+  setSelection(agentId: string, selection: AiSelection): Promise<void>
+  setPrompt(agentId: string, prompt: PromptSettings): Promise<void>
+  resetPrompt(agentId: string): Promise<void>
+  preview(agentId: string, question: string, prompt?: PromptSettings): Promise<PromptPackage>
+  chat(agentId: string, message: string, messages: unknown[]): Promise<ChatReply>
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string): Promise<DecisionResult>
   channels(): Promise<Channel[]>
-  connectTelegram(botToken: string): Promise<Channel>
+  connectTelegram(botToken: string, agent?: string): Promise<Channel>
   connectWhatsApp(connection: WhatsAppConnection): Promise<Channel>
+  setChannelAgent(channelId: string, agent: string): Promise<Channel>
   newPairingCode(channelId: string): Promise<Channel>
   unpair(channelId: string, chatId: string): Promise<Channel>
   setAllowed(channelId: string, allowed: string[]): Promise<Channel>
