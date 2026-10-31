@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Credentials, Registration, User } from '@/domain/auth/entities/User'
-import { purgeAiSettings } from '@/data/ai/store'
 import type { Container } from '@/di/container'
 
 interface AuthContextValue {
@@ -38,9 +37,7 @@ export function AuthProvider({ auth, children }: { auth: Container['auth']; chil
   // Never show one account's cached data to another.
   useEffect(() => {
     if (!user) client.clear()
-    // The AI provider keys belong to the signed-in person and go when they do. (Not while the first sign-in check is still running.)
-    if (!user && !isLoading) purgeAiSettings()
-  }, [user, isLoading, client])
+  }, [user, client])
 
   const login = useCallback(async (c: Credentials) => setUser(await auth.login.execute(c)), [auth])
   const register = useCallback(async (r: Registration) => setUser(await auth.register.execute(r)), [auth])

@@ -31,6 +31,8 @@ import {
   normalizeProject,
   normalizeTask,
 } from '@/domain/shared/validation'
+import { NO_AGENT } from '@/domain/ai/AgentApi'
+import type { AgentApi } from '@/domain/ai/AgentApi'
 import { NO_DRIVE } from '@/domain/drive/Drive'
 import type { DriveApi } from '@/domain/drive/Drive'
 import type { Backend } from './backends'
@@ -76,6 +78,8 @@ export interface Container {
   attachments: Pick<AttachmentUseCases, 'attach' | 'attachLink' | 'remove' | 'rename' | 'url'>
   /** Searching the owner's Google Drive (names and contents). Only available with the Stiamo backend. */
   drive: DriveApi
+  /** The AI agent: providers and models, the prompt, decisions and the chat channels. Only available with the Stiamo backend. */
+  agent: AgentApi
   /** Live views of each collection, updated on every change from any device. */
   live: {
     subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) => () => void
@@ -142,6 +146,7 @@ export function createContainer(backend: Backend): Container {
     links,
     attachments,
     drive: NO_DRIVE,
+    agent: NO_AGENT,
     live: {
       subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) =>
         (backend.repos[kind].subscribe as (u: ID, l: (items: EntityMap[K][]) => void, e?: (e: Error) => void) => () => void)(userId, listener, onError),
