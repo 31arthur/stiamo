@@ -4,6 +4,7 @@ import type { AgentApi, AgentDetail, AgentSettings, AgentStats, AgentSummary, Ch
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
+import { useScope } from '@/presentation/app/workspaceFilter'
 import { useUserId } from '@/presentation/data/hooks'
 
 /** Whether the agent can be used here at all: it lives in the Stiamo backend. */
@@ -84,4 +85,12 @@ export function useReview(id: string | undefined, enabled = true) {
   const { agent } = useServices()
   const userId = useUserId()
   return useQuery<ReviewItem[]>({ queryKey: ['agent', 'review', userId, id], queryFn: () => agent.review(id!), enabled: enabled && !!id, retry: false })
+}
+
+/** The agents listed in the workspace you are in; under "All workspaces", every agent. */
+export function useScopedAgents() {
+  const { settings, loading } = useAgentSettings()
+  const scope = useScope()
+  const all: AgentSummary[] = settings?.agents ?? []
+  return { scope, all, agents: scope === 'all' ? all : all.filter((a) => a.workspaces.includes(scope)), loading }
 }

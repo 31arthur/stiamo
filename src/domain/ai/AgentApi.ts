@@ -61,6 +61,8 @@ export interface AgentSummary {
   selectionInherited: boolean
   /** True when the person has written their own prompt for it. */
   customPrompt: boolean
+  /** The workspaces it is listed in. "All workspaces" lists every agent regardless. */
+  workspaces: string[]
 }
 
 /** One agent with everything the prompt editor needs. */
@@ -316,7 +318,8 @@ export interface AgentApi {
   clearRuns(agentId: string): Promise<void>
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string): Promise<DecisionResult>
   workflow(id: string): Promise<Workflow>
-  createWorkflow(name: string, description: string, config: WorkflowConfig): Promise<Workflow>
+  createWorkflow(name: string, description: string, config: WorkflowConfig, workspaces?: string[]): Promise<Workflow>
+  setWorkspaces(agentId: string, workspaces: string[]): Promise<void>
   updateWorkflow(id: string, name: string, description: string, config: WorkflowConfig): Promise<Workflow>
   deleteWorkflow(id: string): Promise<void>
   testDraft(config: WorkflowConfig, manual?: string): Promise<WorkflowRun>

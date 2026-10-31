@@ -77,8 +77,12 @@ export class RemoteAgent implements AgentApi {
     return this.http.get<Workflow>(`/v1/agent/workflows/${encodeURIComponent(id)}`)
   }
 
-  createWorkflow(name: string, description: string, config: WorkflowConfig) {
-    return this.http.post<Workflow>('/v1/agent/workflows', { name, description, config })
+  createWorkflow(name: string, description: string, config: WorkflowConfig, workspaces: string[] = []) {
+    return this.http.post<Workflow>('/v1/agent/workflows', { name, description, config, workspaces })
+  }
+
+  async setWorkspaces(agentId: string, workspaces: string[]) {
+    await this.http.put(`/v1/agent/agents/${encodeURIComponent(agentId)}/workspaces`, { workspaces })
   }
 
   updateWorkflow(id: string, name: string, description: string, config: WorkflowConfig) {

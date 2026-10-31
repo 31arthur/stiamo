@@ -7,6 +7,11 @@ describe('addresses carry the workspace', () => {
     expect(canonicalPath('/projects', 'sb')).toBe('/fsa/projects')
     expect(canonicalPath('/overview', 'sb')).toBe('/all/overview')
   })
+  it('lets agents live under any workspace', () => {
+    expect(canonicalPath('/agents/cases', 'sb')).toBe('/sb/agents/cases')
+    expect(canonicalPath('/fsa/agents', 'sb')).toBe('/fsa/agents')
+    expect(switchWorkspace('/sb/agents/cases/history', 'fsa')).toBe('/fsa/agents')
+  })
   it('puts shared sections under the workspace you are in', () => {
     expect(canonicalPath('/tasks', 'fsa')).toBe('/fsa/tasks')
     expect(canonicalPath('/today/2026-10-31', 'sb')).toBe('/sb/today/2026-10-31')
