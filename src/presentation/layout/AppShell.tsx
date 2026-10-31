@@ -186,6 +186,13 @@ function Sidebar() {
         { to: '/meetings', label: 'Meetings', icon: KIND_META.meeting.icon, badge: attention.meetingsToRecord.length },
       ],
     },
+    {
+      label: 'Direction',
+      items: [
+        { to: '/plans', label: 'Action plans', icon: KIND_META.plan.icon },
+        { to: '/goals', label: 'Goals', icon: KIND_META.goal.icon },
+      ],
+    },
     // Agents: an overview, the team (each agent is its own page, folded away when you don't need it), and the settings they share.
     {
       label: 'Agents',
@@ -195,13 +202,6 @@ function Sidebar() {
         { to: '/agents/settings', label: 'Settings', icon: SlidersHorizontal },
       ],
       fold: { key: 'team', label: 'Team', at: 1, items: teamAgents.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: a.kind === 'workflow' ? Workflow : Bot })) },
-    },
-    {
-      label: 'Direction',
-      items: [
-        { to: '/plans', label: 'Action plans', icon: KIND_META.plan.icon },
-        { to: '/goals', label: 'Goals', icon: KIND_META.goal.icon },
-      ],
     },
   ]
 
