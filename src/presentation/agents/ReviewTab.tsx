@@ -65,8 +65,17 @@ export function ReviewTab() {
       description={hint}
       actions={
         bulk && rows.length > 1 ? (
-          <Button variant="outline" size="sm" onClick={bulk} disabled={busy}>
-            <CheckCheck /> Approve all
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => {
+              const moving = trashLabel ? rows.filter((i) => labelOf(i) === trashLabel).length : 0
+              if (moving > 0 && !window.confirm(`Approve ${rows.length} and move ${moving} email${moving === 1 ? '' : 's'} to Trash?`)) return
+              bulk()
+            }}
+          >
+            <CheckCheck /> Approve all{trashLabel && rows.some((i) => labelOf(i) === trashLabel) ? ` · move ${rows.filter((i) => labelOf(i) === trashLabel).length} to Trash` : ''}
           </Button>
         ) : undefined
       }
@@ -94,7 +103,7 @@ export function ReviewTab() {
                   <ThumbsUp /> Not spam
                 </Button>
               )}
-              <Button variant="outline" size="icon-sm" aria-label={`Approve ${i.title}`} disabled={busy || !labelOf(i)} onClick={() => void decide([i.id], 'approve', labelOf(i) !== i.label ? labelOf(i) : undefined)}>
+              <Button variant="outline" size="icon-sm" title={trashLabel && labelOf(i) === trashLabel ? 'Approve: moves this email to Trash' : 'Approve: keeps this email'} aria-label={`Approve ${i.title}${trashLabel && labelOf(i) === trashLabel ? ', moves it to Trash' : ''}`} disabled={busy || !labelOf(i)} onClick={() => void decide([i.id], 'approve', labelOf(i) !== i.label ? labelOf(i) : undefined)}>
                 <Check />
               </Button>
               <Button variant="ghost" size="icon-sm" aria-label={`Dismiss ${i.title}`} disabled={busy} onClick={() => void decide([i.id], 'dismiss')}>

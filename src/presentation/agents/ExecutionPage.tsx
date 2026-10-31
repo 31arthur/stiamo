@@ -86,7 +86,12 @@ export function ExecutionPage() {
     }
   }
 
+  /** How many of these approvals would move an email to Trash: approving a row labelled with the trash label does exactly that. */
+  const willMove = (list: ExecutionItem[]) => (trashLabel ? list.filter((i) => labelOf(i) === trashLabel).length : 0)
+
   async function approveShown() {
+    const moving = willMove(rows)
+    if (moving > 0 && !window.confirm(`Approve ${rows.length} and move ${moving} email${moving === 1 ? '' : 's'} to Trash?`)) return
     // Those left as they were go in one call; one whose label was changed is a correction, sent on its own.
     const same = rows.filter((i) => labelOf(i) === i.label).map((i) => i.id)
     if (same.length) await decide(same, 'approve')
@@ -131,7 +136,7 @@ export function ExecutionPage() {
                   <X /> Dismiss all
                 </Button>
                 <Button variant="outline" size="sm" disabled={busy || !rows.some((i) => labelOf(i))} onClick={() => void approveShown()}>
-                  <CheckCheck /> Approve all
+                  <CheckCheck /> Approve all{willMove(rows) > 0 ? ` · move ${willMove(rows)} to Trash` : ''}
                 </Button>
               </>
             ) : undefined
@@ -215,7 +220,7 @@ export function ExecutionPage() {
                       </Button>
                       {active?.pending && (
                         <>
-                          <Button variant="outline" size="icon-sm" aria-label={`Approve ${m.subject || i.title}`} disabled={busy || !labelOf(i)} onClick={() => void decide([i.id], 'approve', labelOf(i) !== i.label ? labelOf(i) : undefined)}>
+                          <Button variant="outline" size="icon-sm" title={trashLabel && labelOf(i) === trashLabel ? 'Approve: moves this email to Trash' : 'Approve: keeps this email'} aria-label={`Approve ${m.subject || i.title}${trashLabel && labelOf(i) === trashLabel ? ', moves it to Trash' : ''}`} disabled={busy || !labelOf(i)} onClick={() => void decide([i.id], 'approve', labelOf(i) !== i.label ? labelOf(i) : undefined)}>
                             <Check />
                           </Button>
                           <Button variant="ghost" size="icon-sm" aria-label={`Dismiss ${m.subject || i.title}`} disabled={busy} onClick={() => void decide([i.id], 'dismiss')}>
