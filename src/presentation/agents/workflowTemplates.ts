@@ -1,4 +1,5 @@
 import type { WorkflowConfig } from '@/domain/ai/AgentApi'
+import { DEFAULT_GUIDE, withGuide } from './mailGuide'
 
 export interface WorkflowTemplate {
   id: string
@@ -68,23 +69,19 @@ export const TEMPLATES: WorkflowTemplate[] = [
     name: 'Spam filter',
     description: 'Keeps the mail that matters to a workspace and moves the rest to Trash.',
     pitch: 'Reads a mailbox, protects people you know, and clears what is irrelevant.',
-    config: {
+    config: withGuide({
       ...base,
+      prompt: '',
+      labels: [],
       filters: { sinceDays: null, newOnly: true, contains: null, limit: 100 },
       source: { kind: 'mail', accountIds: [], folder: 'INBOX' },
       batchSize: 20,
       decisionModel: null,
       decider: 'jev',
       defaultThreshold: 0.85,
-      prompt:
-        'You filter the inbox of my business. Say here what this mailbox is for and which mail is worth keeping (for example: only genuine business opportunities, enquiries, and replies from clients and partners). Everything else, such as marketing, newsletters, cold sales and automated notices, is spam. When unsure, keep it.',
-      labels: [
-        { name: 'keep', description: 'Genuine correspondence about the work of this business: opportunities, enquiries, clients, partners, replies to mail I sent.' },
-        { name: 'spam', description: 'Marketing, promotions, newsletters, cold sales outreach, automated notifications, and anything unrelated to the work.' },
-      ],
       rules: { protectedDomains: [], protectedPhrases: [], protectCorrespondents: true },
       action: { trashLabel: 'spam', auto: false },
-    },
+    }, DEFAULT_GUIDE),
   },
   {
     id: 'blank',

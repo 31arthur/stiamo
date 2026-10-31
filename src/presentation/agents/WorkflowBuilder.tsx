@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Copy, Eye, KeyRound, Play, Plus, RefreshCw, Save, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,11 @@ import { Section } from '@/presentation/components/layout'
 import { useMailAccounts, useMailAvailable } from '@/presentation/mail/useMail'
 import { toast } from '@/presentation/notifications/toast'
 import { ProvidersDialog } from './ModelPicker'
+import { DEFAULT_GUIDE, GUIDE_FIELDS, composeGuide, isGuide, withGuide, withPreset } from './mailGuide'
+import type { MailGuide } from './mailGuide'
 import { useAgentSettings } from './useAgent'
-import { WORKSPACES } from '@/domain/shared/workspace'
+import { WORKSPACES, WORKSPACE_IDS } from '@/domain/shared/workspace'
+import type { WorkspaceId } from '@/domain/shared/workspace'
 import { Link } from '@/presentation/routing'
 import { TestResults } from './TestResults'
 import { TABLE_LABELS } from './workflowTemplates'
@@ -79,17 +82,99 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
     }
   }
 
+  const guide = isGuide(cfg.guide) ? cfg.guide : null
+  // Until the person edits a section, picking a mailbox fills them in with the example for its workspace.
+  const pristine = !!guide && JSON.stringify(initial.config.guide) === JSON.stringify(DEFAULT_GUIDE)
+  const touched = useRef(!pristine)
+  const composed = guide ? composeGuide(guide, cfg.labels) : { prompt: '', labels: [] }
+  const n = (i: number, title: string) => (mail ? `${i} · ${title}` : title)
+  const setGuide = (g: MailGuide) => {
+    touched.current = true
+    setCfg((c) => withGuide(c, g))
+  }
+  const applyExample = (ws: WorkspaceId) => {
+    if (touched.current && !window.confirm(`Replace what you wrote with the example for ${WORKSPACES[ws].name}?`)) return
+    touched.current = true
+    setCfg((c) => withPreset(c, ws))
+  }
+  const pickMailboxes = (ids: string[]) =>
+    setCfg((c) => {
+      const next = { ...c, source: { ...c.source, accountIds: ids } }
+      const ws = accounts.find((a) => a.id === ids[0])?.workspace
+      return !touched.current && ws && isGuide(c.guide) ? withPreset(next, ws) : next
+    })
+
+  const rawSection = (
+    <Section title="How it decides" description="Say what the sorting is for, then define the labels. The model reads the descriptions to choose, so make them concrete.">
+          <div className="grid gap-4">
+            <textarea value={cfg.prompt} onChange={(e) => set({ prompt: e.target.value })} rows={4} placeholder="You sort my… Decide whether each item…" aria-label="What the sorting is for" className={AREA} maxLength={4000} />
+
+            <ul className="grid gap-2" aria-label="Labels">
+              {cfg.labels.map((l, i) => (
+                <li key={i} className="grid gap-2 rounded-xl border p-2.5 sm:grid-cols-[9rem_1fr_auto]">
+                  <Input value={l.name} onChange={(e) => setLabel(i, { name: slug(e.target.value) })} placeholder="label_name" aria-label="Label name" className="h-8 font-mono text-xs" />
+                  <Input value={l.description} onChange={(e) => setLabel(i, { description: e.target.value })} placeholder="What makes an item this label" aria-label="What the label means" className="h-8 text-sm" maxLength={300} />
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={l.threshold == null ? '' : Math.round(l.threshold * 100)}
+                      onChange={(e) => setLabel(i, { threshold: e.target.value === '' ? null : Math.max(0, Math.min(100, Number(e.target.value))) / 100 })}
+                      placeholder={`${Math.round(cfg.defaultThreshold * 100)}`}
+                      aria-label="Confidence needed, in percent"
+                      title="Confidence needed, in percent. Under it, the item goes to review."
+                      className="h-8 w-16 text-xs"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                    {cfg.labels.length > 2 && (
+                      <Button variant="ghost" size="icon-xs" aria-label="Remove label" onClick={() => set({ labels: cfg.labels.filter((_, j) => j !== i) })}>
+                        <Trash2 />
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {cfg.labels.length < 12 && (
+              <Button variant="ghost" size="sm" className="w-fit" onClick={() => set({ labels: [...cfg.labels, { name: '', description: '' }] })}>
+                <Plus /> Add a label
+              </Button>
+            )}
+
+            <label className="grid gap-1 border-t pt-4 text-xs text-muted-foreground sm:max-w-sm">
+              Unsure below {Math.round(cfg.defaultThreshold * 100)}%: send to review
+              <input type="range" min={0} max={100} step={5} value={Math.round(cfg.defaultThreshold * 100)} onChange={(e) => set({ defaultThreshold: Number(e.target.value) / 100 })} className="accent-[var(--foreground)]" aria-label="Default confidence needed" />
+            </label>
+          </div>
+    </Section>
+  )
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
       <div className="grid content-start gap-4">
-        <Section title="About">
+        {mail && (
+          <details className="rounded-2xl border bg-card/80 px-4 py-3" open={pristine}>
+            <summary className="cursor-pointer text-sm font-semibold">How to set this up</summary>
+            <ol className="mt-2 grid list-decimal gap-1 pl-5 text-sm text-muted-foreground">
+              <li>Name it, and choose the workspace at the bottom. It then appears under TTF in that workspace.</li>
+              <li>Choose the mailbox, and which emails: the whole inbox, the last few days, or between two dates.</li>
+              <li>Describe the inbox in the five boxes. Picking a mailbox fills them with an example for its workspace: change anything.</li>
+              <li>Keep safe: people you have written to, and any domains, phrases or addresses that must never be touched.</li>
+              <li>Choose what happens to spam. Leave “by itself” off at first, so you approve in Review.</li>
+              <li>Press Test run, read the reasons, fix the boxes if it judges wrongly, then Create agent and Run it from its page.</li>
+            </ol>
+          </details>
+        )}
+
+        <Section title={n(1, mail ? 'Name it' : 'About')}>
           <div className="grid gap-3">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Task triage" aria-label="Name" maxLength={100} />
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What it is for, in a line" aria-label="Description" maxLength={300} />
           </div>
         </Section>
 
-        <Section title="What it reads" description="The items it goes through each time. Filters are applied in code first, so you only pay for the items that matter.">
+        <Section title={n(2, 'What it reads')} description="The items it goes through each time. Filters are applied in code first, so you only pay for the items that matter.">
           <div className="grid gap-4">
             <div role="radiogroup" aria-label="Source" className="grid gap-2 sm:grid-cols-2">
               {[
@@ -126,7 +211,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                         const on = mailboxes.includes(a.id)
                         return (
                           <label key={a.id} className={cn('flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors', on ? 'border-foreground/40 bg-background' : 'hover:border-foreground/20')}>
-                            <input type="checkbox" checked={on} onChange={() => set({ source: { ...cfg.source, accountIds: on ? mailboxes.filter((id) => id !== a.id) : [...mailboxes, a.id] } })} className="size-4 accent-[var(--foreground)]" />
+                            <input type="checkbox" checked={on} onChange={() => pickMailboxes(on ? mailboxes.filter((id) => id !== a.id) : [...mailboxes, a.id])} className="size-4 accent-[var(--foreground)]" />
                             <span className="min-w-0 flex-1 truncate">
                               {a.label} <span className="text-muted-foreground">· {a.address}</span>
                             </span>
@@ -190,89 +275,93 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
           </div>
         </Section>
 
-        <Section title="How it decides" description="Say what the sorting is for, then define the labels. The model reads the descriptions to choose, so make them concrete.">
-          <div className="grid gap-4">
-            <textarea value={cfg.prompt} onChange={(e) => set({ prompt: e.target.value })} rows={4} placeholder="You sort my… Decide whether each item…" aria-label="What the sorting is for" className={AREA} maxLength={4000} />
+        {!(mail && guide) && rawSection}
 
-            <ul className="grid gap-2" aria-label="Labels">
-              {cfg.labels.map((l, i) => (
-                <li key={i} className="grid gap-2 rounded-xl border p-2.5 sm:grid-cols-[9rem_1fr_auto]">
-                  <Input value={l.name} onChange={(e) => setLabel(i, { name: slug(e.target.value) })} placeholder="label_name" aria-label="Label name" className="h-8 font-mono text-xs" />
-                  <Input value={l.description} onChange={(e) => setLabel(i, { description: e.target.value })} placeholder="What makes an item this label" aria-label="What the label means" className="h-8 text-sm" maxLength={300} />
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={l.threshold == null ? '' : Math.round(l.threshold * 100)}
-                      onChange={(e) => setLabel(i, { threshold: e.target.value === '' ? null : Math.max(0, Math.min(100, Number(e.target.value))) / 100 })}
-                      placeholder={`${Math.round(cfg.defaultThreshold * 100)}`}
-                      aria-label="Confidence needed, in percent"
-                      title="Confidence needed, in percent. Under it, the item goes to review."
-                      className="h-8 w-16 text-xs"
-                    />
-                    <span className="text-xs text-muted-foreground">%</span>
-                    {cfg.labels.length > 2 && (
-                      <Button variant="ghost" size="icon-xs" aria-label="Remove label" onClick={() => set({ labels: cfg.labels.filter((_, j) => j !== i) })}>
-                        <Trash2 />
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {cfg.labels.length < 12 && (
-              <Button variant="ghost" size="sm" className="w-fit" onClick={() => set({ labels: [...cfg.labels, { name: '', description: '' }] })}>
-                <Plus /> Add a label
-              </Button>
-            )}
-
-            <label className="grid gap-1 border-t pt-4 text-xs text-muted-foreground sm:max-w-sm">
-              Unsure below {Math.round(cfg.defaultThreshold * 100)}%: send to review
-              <input type="range" min={0} max={100} step={5} value={Math.round(cfg.defaultThreshold * 100)} onChange={(e) => set({ defaultThreshold: Number(e.target.value) / 100 })} className="accent-[var(--foreground)]" aria-label="Default confidence needed" />
-            </label>
-          </div>
-        </Section>
-
-        {mail && (
-          <Section title="What stays and what goes" description="Mail is only ever moved to Trash, never deleted. These rules are checked in code before the model is asked, so mail that matters is never at risk.">
+        {mail && guide && (
+          <Section title={n(3, 'Describe your inbox')} description="Tell the agent what this inbox is for. These five boxes are the prompt: change any of them and the instructions it reads update.">
             <div className="grid gap-4">
-              <Field label="Always keep mail from these domains" hint="Type a domain and press Enter, for example example.org. Subdomains count too.">
-                <TokenInput values={rules.protectedDomains} onChange={(v) => setRules({ protectedDomains: v })} placeholder="example.org" />
-              </Field>
-              <Field label="Always keep mail that mentions" hint="Words or phrases in the sender, the subject or the start of the message.">
-                <TokenInput values={rules.protectedPhrases} onChange={(v) => setRules({ protectedPhrases: v })} placeholder="a name or phrase" />
-              </Field>
-              <SafeSendersCard rules={rules} setRules={setRules} accountIds={mailboxes} />
-              <div className="grid gap-3 border-t pt-4">
-                <label className="grid gap-1 text-xs text-muted-foreground sm:max-w-xs">
-                  Move to Trash when it is labelled
-                  <select value={action.trashLabel ?? ''} onChange={(e) => setAction({ trashLabel: e.target.value || null, auto: e.target.value ? action.auto : false })} className={SELECT}>
-                    <option value="">Nothing: only label it</option>
-                    {cfg.labels.filter((l) => l.name).map((l) => (
-                      <option key={l.name} value={l.name}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={cn('flex items-start gap-2 text-sm', !action.trashLabel && 'opacity-50')}>
-                  <input type="checkbox" disabled={!action.trashLabel} checked={action.auto} onChange={(e) => setAction({ auto: e.target.checked })} className="mt-0.5 size-4 accent-[var(--foreground)]" />
-                  <span>
-                    Move it by itself when it is sure
-                    <span className="block text-xs text-muted-foreground">Off: it waits in Review until you approve it. A test run never moves anything.</span>
-                  </span>
-                </label>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                Start from the example for
+                {WORKSPACE_IDS.map((ws) => (
+                  <button key={ws} type="button" onClick={() => applyExample(ws)} className="rounded-full border px-2.5 py-1 text-foreground transition-colors hover:bg-muted">
+                    {WORKSPACES[ws].short}
+                  </button>
+                ))}
               </div>
+              {GUIDE_FIELDS.map((f) => (
+                <label key={f.key} className="grid gap-1">
+                  <span className="text-sm font-medium">{f.label}</span>
+                  <span className="text-xs text-muted-foreground">{f.hint}</span>
+                  <textarea value={guide[f.key]} onChange={(e) => setGuide({ ...guide, [f.key]: e.target.value })} rows={f.rows} placeholder={f.placeholder} maxLength={1100} className={AREA} />
+                </label>
+              ))}
+              <details className="rounded-xl border bg-muted/30 px-3 py-2 text-sm">
+                <summary className="cursor-pointer text-muted-foreground">What the agent reads, made from these boxes</summary>
+                <div className="mt-2 grid gap-2 text-xs">
+                  <pre className="rounded-lg bg-background/60 p-2.5 leading-relaxed whitespace-pre-wrap">{composed.prompt}</pre>
+                  {composed.labels.map((l) => (
+                    <p key={l.name}>
+                      <b className="font-mono">{l.name}</b>: {l.description}
+                    </p>
+                  ))}
+                </div>
+              </details>
             </div>
           </Section>
         )}
 
-        <Section title="Who decides" description="Which model reads each email and says how sure it is, and how many it reads at a time.">
+        {mail && (
+          <Section title={n(4, 'Keep safe')} description="These are checked in code before the model sees an email, so mail from them is never judged or moved.">
+            <div className="grid gap-4">
+              <SafeSendersCard rules={rules} setRules={setRules} accountIds={mailboxes} />
+              <Field label="Always keep mail from these domains" hint="Type a domain and press Enter, for example example.org. Subdomains count too.">
+                <TokenInput values={rules.protectedDomains} onChange={(v) => setRules({ protectedDomains: v })} placeholder="example.org" />
+              </Field>
+              <Field label="Always keep mail that mentions" hint="Whole words or phrases in the sender, the subject or the start of the message.">
+                <TokenInput values={rules.protectedPhrases} onChange={(v) => setRules({ protectedPhrases: v })} placeholder="a name or phrase" />
+              </Field>
+            </div>
+          </Section>
+        )}
+
+        {mail && (
+          <Section title={n(5, 'What happens to spam')} description="Mail is only ever moved to Trash, never deleted: the provider keeps it there, so anything moved by mistake can be put back.">
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-xs text-muted-foreground sm:max-w-xs">
+                Move to Trash when it is labelled
+                <select value={action.trashLabel ?? ''} onChange={(e) => setAction({ trashLabel: e.target.value || null, auto: e.target.value ? action.auto : false })} className={SELECT}>
+                  <option value="">Nothing: only label it</option>
+                  {cfg.labels.filter((l) => l.name).map((l) => (
+                    <option key={l.name} value={l.name}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={cn('flex items-start gap-2 text-sm', !action.trashLabel && 'opacity-50')}>
+                <input type="checkbox" disabled={!action.trashLabel} checked={action.auto} onChange={(e) => setAction({ auto: e.target.checked })} className="mt-0.5 size-4 accent-[var(--foreground)]" />
+                <span>
+                  Move it by itself when it is sure
+                  <span className="block text-xs text-muted-foreground">Off: it waits in Review until you approve it. A test run never moves anything.</span>
+                </span>
+              </label>
+            </div>
+          </Section>
+        )}
+
+        <Section title={n(6, 'Who decides')} description="Which model reads each email and says how sure it is, and how many it reads at a time.">
           <Deciding cfg={cfg} set={set} />
         </Section>
 
-        <Section title="The prompt" description="Exactly what the model is sent for this setup, filled with two example emails. Nothing is asked of any model to show it.">
+        {mail && guide && (
+          <details className="rounded-2xl border bg-card/80 px-4 py-3">
+            <summary className="cursor-pointer text-sm font-semibold">Advanced: the full prompt and the labels</summary>
+            <p className="mt-2 text-xs text-muted-foreground">Editing the five boxes above rewrites these. Change them here only for fine control, such as a different confidence for each label.</p>
+            <div className="mt-3">{rawSection}</div>
+          </details>
+        )}
+
+        <Section title={n(7, 'The prompt')} description="Exactly what the model is sent for this setup, filled with two example emails. Nothing is asked of any model to show it.">
           <PromptView cfg={cfg} />
         </Section>
 
