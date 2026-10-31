@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, CalendarDays, CalendarRange, ChevronsUpDown, Menu, NotebookPen, Search, Sun } from 'lucide-react'
+import { Check, CalendarDays, CalendarRange, ChevronsUpDown, Mail, Menu, NotebookPen, Search, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -141,6 +141,7 @@ function Sidebar() {
       label: 'Legal',
       items: [
         { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length, tone: 'danger' },
+        ...(scope === 'sb' ? [{ to: '/letters', label: 'Letters', icon: Mail }] : []),
         { to: '/diary', label: 'Case diary', icon: NotebookPen },
         { to: '/counsel', label: 'Counsel', icon: KIND_META.counsel.icon },
       ],
