@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ExternalLink, Info, ShieldQuestion } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
@@ -85,8 +85,74 @@ export function LinkViewer({ link, name }: { link: DocumentLink; name: string })
   )
 }
 
-/** A Word document, read in the browser and shown in a locked-down frame (no scripts run). */
+/**
+ * A Word document as it was written: pages with their letterhead (the header and footer), images, tables and fonts, drawn in the
+ * browser. If that can't be done for a file, its text is shown instead.
+ */
 export function DocxViewer({ url }: { url: string }) {
+  const host = useRef<HTMLDivElement>(null)
+  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading')
+
+  useEffect(() => {
+    const el = host.current
+    if (!el) return
+    let live = true
+    setState('loading')
+
+    /** Shrinks the pages to fit a narrow screen; on a wide one they stay their real size. */
+    const fit = () => {
+      const wrapper = el.firstElementChild as HTMLElement | null
+      const page = el.querySelector<HTMLElement>('section.docx')
+      if (!wrapper || !page) return
+      wrapper.style.setProperty('zoom', '1')
+      const scale = Math.min(1, (el.clientWidth - 24) / page.offsetWidth)
+      wrapper.style.setProperty('zoom', String(Math.max(0.3, scale)))
+    }
+    const watch = new ResizeObserver(fit)
+
+    void (async () => {
+      try {
+        const buffer = await (await fetchBuffer(url)).arrayBuffer()
+        const { renderAsync } = await import('docx-preview')
+        if (!live) return
+        el.replaceChildren()
+        await renderAsync(buffer, el, undefined, { className: 'docx', inWrapper: true, renderHeaders: true, renderFooters: true, renderFootnotes: true, renderEndnotes: true, breakPages: true, useBase64URL: true })
+        if (!live) return
+        fit()
+        watch.observe(el)
+        setState('ready')
+      } catch {
+        if (live) setState('failed')
+      }
+    })()
+
+    return () => {
+      live = false
+      watch.disconnect()
+      el.replaceChildren()
+    }
+  }, [url])
+
+  // A link in a letter opens in a new tab; it never takes the app over.
+  const onClick = (e: React.MouseEvent) => {
+    const a = (e.target as HTMLElement).closest('a')
+    if (!a) return
+    e.preventDefault()
+    const href = a.getAttribute('href') ?? ''
+    if (/^https?:\/\//i.test(href)) window.open(href, '_blank', 'noopener,noreferrer')
+  }
+
+  if (state === 'failed') return <DocxTextViewer url={url} />
+  return (
+    <div className="relative size-full overflow-auto bg-muted/50">
+      {state === 'loading' && <Loading />}
+      <div ref={host} onClick={onClick} className={cn('min-h-full [&_.docx-wrapper]:min-h-full [&_.docx-wrapper]:bg-transparent [&_.docx-wrapper]:p-3', state === 'loading' && 'invisible absolute')} />
+    </div>
+  )
+}
+
+/** The text of a Word document, in a locked-down frame (no scripts run). For files that can't be drawn as pages. */
+function DocxTextViewer({ url }: { url: string }) {
   const result = useLoad(url, async () => {
     const buffer = await (await fetchBuffer(url)).arrayBuffer()
     const mammoth = await import('mammoth/mammoth.browser')
