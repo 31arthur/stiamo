@@ -140,7 +140,8 @@ function FileBody({ file, url }: { file: Attachment; url: string }) {
     case 'image':
       return <ImageViewer url={url} name={file.name} />
     case 'pdf':
-      return <iframe src={url} title={file.name} className="size-full border-0 bg-white" />
+      // The browser's own viewer, without its page-thumbnail sidebar, fitted to the width.
+      return <iframe src={`${url.split('#')[0]}#navpanes=0&view=FitH`} title={file.name} className="size-full border-0 bg-white" />
     case 'video':
       return (
         <Centered>
