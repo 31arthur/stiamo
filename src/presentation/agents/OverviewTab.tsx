@@ -5,7 +5,8 @@ import type { AgentSummary, RunSummary } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
 import { Section, Stat } from '@/presentation/components/layout'
 import { Link } from '@/presentation/routing'
-import { ago, compact, formatMs, triggerLabel } from './format'
+import { useMailAccounts } from '@/presentation/mail/useMail'
+import { ago, compact, formatMs, money, triggerLabel } from './format'
 import { useAgentDetail, useAgentStats, useAgentSummary, useChannels, useWorkflow } from './useAgent'
 import { TABLE_LABELS } from './workflowTemplates'
 
@@ -23,8 +24,26 @@ export function OverviewTab() {
         <Stat label={`Runs, last ${s.windowDays} days`} value={s.runs} />
         <Stat label="Succeeded" value={rate === null ? '—' : `${rate}%`} tone={rate === null ? 'default' : rate >= 95 ? 'success' : rate >= 80 ? 'warning' : 'danger'} />
         <Stat label="Average time" value={s.avgDurationMs ? formatMs(s.avgDurationMs) : '—'} />
-        <Stat label="Tokens in · out" value={s.inputTokens || s.outputTokens ? `${compact(s.inputTokens)} · ${compact(s.outputTokens)}` : '—'} />
+        <Stat label={`Tokens in · out, ${s.windowDays} days`} value={s.inputTokens || s.outputTokens ? `${compact(s.inputTokens)} · ${compact(s.outputTokens)}` : '—'} />
       </div>
+
+      <Section
+        title="Used so far"
+        description="Everything this agent has used since it began, whatever happened to its history. Cost is shown where the provider reports it."
+        actions={
+          <Link to={`/agents/usage?agent=${agent.id}&days=all`} className="text-sm font-medium hover:underline">
+            Every run
+          </Link>
+        }
+      >
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Tokens in · out" value={s.allTime.inputTokens || s.allTime.outputTokens ? `${compact(s.allTime.inputTokens)} · ${compact(s.allTime.outputTokens)}` : '—'} />
+          <Stat label="Cost" value={money(s.allTime.cost)} />
+          <Stat label="Runs" value={s.allTime.runs} />
+          {agent.kind === 'workflow' ? <Stat label="Emails judged" value={s.allTime.items ? compact(s.allTime.items) : '—'} /> : <Stat label="Failed" value={s.allTime.errors} tone={s.allTime.errors ? 'danger' : 'default'} />}
+        </div>
+        {s.allTime.runs > 0 && s.allTime.cost === null && <p className="mt-3 text-xs text-muted-foreground">This agent’s provider doesn’t report what it charged, so only tokens are counted. Models through OpenRouter, and Jev, do.</p>}
+      </Section>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
         <div className="grid content-start gap-4">
@@ -128,10 +147,11 @@ function Setup({ agent }: { agent: AgentSummary }) {
 /** The checklist for an agent someone built: what it reads, how it decides, and what is waiting for them. */
 function WorkflowSetup({ agent }: { agent: AgentSummary }) {
   const { data: w } = useWorkflow(agent.id)
+  const { accounts } = useMailAccounts()
   if (!w) return <Section title="Setup"><Spinner label="Loading" /></Section>
   const c = w.config
   const rows = [
-    { done: true, label: 'Reads', value: c.source.kind === 'manual' ? 'Text you paste' : `${TABLE_LABELS[c.source.table ?? ''] ?? c.source.table}${c.filters.sinceDays ? `, last ${c.filters.sinceDays} days` : ''}`, to: 'settings' },
+    { done: true, label: 'Reads', value: readsOf(c, accounts), to: 'settings' },
     { done: true, label: 'Sorts into', value: c.labels.map((l) => l.name).join(', '), to: 'settings' },
     c.decider === 'jev'
       ? { done: true, label: 'Decides with', value: 'Jev, the decision model', to: 'settings' }
@@ -156,4 +176,15 @@ function WorkflowSetup({ agent }: { agent: AgentSummary }) {
       </ul>
     </Section>
   )
+}
+
+/** What an agent reads, in words: the pasted text, a collection, or the mailboxes and the stretch of mail. */
+function readsOf(c: NonNullable<ReturnType<typeof useWorkflow>['data']>['config'], accounts: { id: string; label: string }[]): string {
+  if (c.source.kind === 'manual') return 'Text you paste'
+  const range = c.filters.after || c.filters.before ? `, ${c.filters.after ?? 'the start'} to ${c.filters.before ?? 'now'}` : c.filters.sinceDays ? `, last ${c.filters.sinceDays} days` : ', all of it'
+  if (c.source.kind === 'mail') {
+    const names = (c.source.accountIds ?? []).map((id) => accounts.find((a) => a.id === id)?.label ?? 'a mailbox')
+    return `${names.length ? names.join(', ') : 'No mailbox chosen'}${range}`
+  }
+  return `${TABLE_LABELS[c.source.table ?? ''] ?? c.source.table}${c.filters.sinceDays ? `, last ${c.filters.sinceDays} days` : ''}`
 }

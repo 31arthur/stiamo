@@ -1,4 +1,4 @@
-import type { AgentApi, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -54,6 +54,14 @@ export class RemoteAgent implements AgentApi {
 
   stats(agentId: string) {
     return this.http.get<AgentStats>(`/v1/agent/agents/${encodeURIComponent(agentId)}/stats`)
+  }
+
+  usageSummary(days: number | null, agent?: string) {
+    return this.http.get<UsageSummary>('/v1/agent/usage/summary', { days: days ?? undefined, agent })
+  }
+
+  usageTransactions(opts: { days: number | null; agent?: string; before?: string }) {
+    return this.http.get<UsagePage>('/v1/agent/usage/transactions', { days: opts.days ?? undefined, agent: opts.agent, before: opts.before, limit: 50 })
   }
 
   runs(agentId: string, before?: string) {
