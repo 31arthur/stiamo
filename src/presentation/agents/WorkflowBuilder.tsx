@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
 import { DateInput, Field, TokenInput } from '@/presentation/components/form'
 import { Switch } from '@/presentation/components/Switch'
+import { useConfirm } from '@/presentation/components/useConfirm'
 import { Section } from '@/presentation/components/layout'
 import { useMailAccounts, useMailAvailable } from '@/presentation/mail/useMail'
 import { toast } from '@/presentation/notifications/toast'
@@ -92,8 +93,9 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
     touched.current = true
     setCfg((c) => withGuide(c, g))
   }
-  const applyExample = (ws: WorkspaceId) => {
-    if (touched.current && !window.confirm(`Replace what you wrote with the example for ${WORKSPACES[ws].name}?`)) return
+  const { confirm, dialog } = useConfirm()
+  const applyExample = async (ws: WorkspaceId) => {
+    if (touched.current && !(await confirm({ title: 'Replace what you wrote?', description: `The five boxes are replaced with the example for ${WORKSPACES[ws].name}. The points it has learned and your other settings stay.`, confirmLabel: 'Use the example' }))) return
     touched.current = true
     setCfg((c) => withPreset(c, ws))
   }
@@ -152,6 +154,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+      {dialog}
       <div className="grid content-start gap-4">
         {mail && (
           <details className="rounded-2xl border bg-card/80 px-4 py-3" open={pristine}>
@@ -283,7 +286,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 Start from the example for
                 {WORKSPACE_IDS.map((ws) => (
-                  <button key={ws} type="button" onClick={() => applyExample(ws)} className="rounded-full border px-2.5 py-1 text-foreground transition-colors hover:bg-muted">
+                  <button key={ws} type="button" onClick={() => void applyExample(ws)} className="rounded-full border px-2.5 py-1 text-foreground transition-colors hover:bg-muted">
                     {WORKSPACES[ws].short}
                   </button>
                 ))}
