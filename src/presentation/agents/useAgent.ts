@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -105,6 +105,21 @@ export function useUsageTransactions(days: number | null, agentId?: string) {
     getNextPageParam: (last: UsagePage) => last.nextBefore ?? undefined,
     enabled: useAgentAvailable(),
     staleTime: 15_000,
+    retry: false,
+  })
+}
+
+/** The run through the whole inbox: refreshed every couple of seconds while it is going, and not at all once it has ended. */
+export function useSweep(id: string | undefined) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<Sweep | null>({
+    queryKey: ['agent', 'sweep', userId, id],
+    queryFn: () => agent.sweepStatus(id!),
+    enabled: !!id && available,
+    refetchInterval: (q) => (q.state.data?.state === 'running' ? 2000 : false),
+    staleTime: 0,
     retry: false,
   })
 }

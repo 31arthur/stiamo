@@ -269,6 +269,26 @@ export interface FeedbackSuggestion {
   senderDomain: string | null
 }
 
+/** A run through a whole inbox, going on (or finished) on the server. */
+export interface Sweep {
+  id: string
+  state: 'running' | 'done' | 'stopped' | 'failed'
+  runs: number
+  judged: number
+  moved: number
+  kept: number
+  toReview: number
+  protected: number
+  failedItems: number
+  inRange: number | null
+  remaining: number | null
+  lastRunId: string | null
+  error: string | null
+  stopRequested: boolean
+  startedAt: string
+  finishedAt: string | null
+}
+
 export type LedgerStatus = 'proposed' | 'needs_review' | 'approved' | 'dismissed' | 'kept' | 'applied' | 'protected'
 
 /** One real run of an agent you built. `counts` is what the run did; `now` is where its items stand today. */
@@ -480,6 +500,9 @@ export interface AgentApi {
   testWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   runWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   review(id: string): Promise<ReviewItem[]>
+  startSweep(id: string): Promise<Sweep>
+  sweepStatus(id: string): Promise<Sweep | null>
+  stopSweep(id: string): Promise<Sweep | null>
   executions(id: string): Promise<Execution[]>
   execution(id: string, runId: string): Promise<ExecutionDetail>
   decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string, note?: string): Promise<{ changed: number; moved?: number }>
