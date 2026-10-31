@@ -50,6 +50,8 @@ export interface DecisionModel {
 /** One agent, as the list shows it. Agents are defined on the server; whatever it offers is what appears. */
 export interface AgentSummary {
   id: string
+  /** Built into Stiamo (`chat`), or built by the person (`workflow`). */
+  kind: 'chat' | 'workflow'
   name: string
   description: string
   /** Example questions for an empty chat. */
@@ -125,6 +127,76 @@ export interface DecisionResult {
   answers: Record<string, DecisionAnswer>
   model?: string
   cost?: number
+}
+
+export type WorkflowDecider = 'model' | 'jev'
+
+export interface WorkflowLabel {
+  name: string
+  /** What it means, in observable terms: the model reads this to choose. */
+  description: string
+  /** The confidence needed to propose it; under this the item goes to review. */
+  threshold?: number | null
+}
+
+/** What a person configures for an agent that sorts a source's items. */
+export interface WorkflowConfig {
+  source: { kind: 'manual' | 'table'; table?: string | null }
+  filters: { sinceDays?: number | null; newOnly: boolean; contains?: string | null; limit: number }
+  prompt: string
+  labels: WorkflowLabel[]
+  decider: WorkflowDecider
+  defaultThreshold: number
+}
+
+export interface Workflow {
+  id: string
+  kind: 'workflow'
+  name: string
+  description: string
+  version: number
+  config: WorkflowConfig
+  lastRunAt: string | null
+  /** How many items are in each state: proposed, needs_review, approved, dismissed. */
+  ledger: Record<string, number>
+  /** Waiting for a person: proposed plus needs review. */
+  pending: number
+}
+
+export interface DecisionItem {
+  id: string
+  title: string
+  excerpt: string
+  label: string | null
+  confidence: number
+  reason: string
+  status: 'proposed' | 'needs_review' | 'failed'
+  error?: string
+  ms: number
+}
+
+/** What a test or a run did, item by item. */
+export interface WorkflowRun {
+  runId: string | null
+  mode: 'test' | 'run'
+  counts: { items: number; proposed: number; needsReview: number; failed: number }
+  /** How many items matched the filters before the cap. */
+  matched: number
+  usage: { inputTokens: number; outputTokens: number }
+  summary: string
+  durationMs: number
+  items: DecisionItem[]
+}
+
+export interface ReviewItem {
+  id: string
+  title: string
+  excerpt: string
+  label: string | null
+  confidence: number
+  reason: string
+  status: 'proposed' | 'needs_review'
+  at: string | null
 }
 
 /** Where a question came from. */
@@ -243,6 +315,15 @@ export interface AgentApi {
   run(runId: string): Promise<RunDetail>
   clearRuns(agentId: string): Promise<void>
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string): Promise<DecisionResult>
+  workflow(id: string): Promise<Workflow>
+  createWorkflow(name: string, description: string, config: WorkflowConfig): Promise<Workflow>
+  updateWorkflow(id: string, name: string, description: string, config: WorkflowConfig): Promise<Workflow>
+  deleteWorkflow(id: string): Promise<void>
+  testDraft(config: WorkflowConfig, manual?: string): Promise<WorkflowRun>
+  testWorkflow(id: string, manual?: string): Promise<WorkflowRun>
+  runWorkflow(id: string, manual?: string): Promise<WorkflowRun>
+  review(id: string): Promise<ReviewItem[]>
+  decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string): Promise<{ changed: number }>
   channels(): Promise<Channel[]>
   connectTelegram(botToken: string, agent?: string): Promise<Channel>
   connectWhatsApp(connection: WhatsAppConnection): Promise<Channel>

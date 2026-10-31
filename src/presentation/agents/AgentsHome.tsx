@@ -1,4 +1,4 @@
-import { Bot, ChevronRight } from 'lucide-react'
+import { Bot, ChevronRight, Plus, Workflow } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import type { AgentSummary } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,13 @@ export function AgentsHome() {
             <AgentCard agent={a} />
           </li>
         )) ?? <Spinner label="Loading" />}
+        <li>
+          <Link to="/agents/new" className="flex h-full min-h-32 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed p-4 text-center text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground">
+            <Plus className="size-5" />
+            <span className="text-sm font-medium">New agent</span>
+            <span className="text-xs">Sort tasks, cases or pasted messages</span>
+          </Link>
+        </li>
       </ul>
     </>
   )
@@ -32,7 +39,7 @@ function AgentCard({ agent }: { agent: AgentSummary }) {
     <Link to={`/agents/${agent.id}`} className="group flex h-full flex-col gap-3 rounded-2xl border bg-card/80 p-4 transition-all hover:-translate-y-px hover:border-foreground/20 hover:shadow-float">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted">
-          <Bot className="size-5" />
+          {agent.kind === 'workflow' ? <Workflow className="size-5" /> : <Bot className="size-5" />}
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-semibold">{agent.name}</h2>

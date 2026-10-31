@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bot, Check, CalendarDays, CalendarRange, ChevronsUpDown, KeyRound, LayoutDashboard, LayoutGrid, Mail, Menu, NotebookPen, Scale, Search, Sun } from 'lucide-react'
+import { Bot, Check, CalendarDays, CalendarRange, ChevronsUpDown, KeyRound, LayoutDashboard, LayoutGrid, Mail, Menu, NotebookPen, Plus, Scale, Search, Sun, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -175,7 +175,8 @@ function Sidebar() {
             label: 'Agents',
             items: [
               { to: '/agents', label: 'All agents', icon: LayoutGrid, end: true },
-              ...(agentSettings?.agents ?? []).map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: Bot })),
+              ...(agentSettings?.agents ?? []).map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: a.kind === 'workflow' ? Workflow : Bot })),
+              { to: '/agents/new', label: 'New agent', icon: Plus },
               { to: '/agents/providers', label: 'Providers', icon: KeyRound },
               { to: '/agents/decisions', label: 'Decision models', icon: Scale },
             ] as NavItem[],

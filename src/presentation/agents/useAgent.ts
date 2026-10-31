@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import type { AgentApi, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel } from '@/domain/ai/AgentApi'
+import type { AgentApi, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -70,4 +70,18 @@ export function useAgentDetail(agentId: string | undefined) {
   const { agent } = useServices()
   const userId = useUserId()
   return useQuery<AgentDetail>({ queryKey: ['agent', 'detail', userId, agentId], queryFn: () => agent.agent(agentId!), enabled: !!agentId, retry: false })
+}
+
+/** An agent someone built: its setup and how many items wait for them. */
+export function useWorkflow(id: string | undefined, enabled = true) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  return useQuery<Workflow>({ queryKey: ['agent', 'workflow', userId, id], queryFn: () => agent.workflow(id!), enabled: enabled && !!id, retry: false })
+}
+
+/** What an agent proposed or wasn't sure about, waiting for a person. */
+export function useReview(id: string | undefined, enabled = true) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  return useQuery<ReviewItem[]>({ queryKey: ['agent', 'review', userId, id], queryFn: () => agent.review(id!), enabled: enabled && !!id, retry: false })
 }
