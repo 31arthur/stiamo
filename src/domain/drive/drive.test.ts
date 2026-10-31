@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { casesForFile, fileKind, nameForContent, caseSearchTerms, driveFileAsAttachment, driveFileId, isGoogleDoc, NO_DRIVE } from './Drive'
+import { casesForFile, groupLetters, fileKind, nameForContent, caseSearchTerms, driveFileAsAttachment, driveFileId, isGoogleDoc, NO_DRIVE } from './Drive'
 
 describe('what identifies a case in a letter', () => {
   it('uses our number, the court’s number, the title, the client and the other side', () => {
@@ -76,5 +76,21 @@ describe('what kind of file it is', () => {
   it('gives an exported Google document the extension of what arrived', () => {
     expect(nameForContent('Notes', 'application/pdf')).toBe('Notes.pdf')
     expect(nameForContent('Wages.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')).toBe('Wages.xlsx')
+  })
+})
+
+describe('versions of one letter', () => {
+  const f = (id: string, name: string, modifiedTime: string) => ({ id, name, mimeType: 'x', modifiedTime })
+  it('puts the same letter saved in two formats together, newest version first', () => {
+    const out = groupLetters([f('1', '[2026102201] KTR Anna Letter.docx', '2026-10-22T09:00:00Z'), f('2', '[2026102201] KTR Anna Letter.pdf', '2026-10-22T10:00:00Z'), f('3', 'Other.pdf', '2026-10-01T10:00:00Z')])
+    expect(out.map((l) => l.title)).toEqual(['[2026102201] KTR Anna Letter', 'Other'])
+    expect(out[0].files.map((x) => x.id)).toEqual(['2', '1'])
+    expect(out[0].modifiedTime).toBe('2026-10-22T10:00:00Z')
+  })
+  it('ignores stray spaces before the extension and capital letters', () => {
+    expect(groupLetters([f('1', 'Plea NHAI RB .pdf', 'a'), f('2', 'plea nhai rb .DOCX', 'b')])).toHaveLength(1)
+  })
+  it('keeps different letters apart', () => {
+    expect(groupLetters([f('1', 'Letter 1.pdf', 'a'), f('2', 'Letter 2.pdf', 'b')])).toHaveLength(2)
   })
 })
