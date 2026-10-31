@@ -201,6 +201,13 @@
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
   }
+  /* Scrolls, but without drawing a scrollbar (tab strips, the sidebar). */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
   /* 15-minute ruled lines for the day timeline, hour lines stronger. */
   .timeline-grid {
     background-image:
