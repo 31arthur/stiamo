@@ -24,6 +24,9 @@ const LettersPage = lazy(() => import('@/presentation/pages/LettersPage').then((
 const OverviewPage = lazy(() => import('@/presentation/pages/OverviewPage').then((m) => ({ default: m.OverviewPage })))
 const AiLayout = lazy(() => import('@/presentation/ai/AiLayout').then((m) => ({ default: m.AiLayout })))
 const AgentPage = lazy(() => import('@/presentation/ai/AgentPage').then((m) => ({ default: m.AgentPage })))
+const PromptPage = lazy(() => import('@/presentation/ai/PromptPage').then((m) => ({ default: m.PromptPage })))
+const DecisionsPage = lazy(() => import('@/presentation/ai/DecisionsPage').then((m) => ({ default: m.DecisionsPage })))
+const ChannelsPage = lazy(() => import('@/presentation/ai/ChannelsPage').then((m) => ({ default: m.ChannelsPage })))
 const ProvidersPage = lazy(() => import('@/presentation/ai/ProvidersPage').then((m) => ({ default: m.ProvidersPage })))
 const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
 const GoalDetailPage = lazy(() => import('@/presentation/pages/GoalDetailPage').then((m) => ({ default: m.GoalDetailPage })))
@@ -49,6 +52,9 @@ export default function App({ container }: { container: Container }) {
                   <Route path="overview" element={<OverviewPage />} />
                   <Route path="ai" element={<AiLayout />}>
                     <Route index element={<AgentPage />} />
+                    <Route path="prompt" element={<PromptPage />} />
+                    <Route path="decisions" element={<DecisionsPage />} />
+                    <Route path="channels" element={<ChannelsPage />} />
                     <Route path="providers" element={<ProvidersPage />} />
                   </Route>
                   <Route path="today/:date?" element={<TodayPage />} />

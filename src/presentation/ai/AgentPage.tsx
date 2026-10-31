@@ -1,22 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { ArrowUp, Brain, ChevronDown, KeyRound, Sparkles, Square, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Command, CommandDialog, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Spinner } from '@/components/ui/spinner'
-import { createLlmClient } from '@/data/ai/store'
-import { runAgent } from '@/domain/ai/agent'
-import type { AgentStep, Found } from '@/domain/ai/agent'
-import { buildCaseTools, caseAgentPrompt } from '@/domain/ai/caseTools'
+import type { AgentStep, Found } from '@/domain/ai/AgentApi'
 import { PROVIDERS, THINKING_LABELS } from '@/domain/ai/types'
-import type { AiSelection, Message, ModelInfo, ProviderId, ThinkingLevel } from '@/domain/ai/types'
+import type { ModelInfo, ProviderId, ThinkingLevel } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
 import { EmptyState, Section } from '@/presentation/components/layout'
-import { useEntities, useToday } from '@/presentation/data/hooks'
 import { useDriveStatus } from '@/presentation/drive/useDrive'
 import { Link } from '@/presentation/routing'
 import { FoundCards } from './FoundCards'
-import { useAiSettings, useModels } from './useAi'
+import { useAgentAction, useAgentSettings, useModels } from './useAgent'
 
 interface Turn {
   id: number
@@ -36,67 +32,56 @@ const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm o
 /** The default level for a model: a middling one where there is a choice, otherwise whatever it allows. */
 const defaultThinking = (m?: ModelInfo): ThinkingLevel => (m?.thinking.includes('medium') ? 'medium' : (m?.thinking[0] ?? 'off'))
 
-/** Ask about cases; the agent searches them and the Drive, and shows what it found. */
+/** Ask about cases; the agent (on the server) searches them and the Drive, and shows what it found. */
 export function AgentPage() {
-  const services = useServices()
-  const today = useToday()
+  const { agent } = useServices()
   const drive = useDriveStatus()
-  const { settings, connected, setSelection } = useAiSettings()
-  const { data: cases } = useEntities('case')
-  const { data: hearings } = useEntities('hearing')
-  const { data: attachments } = useEntities('attachment')
+  const { settings, connected, loading } = useAgentSettings()
+  const setSelection = useAgentAction((a, s: { providerId: ProviderId; modelId: string; thinking: ThinkingLevel }) => a.setSelection(s))
 
-  const selection: AiSelection | undefined = settings.selection && settings.keys[settings.selection.providerId] ? settings.selection : undefined
-  const provider: ProviderId | undefined = selection?.providerId ?? connected[0]
-  const apiKey = provider ? settings.keys[provider] : undefined
-  const models = useModels(provider, apiKey)
+  const selection = settings?.selection ?? null
+  const provider: ProviderId | undefined = selection && connected.includes(selection.providerId) ? selection.providerId : connected[0]
+  const models = useModels(provider, !!provider)
   const model = models.data?.find((m) => m.id === selection?.modelId)
-  // Until the model list is known, what was chosen stands.
   const thinking: ThinkingLevel = !model ? (selection?.thinking ?? 'off') : model.thinking.includes(selection!.thinking) ? selection!.thinking : defaultThinking(model)
 
   const [turns, setTurns] = useState<Turn[]>([])
-  const [history, setHistory] = useState<Message[]>([])
+  const [history, setHistory] = useState<unknown[]>([])
   const [text, setText] = useState('')
   const [picking, setPicking] = useState(false)
-  const abort = useRef<AbortController | null>(null)
+  const stopped = useRef(new Set<number>())
   const turnIds = useRef(0)
   const end = useRef<HTMLDivElement>(null)
   const busy = turns.some((t) => t.pending)
+  const ready = !!selection?.modelId && selection.providerId === provider
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [turns])
 
-  const tools = useMemo(() => buildCaseTools({ cases, hearings, attachments, drive: services.drive, driveAvailable: drive.available, today }), [cases, hearings, attachments, services.drive, drive.available, today])
-
   const patch = (id: number, p: Partial<Turn>) => setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...p } : t)))
 
   async function ask(question: string) {
-    if (!provider || !apiKey || !selection?.modelId || busy || !question.trim()) return
+    if (!ready || busy || !question.trim()) return
     const id = ++turnIds.current
-    const controller = new AbortController()
-    abort.current = controller
     setTurns((all) => [...all, { id, question, steps: [], found: [], pending: true }])
     setText('')
     try {
-      const run = await runAgent({
-        client: createLlmClient(provider, apiKey),
-        model: selection.modelId,
-        thinking,
-        system: caseAgentPrompt(today),
-        tools,
-        history,
-        question,
-        signal: controller.signal,
-        onStep: (step) => setTurns((all) => all.map((t) => (t.id === id ? { ...t, steps: [...t.steps, step], found: [...t.found, ...step.found] } : t))),
-      })
-      setHistory(run.messages)
-      patch(id, { answer: run.answer || 'I found nothing to say about that.', found: run.found, pending: false })
+      const reply = await agent.chat(question, history)
+      if (stopped.current.has(id)) return // the person stopped waiting; the turn is already marked
+      setHistory(reply.messages)
+      patch(id, { answer: reply.answer || 'I found nothing to say about that.', steps: reply.steps, found: reply.found, pending: false })
     } catch (e) {
-      if (controller.signal.aborted) patch(id, { stopped: true, pending: false })
-      else patch(id, { error: e instanceof Error ? e.message : 'Something went wrong.', pending: false })
-    } finally {
-      abort.current = null
+      if (!stopped.current.has(id)) patch(id, { error: e instanceof Error ? e.message : 'Something went wrong.', pending: false })
+    }
+  }
+
+  const stop = () => {
+    for (const t of turns) {
+      if (t.pending) {
+        stopped.current.add(t.id)
+        patch(t.id, { stopped: true, pending: false })
+      }
     }
   }
 
@@ -111,17 +96,17 @@ export function AgentPage() {
     }
   }
 
-  const pickProvider = (id: ProviderId) => setSelection({ providerId: id, modelId: '', thinking: 'off' })
+  const pickProvider = (id: ProviderId) => void setSelection.run({ providerId: id, modelId: '', thinking: 'off' })
   const pickModel = (m: ModelInfo) => {
-    setSelection({ providerId: provider!, modelId: m.id, thinking: defaultThinking(m) })
+    void setSelection.run({ providerId: provider!, modelId: m.id, thinking: defaultThinking(m) })
     setPicking(false)
   }
   const clear = () => {
-    abort.current?.abort()
     setTurns([])
     setHistory([])
   }
 
+  if (loading) return <Spinner label="Loading" />
   if (connected.length === 0) {
     return (
       <Section>
@@ -164,7 +149,7 @@ export function AgentPage() {
         {model && model.thinking.length > 0 && (
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Brain className="size-3.5" /> Thinking
-            <select aria-label="Thinking" value={thinking} onChange={(e) => setSelection({ ...selection!, thinking: e.target.value as ThinkingLevel })} className={SELECT}>
+            <select aria-label="Thinking" value={thinking} onChange={(e) => void setSelection.run({ providerId: provider!, modelId: model.id, thinking: e.target.value as ThinkingLevel })} className={SELECT}>
               {model.thinking.map((l) => (
                 <option key={l} value={l}>
                   {THINKING_LABELS[l]}
@@ -179,8 +164,8 @@ export function AgentPage() {
           </span>
         )}
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/ai/providers" />}>
-            <KeyRound /> Providers
+          <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/ai/prompt" />}>
+            Prompt
           </Button>
           {turns.length > 0 && (
             <Button variant="ghost" size="sm" onClick={clear}>
@@ -200,12 +185,12 @@ export function AgentPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {SUGGESTIONS.map((s) => (
-              <button key={s} type="button" disabled={!selection?.modelId} onClick={() => void ask(s)} className="rounded-full border bg-card/70 px-3 py-1.5 text-left text-sm transition-colors hover:border-foreground/30 hover:bg-card disabled:opacity-50">
+              <button key={s} type="button" disabled={!ready} onClick={() => void ask(s)} className="rounded-full border bg-card/70 px-3 py-1.5 text-left text-sm transition-colors hover:border-foreground/30 hover:bg-card disabled:opacity-50">
                 {s}
               </button>
             ))}
           </div>
-          {!selection?.modelId && <p className="text-xs text-muted-foreground">Choose a model above to begin.</p>}
+          {!ready && <p className="text-xs text-muted-foreground">Choose a model above to begin.</p>}
         </div>
       ) : (
         <div className="grid gap-6">
@@ -222,17 +207,17 @@ export function AgentPage() {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           rows={1}
-          placeholder={selection?.modelId ? 'Ask about a case, a party, a court number, a document…' : 'Choose a model first'}
-          disabled={!selection?.modelId}
+          placeholder={ready ? 'Ask about a case, a party, a court number, a document…' : 'Choose a model first'}
+          disabled={!ready}
           aria-label="Ask the case agent"
           className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50"
         />
         {busy ? (
-          <Button type="button" size="icon" variant="outline" aria-label="Stop" onClick={() => abort.current?.abort()}>
+          <Button type="button" size="icon" variant="outline" aria-label="Stop waiting" onClick={stop}>
             <Square />
           </Button>
         ) : (
-          <Button type="submit" size="icon" aria-label="Send" disabled={!text.trim() || !selection?.modelId}>
+          <Button type="submit" size="icon" aria-label="Send" disabled={!text.trim() || !ready}>
             <ArrowUp />
           </Button>
         )}
@@ -274,7 +259,7 @@ function TurnView({ turn }: { turn: Turn }) {
             <li key={i} className="flex items-center gap-1.5">
               <Wrench className="size-3 shrink-0" />
               <span className="min-w-0 truncate">{s.label}</span>
-              <span className={s.error ? 'text-destructive' : ''}>· {s.error ? s.error : `${s.found.length} found`}</span>
+              <span className={s.error ? 'text-destructive' : ''}>· {s.error ? s.error : `${s.found} found`}</span>
             </li>
           ))}
         </ul>
@@ -282,7 +267,7 @@ function TurnView({ turn }: { turn: Turn }) {
 
       {turn.pending && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-          <Spinner size="xs" tone="current" decorative /> {turn.steps.length ? 'Reading what it found…' : 'Thinking…'}
+          <Spinner size="xs" tone="current" decorative /> Searching and thinking…
         </p>
       )}
       {turn.error && (
@@ -290,7 +275,7 @@ function TurnView({ turn }: { turn: Turn }) {
           {turn.error}
         </p>
       )}
-      {turn.stopped && <p className="text-sm text-muted-foreground">Stopped.</p>}
+      {turn.stopped && <p className="text-sm text-muted-foreground">Stopped waiting.</p>}
       {turn.answer && <p className="max-w-3xl text-sm leading-relaxed whitespace-pre-wrap">{turn.answer}</p>}
       <FoundCards found={turn.found} />
     </div>
