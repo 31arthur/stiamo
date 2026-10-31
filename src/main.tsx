@@ -15,6 +15,28 @@ const applyScheme = () => document.documentElement.classList.toggle('dark', dark
 applyScheme()
 darkQuery.addEventListener('change', applyScheme)
 
+// A tab left open across a deploy still points at page files the new build has replaced. When one can't be loaded, fetch the
+// current build once (a second failure in a row is a real outage, so it is left alone).
+const RELOADED = 'stiamo.chunk-reload'
+const reloadForNewBuild = () => {
+  try {
+    const last = Number(sessionStorage.getItem(RELOADED) ?? 0)
+    if (Date.now() - last < 30_000) return
+    sessionStorage.setItem(RELOADED, String(Date.now()))
+  } catch {
+    // Without session storage, reloading could loop: do nothing.
+    return
+  }
+  window.location.reload()
+}
+window.addEventListener('vite:preloadError', (e) => {
+  e.preventDefault()
+  reloadForNewBuild()
+})
+window.addEventListener('unhandledrejection', (e) => {
+  if (/dynamically imported module|Importing a module script failed/i.test(String(e.reason?.message ?? e.reason))) reloadForNewBuild()
+})
+
 // Online with the Stiamo backend when VITE_API_URL is set; else with Supabase when configured (.env.local);
 // otherwise fully offline on browser storage. Each is loaded as its own chunk, only when used.
 const apiConfig = readApiConfig()
