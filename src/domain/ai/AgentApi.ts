@@ -157,6 +157,8 @@ export interface WorkflowConfig {
   decisionModel?: string | null
   /** How many items go to the model in one request; 1 asks about each alone. */
   batchSize?: number
+  /** The prompt as five sections a person wrote (see mailGuide.ts); the prompt and labels are made from them. */
+  guide?: Record<string, string> | null
 }
 
 export interface Workflow {
