@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { KeyRound, Play, Plus, Save, Trash2 } from 'lucide-react'
+import { Copy, Eye, KeyRound, Play, Plus, RefreshCw, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { WorkflowConfig, WorkflowRun } from '@/domain/ai/AgentApi'
+import type { PromptPreview, WorkflowConfig, WorkflowRun } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
 import { Field, TokenInput } from '@/presentation/components/form'
 import { Section } from '@/presentation/components/layout'
 import { useMailAccounts, useMailAvailable } from '@/presentation/mail/useMail'
+import { toast } from '@/presentation/notifications/toast'
+import { ProvidersDialog } from './ModelPicker'
+import { useAgentSettings } from './useAgent'
 import { WORKSPACES } from '@/domain/shared/workspace'
 import { Link } from '@/presentation/routing'
 import { TestResults } from './TestResults'
@@ -57,7 +60,8 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
   const action = cfg.action ?? { trashLabel: null, auto: false }
   const setRules = (p: Partial<typeof rules>) => set({ rules: { ...rules, ...p } })
   const setAction = (p: Partial<typeof action>) => set({ action: { ...action, ...p } })
-  const needsMailbox = mail && !cfg.source.accountId
+  const mailboxes = cfg.source.accountIds ?? []
+  const needsMailbox = mail && mailboxes.length === 0
   const dirty = JSON.stringify({ name, description, cfg }) !== JSON.stringify({ name: initial.name, description: initial.description, cfg: initial.config })
 
   async function test() {
@@ -68,6 +72,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
     } catch (e) {
       setRun(null)
       setError(e instanceof Error ? e.message : 'The test failed.')
+      toast.error(`${name.trim() || 'The agent'}: the test run failed`, { description: e instanceof Error ? e.message : undefined })
     } finally {
       setTesting(false)
     }
@@ -96,7 +101,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                   type="button"
                   role="radio"
                   aria-checked={cfg.source.kind === o.kind}
-                  onClick={() => set({ source: { kind: o.kind, table: o.kind === 'table' ? (cfg.source.table ?? 'tasks') : null, accountId: o.kind === 'mail' ? (cfg.source.accountId ?? accounts[0]?.id ?? null) : null, folder: 'INBOX' }, filters: { ...cfg.filters, newOnly: o.kind !== 'manual' } })}
+                  onClick={() => set({ source: { kind: o.kind, table: o.kind === 'table' ? (cfg.source.table ?? 'tasks') : null, accountIds: o.kind === 'mail' ? (mailboxes.length ? mailboxes : accounts.slice(0, 1).map((a) => a.id)) : undefined, folder: 'INBOX' }, filters: { ...cfg.filters, newOnly: o.kind !== 'manual' } })}
                   className={cn('rounded-xl border p-3 text-left transition-colors', cfg.source.kind === o.kind ? 'border-foreground/40 bg-background shadow-float' : 'hover:border-foreground/20')}
                 >
                   <span className="block text-sm font-medium">{o.title}</span>
@@ -109,17 +114,27 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
             {!manual && (
               <div className="grid gap-3 sm:grid-cols-2">
                 {mail ? (
-                  <label className="grid gap-1 text-xs text-muted-foreground">
-                    Mailbox
-                    <select value={cfg.source.accountId ?? ''} onChange={(e) => set({ source: { ...cfg.source, accountId: e.target.value || null } })} className={SELECT}>
-                      <option value="">Choose a mailbox…</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.label} ({WORKSPACES[a.workspace].short})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <fieldset className="grid gap-1.5 sm:col-span-2">
+                    <legend className="mb-1 text-xs text-muted-foreground">Mailboxes it reads (one or several)</legend>
+                    {accounts.length === 0 ? (
+                      <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">
+                        No mailbox is connected yet. <Link to="/mail" className="underline underline-offset-2">Connect one in Mail</Link>, then come back.
+                      </p>
+                    ) : (
+                      accounts.map((a) => {
+                        const on = mailboxes.includes(a.id)
+                        return (
+                          <label key={a.id} className={cn('flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors', on ? 'border-foreground/40 bg-background' : 'hover:border-foreground/20')}>
+                            <input type="checkbox" checked={on} onChange={() => set({ source: { ...cfg.source, accountIds: on ? mailboxes.filter((id) => id !== a.id) : [...mailboxes, a.id] } })} className="size-4 accent-[var(--foreground)]" />
+                            <span className="min-w-0 flex-1 truncate">
+                              {a.label} <span className="text-muted-foreground">· {a.address}</span>
+                            </span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{WORKSPACES[a.workspace].short}</span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </fieldset>
                 ) : (
                   <label className="grid gap-1 text-xs text-muted-foreground">
                     Collection
@@ -240,6 +255,14 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
           </Section>
         )}
 
+        <Section title="Who decides" description="Which model reads each email and says how sure it is, and how many it reads at a time.">
+          <Deciding cfg={cfg} set={set} />
+        </Section>
+
+        <Section title="The prompt" description="Exactly what the model is sent for this setup, filled with two example emails. Nothing is asked of any model to show it.">
+          <PromptView cfg={cfg} />
+        </Section>
+
         {extra}
 
         <div className="flex flex-wrap items-center gap-2">
@@ -276,6 +299,135 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
           </div>
         </Section>
       </div>
+    </div>
+  )
+}
+
+const BATCHES = [
+  { value: 1, label: 'One at a time' },
+  { value: 10, label: '10 per request' },
+  { value: 20, label: '20 per request' },
+  { value: 30, label: '30 per request' },
+  { value: 50, label: '50 per request' },
+]
+
+/** The decision model (or the agent's own), where it is reached, and how many items go in one request. */
+function Deciding({ cfg, set }: { cfg: WorkflowConfig; set: (p: Partial<WorkflowConfig>) => void }) {
+  const { settings } = useAgentSettings()
+  const [connecting, setConnecting] = useState(false)
+  const jev = cfg.decider === 'jev'
+  const key = settings?.providers.openrouter
+  const models = settings?.decisionModels ?? []
+  const batch = cfg.batchSize ?? 1
+
+  return (
+    <div className="grid gap-4">
+      <div role="radiogroup" aria-label="Decider" className="grid gap-2 sm:grid-cols-2">
+        {[
+          { id: 'jev' as const, title: 'Jev, the decision model', hint: 'Made to choose between options and say how sure it is.' },
+          { id: 'model' as const, title: 'The agent’s own model', hint: 'A chat model from OpenAI, Gemini or OpenRouter, chosen in Settings.' },
+        ].map((o) => (
+          <button key={o.id} type="button" role="radio" aria-checked={cfg.decider === o.id} onClick={() => set({ decider: o.id })} className={cn('rounded-xl border p-3 text-left transition-colors', cfg.decider === o.id ? 'border-foreground/40 bg-background shadow-float' : 'hover:border-foreground/20')}>
+            <span className="block text-sm font-medium">{o.title}</span>
+            <span className="block text-xs text-muted-foreground">{o.hint}</span>
+          </button>
+        ))}
+      </div>
+
+      {jev ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-1 text-xs text-muted-foreground">
+            Provider
+            <div className="flex h-8 items-center gap-2 rounded-lg border px-2.5 text-sm text-foreground">
+              <span className="flex-1">OpenRouter</span>
+              {key?.connected ? <span className="text-xs text-success">Connected {key.last4 ? `· …${key.last4}` : ''}</span> : <span className="text-xs text-warning">Not connected</span>}
+            </div>
+            <Button variant="ghost" size="xs" className="w-fit text-muted-foreground" onClick={() => setConnecting(true)}>
+              <KeyRound /> {key?.connected ? 'Change the key' : 'Connect OpenRouter'}
+            </Button>
+          </div>
+          <label className="grid content-start gap-1 text-xs text-muted-foreground">
+            Decision model
+            <select value={cfg.decisionModel ?? ''} onChange={(e) => set({ decisionModel: e.target.value || null })} className={SELECT}>
+              <option value="">Your default{settings?.decision?.modelId ? ` (${models.find((m) => m.id === settings.decision?.modelId)?.name ?? settings.decision.modelId})` : ''}</option>
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <ProvidersDialog open={connecting} onOpenChange={setConnecting} />
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Choose its provider and model in this agent’s Settings once it is saved.</p>
+      )}
+
+      <label className="grid gap-1 text-xs text-muted-foreground sm:max-w-xs">
+        Emails per request
+        <select value={batch} onChange={(e) => set({ batchSize: Number(e.target.value) })} className={SELECT}>
+          {BATCHES.map((b) => (
+            <option key={b.value} value={b.value}>
+              {b.label}
+            </option>
+          ))}
+        </select>
+        <span>{batch > 1 ? 'The instructions are sent once for the whole batch, so it costs less. An email the model skips is asked about alone.' : 'Every email is its own request: the most expensive way.'}</span>
+      </label>
+    </div>
+  )
+}
+
+/** The prompt as the model gets it, built by the server with the same code that runs the agent. */
+function PromptView({ cfg }: { cfg: WorkflowConfig }) {
+  const { agent } = useServices()
+  const [view, setView] = useState<PromptPreview | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    setBusy(true)
+    try {
+      setView(await agent.promptPreview(cfg))
+    } catch (e) {
+      toast.error('Couldn’t build the prompt', { description: e instanceof Error ? e.message : undefined })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const copy = (text: string) => navigator.clipboard.writeText(text).then(() => toast.success('Copied'), () => toast.error('Couldn’t copy. Select it and copy by hand.'))
+  const block = (title: string, text: string) => (
+    <div className="grid gap-1">
+      <div className="flex items-center justify-between">
+        <h4 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">{title}</h4>
+        <Button variant="ghost" size="icon-xs" aria-label={`Copy ${title}`} onClick={() => void copy(text)}>
+          <Copy />
+        </Button>
+      </div>
+      <pre className="max-h-72 overflow-auto rounded-lg bg-muted/60 p-3 text-xs leading-relaxed whitespace-pre-wrap">{text}</pre>
+    </div>
+  )
+
+  return (
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => void load()} disabled={busy}>
+          {busy ? <Spinner size="xs" tone="current" decorative /> : view ? <RefreshCw /> : <Eye />} {view ? 'Refresh' : 'Show the prompt'}
+        </Button>
+        {view && (
+          <span className="text-xs text-muted-foreground">
+            {view.model ? `${view.model}` : 'No model chosen yet'}
+            {view.provider ? ` via ${view.provider}` : ''} · {view.batched ? `${view.batchSize} emails per request` : 'one email per request'}
+          </span>
+        )}
+      </div>
+      {view && (
+        <div className="grid gap-3">
+          {view.system && block('Instructions, sent first', view.system)}
+          {block(view.system ? (view.batched ? 'Then the emails (examples)' : 'Then the email (example)') : 'What the decision model reads (examples)', view.user)}
+          {view.questions && block('Its questions, one per email', JSON.stringify(view.questions, null, 2))}
+        </div>
+      )}
     </div>
   )
 }

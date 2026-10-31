@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Bot, Workflow } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import type { AgentSummary } from '@/domain/ai/AgentApi'
 import type { AiSelection } from '@/domain/ai/types'

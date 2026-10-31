@@ -1,4 +1,4 @@
-import type { AgentApi, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, PromptPreview, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -93,6 +93,10 @@ export class RemoteAgent implements AgentApi {
 
   async deleteWorkflow(id: string) {
     await this.http.delete(`/v1/agent/workflows/${encodeURIComponent(id)}`)
+  }
+
+  promptPreview(config: WorkflowConfig) {
+    return this.http.post<PromptPreview>('/v1/agent/workflows/prompt-preview', { config })
   }
 
   testDraft(config: WorkflowConfig, manual?: string) {

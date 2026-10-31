@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Download, Flag, Image, ImageOff, MailOpen, Paperclip } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'

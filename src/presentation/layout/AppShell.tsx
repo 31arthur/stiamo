@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { firstEnabled } from '@/domain/shared/pages'
 import { WORKSPACE_IDS, WORKSPACES, isScope } from '@/domain/shared/workspace'
 import { useAttention } from '@/presentation/app/attention'
+import { NotificationsButton, NotificationsDrawer } from '@/presentation/notifications/NotificationsDrawer'
 import { usePages } from '@/presentation/app/pages'
 import { useServices } from '@/presentation/app/services'
 import { useAgentSettings } from '@/presentation/agents/useAgent'
@@ -76,6 +77,7 @@ export function AppShell() {
   const { enabled, hidden } = usePages()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
   // Detail pages (e.g. /cases/:id) name the tab after the record themselves.
   const isDetail = section !== 'today' && segments.length > 2
   useDocumentTitle(isDetail ? undefined : (SECTION_TITLES[section] ?? ''))
@@ -99,12 +101,12 @@ export function AppShell() {
   return (
     <div className="bg-ambient flex min-h-dvh">
       <aside className="glass sticky top-0 hidden h-screen w-64 shrink-0 border-r lg:block">
-        <Sidebar />
+        <Sidebar onNotes={() => setNotesOpen(true)} />
       </aside>
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0" showCloseButton={false}>
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <Sidebar />
+          <Sidebar onNotes={() => setNotesOpen(true)} />
         </SheetContent>
       </Sheet>
 
@@ -114,7 +116,8 @@ export function AppShell() {
             <Menu />
           </Button>
           <Logo />
-          <Button variant="ghost" size="icon-sm" className="ml-auto" aria-label="Search" onClick={() => setPaletteOpen(true)}>
+          <NotificationsButton onOpen={() => setNotesOpen(true)} className="ml-auto" />
+          <Button variant="ghost" size="icon-sm" aria-label="Search" onClick={() => setPaletteOpen(true)}>
             <Search />
           </Button>
         </div>
@@ -137,11 +140,12 @@ export function AppShell() {
 
       <MobileTabBar />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <NotificationsDrawer open={notesOpen} onOpenChange={setNotesOpen} />
     </div>
   )
 }
 
-function Sidebar() {
+function Sidebar({ onNotes }: { onNotes: () => void }) {
   const attention = useAttention()
   const { scope, setScope } = useWorkspaceFilter()
   const { settings: agentSettings } = useAgentSettings()
@@ -229,8 +233,9 @@ function Sidebar() {
 
   return (
     <div className="flex h-full flex-col gap-4 p-3">
-      <div className="px-2 pt-1">
+      <div className="flex items-center justify-between px-2 pt-1">
         <Logo />
+        <NotificationsButton onOpen={onNotes} className="max-lg:hidden" />
       </div>
 
       <ActionMenu

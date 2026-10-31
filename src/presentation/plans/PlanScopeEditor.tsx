@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { Gavel, Link2, Plus, Scale, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
