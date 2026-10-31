@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
 import { useParams } from 'react-router-dom'
-import { ArrowLeft, Check, CheckCheck, Eye, Search, X } from 'lucide-react'
+import { ArrowLeft, Check, CheckCheck, Eye, Search, ThumbsUp, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -13,6 +13,7 @@ import { Section } from '@/presentation/components/layout'
 import { toast } from '@/presentation/notifications/toast'
 import { Link } from '@/presentation/routing'
 import { EmailPreview } from './EmailPreview'
+import { NotSpamDialog } from './NotSpamDialog'
 import { GROUPS, SORTS, parseMail, sortItems } from './executions'
 import type { SortKey } from './executions'
 import { formatMs } from './format'
@@ -45,6 +46,7 @@ export function ExecutionPage() {
   const [picked, setPicked] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<ExecutionItem | null>(null)
+  const [notSpam, setNotSpam] = useState<ExecutionItem | null>(null)
 
   if (isLoading || !w) return <Spinner label="Loading" />
   if (error || !data) return <p role="alert" className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load that run.'}</p>
@@ -53,6 +55,9 @@ export function ExecutionPage() {
   const labels = w.config.labels.map((l) => l.name)
   const trashLabel = w.config.action?.trashLabel
   const folder = w.config.source.folder ?? 'INBOX'
+  const keepLabel = w.config.labels.find((l) => l.name !== trashLabel)?.name ?? 'keep'
+  /** Judged spam (or waiting to be), so "not spam" is a correction worth learning from. */
+  const canCorrect = (i: ExecutionItem) => !!trashLabel && i.label === trashLabel && ['needs_review', 'proposed', 'applied'].includes(i.status)
   const isTrashed = (i: ExecutionItem) => i.status === 'applied' || (i.status === 'approved' && !!trashLabel && i.label === trashLabel)
 
   const counts = new Map<LedgerStatus, number>()
@@ -200,6 +205,11 @@ export function ExecutionPage() {
                           <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap', chip.tone)}>{chip.text}</span>
                         </>
                       )}
+                      {canCorrect(i) && (
+                        <Button variant="outline" size="xs" onClick={() => setNotSpam(i)} aria-label={`${m.subject || i.title} is not spam`}>
+                          <ThumbsUp /> Not spam
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon-sm" aria-label={`Preview ${m.subject || i.title}`} title={isTrashed(i) ? 'See what was kept of it' : 'Read the email'} onClick={() => setPreview(i)}>
                         <Eye />
                       </Button>
@@ -222,6 +232,7 @@ export function ExecutionPage() {
         </Section>
       )}
 
+      <NotSpamDialog workflowId={w.id} keepLabel={keepLabel} item={notSpam} pending={!!notSpam && ['needs_review', 'proposed'].includes(notSpam.status)} onClose={() => setNotSpam(null)} />
       <EmailPreview item={preview} folder={folder} trashed={!!preview && isTrashed(preview)} onClose={() => setPreview(null)} />
     </div>
   )

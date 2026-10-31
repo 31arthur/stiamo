@@ -159,6 +159,8 @@ export interface WorkflowConfig {
   batchSize?: number
   /** The prompt as five sections a person wrote (see mailGuide.ts); the prompt and labels are made from them. */
   guide?: Record<string, string> | null
+  /** Points the agent learned from corrections. They are added after the prompt, never in place of it. */
+  refinements?: string[]
 }
 
 export interface Workflow {
@@ -252,6 +254,19 @@ export interface ReviewItem {
   reason: string
   status: 'proposed' | 'needs_review'
   at: string | null
+}
+
+/** What the agent suggests adding to its prompt after being told an email wasn't spam. */
+export interface FeedbackSuggestion {
+  point: string
+  /** An earlier point already covers it. */
+  duplicate: boolean
+  /** A domain the reason is about, which could be always kept. */
+  protectDomain: string | null
+  note: string
+  /** Written by the model, or the owner's own words when no model could be asked. */
+  source: 'model' | 'reason'
+  senderDomain: string | null
 }
 
 export type LedgerStatus = 'proposed' | 'needs_review' | 'approved' | 'dismissed' | 'kept' | 'applied' | 'protected'
@@ -417,7 +432,10 @@ export interface AgentApi {
   review(id: string): Promise<ReviewItem[]>
   executions(id: string): Promise<Execution[]>
   execution(id: string, runId: string): Promise<ExecutionDetail>
-  decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string): Promise<{ changed: number; moved?: number }>
+  decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string, note?: string): Promise<{ changed: number; moved?: number }>
+  analyseFeedback(id: string, itemId: string, reason: string): Promise<FeedbackSuggestion>
+  addRefinement(id: string, add: { point?: string; protectDomain?: string }): Promise<Workflow>
+  removeRefinement(id: string, index: number): Promise<Workflow>
   channels(): Promise<Channel[]>
   connectTelegram(botToken: string, agent?: string): Promise<Channel>
   connectWhatsApp(connection: WhatsAppConnection): Promise<Channel>

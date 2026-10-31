@@ -1,4 +1,4 @@
-import type { AgentApi, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -127,8 +127,20 @@ export class RemoteAgent implements AgentApi {
     return (await this.http.get<{ items: ReviewItem[] }>(`/v1/agent/workflows/${encodeURIComponent(id)}/review`)).items
   }
 
-  decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string) {
-    return this.http.post<{ changed: number; moved?: number }>(`/v1/agent/workflows/${encodeURIComponent(id)}/review`, { itemIds, action, label })
+  decideReview(id: string, itemIds: string[], action: 'approve' | 'dismiss', label?: string, note?: string) {
+    return this.http.post<{ changed: number; moved?: number }>(`/v1/agent/workflows/${encodeURIComponent(id)}/review`, { itemIds, action, label, note })
+  }
+
+  analyseFeedback(id: string, itemId: string, reason: string) {
+    return this.http.post<FeedbackSuggestion>(`/v1/agent/workflows/${encodeURIComponent(id)}/feedback`, { itemId, reason })
+  }
+
+  addRefinement(id: string, add: { point?: string; protectDomain?: string }) {
+    return this.http.post<Workflow>(`/v1/agent/workflows/${encodeURIComponent(id)}/refinements`, add)
+  }
+
+  removeRefinement(id: string, index: number) {
+    return this.http.delete<Workflow>(`/v1/agent/workflows/${encodeURIComponent(id)}/refinements/${index}`)
   }
 
   async channels(): Promise<Channel[]> {
