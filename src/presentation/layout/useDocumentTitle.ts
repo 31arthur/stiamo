@@ -10,6 +10,7 @@ export function useDocumentTitle(title: string | undefined) {
 }
 
 export const SECTION_TITLES: Record<string, string> = {
+  overview: 'Overview',
   today: 'Today',
   calendar: 'Calendar',
   tasks: 'Tasks',

@@ -1,10 +1,11 @@
 import { motion } from 'motion/react'
-import { CalendarDays, Plus, Sun } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, Plus, Sun } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { cn } from '@/lib/utils'
 import { useAttention } from '@/presentation/app/attention'
 import { useEditor } from '@/presentation/app/create'
+import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { KIND_META } from '@/presentation/components/kinds'
 import { spring } from '@/presentation/motion/presets'
 import { CREATE_MENU } from './createMenu'
@@ -13,12 +14,22 @@ import { CREATE_MENU } from './createMenu'
 export function MobileTabBar() {
   const { open } = useEditor()
   const attention = useAttention()
+  const { scope } = useWorkspaceFilter()
+  // The last tab belongs to the workspace you are in.
+  const own =
+    scope === 'sb'
+      ? { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length }
+      : scope === 'fsa'
+        ? { to: '/projects', label: 'Projects', icon: KIND_META.project.icon, badge: 0 }
+        : scope === 'all'
+          ? { to: '/overview', label: 'Overview', icon: LayoutDashboard, badge: 0 }
+          : { to: '/goals', label: 'Goals', icon: KIND_META.goal.icon, badge: 0 }
   const items = [
     { to: '/today', label: 'Today', icon: Sun, badge: 0 },
     { to: '/calendar', label: 'Calendar', icon: CalendarDays, badge: 0 },
     null,
     { to: '/tasks', label: 'Tasks', icon: KIND_META.task.icon, badge: attention.overdueTasks.length + attention.dueFollowUps.length },
-    { to: '/cases', label: 'Cases', icon: KIND_META.case.icon, badge: attention.hearingsToRecord.length },
+    own,
   ]
 
   return (
