@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
+import { AnimatePresence, motion } from 'motion/react'
 import { useParams } from 'react-router-dom'
 import { ArrowLeft, Check, CheckCheck, Eye, Search, ThumbsUp, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,12 +8,12 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { ExecutionItem, LedgerStatus } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
-import { useServices } from '@/presentation/app/services'
 import { Section } from '@/presentation/components/layout'
-import { toast } from '@/presentation/notifications/toast'
+import { useConfirm } from '@/presentation/components/useConfirm'
 import { Link } from '@/presentation/routing'
 import { EmailPreview } from './EmailPreview'
 import { NotSpamDialog } from './NotSpamDialog'
+import { useDecisions } from './useDecisions'
 import { GROUPS, SORTS, parseMail, sortItems } from './executions'
 import type { SortKey } from './executions'
 import { formatMs } from './format'
@@ -35,8 +35,6 @@ const STATUS_CHIP: Record<LedgerStatus, { text: string; tone: string }> = {
 /** One run of the agent: what it read, and every email it decided about, grouped so what needs you comes first. */
 export function ExecutionPage() {
   const { agentId, runId } = useParams()
-  const { agent } = useServices()
-  const client = useQueryClient()
   const { data: w } = useWorkflow(agentId)
   const { data, isLoading, error } = useExecution(agentId, runId)
   const [chosen, setChosen] = useState<LedgerStatus | null>(null)
@@ -44,9 +42,10 @@ export function ExecutionPage() {
   const [q, setQ] = useState('')
   /** A label picked in the list, before it is approved. */
   const [picked, setPicked] = useState<Record<string, string>>({})
-  const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState<ExecutionItem | null>(null)
   const [notSpam, setNotSpam] = useState<ExecutionItem | null>(null)
+  const { confirm, dialog } = useConfirm()
+  const decideNow = useDecisions(agentId)
 
   if (isLoading || !w) return <Spinner label="Loading" />
   if (error || !data) return <p role="alert" className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load that run.'}</p>
@@ -72,30 +71,29 @@ export function ExecutionPage() {
   const labelOf = (i: ExecutionItem) => picked[i.id] ?? i.label ?? ''
   const s = e.stats
 
-  async function decide(ids: string[], action: 'approve' | 'dismiss', label?: string) {
-    setBusy(true)
-    try {
-      const { changed, moved } = await agent.decideReview(w!.id, ids, action, label)
-      if (changed === 0) toast.error('Choose a label first.')
-      else toast.success(action === 'approve' ? `Approved ${changed}${moved ? `, moved ${moved} to Trash` : ''}` : `Dismissed ${changed}`)
-      for (const key of ['execution', 'executions', 'review', 'workflow']) void client.invalidateQueries({ queryKey: ['agent', key] })
-    } catch (err) {
-      toast.error('Couldn’t save that', { description: err instanceof Error ? err.message : undefined })
-    } finally {
-      setBusy(false)
-    }
-  }
+  /** Gone from the list at once; the server is told in the background (see useDecisions). */
+  const decide = (ids: string[], action: 'approve' | 'dismiss', label?: string) =>
+    decideNow([{ ids, label }], action, { moving: action === 'approve' && trashLabel ? ids.filter((id) => (label ?? items.find((i) => i.id === id)?.label) === trashLabel).length : 0 })
 
   /** How many of these approvals would move an email to Trash: approving a row labelled with the trash label does exactly that. */
   const willMove = (list: ExecutionItem[]) => (trashLabel ? list.filter((i) => labelOf(i) === trashLabel).length : 0)
 
   async function approveShown() {
     const moving = willMove(rows)
-    if (moving > 0 && !window.confirm(`Approve ${rows.length} and move ${moving} email${moving === 1 ? '' : 's'} to Trash?`)) return
+    if (moving > 0) {
+      const yes = await confirm({
+        title: 'Move to Trash?',
+        highlight: `${moving} email${moving === 1 ? '' : 's'}`,
+        description: `Approving these ${rows.length} sends the ${moving === rows.length ? 'ones' : `${moving} labelled ${trashLabel}`} to the mailbox’s Trash. They can be put back from there.`,
+        confirmLabel: `Move ${moving} to Trash`,
+        tone: 'danger',
+      })
+      if (!yes) return
+    }
     // Those left as they were go in one call; one whose label was changed is a correction, sent on its own.
     const same = rows.filter((i) => labelOf(i) === i.label).map((i) => i.id)
-    if (same.length) await decide(same, 'approve')
-    for (const i of rows.filter((x) => labelOf(x) !== x.label && labelOf(x))) await decide([i.id], 'approve', labelOf(i))
+    const changed = rows.filter((x) => labelOf(x) !== x.label && labelOf(x))
+    void decideNow([{ ids: same }, ...changed.map((i) => ({ ids: [i.id], label: labelOf(i) }))], 'approve', { moving })
   }
 
   return (
@@ -132,10 +130,10 @@ export function ExecutionPage() {
           actions={
             active?.pending && rows.length > 0 ? (
               <>
-                <Button variant="ghost" size="sm" disabled={busy} onClick={() => void decide(rows.map((i) => i.id), 'dismiss')}>
+                <Button variant="ghost" size="sm" onClick={() => void decide(rows.map((i) => i.id), 'dismiss')}>
                   <X /> Dismiss all
                 </Button>
-                <Button variant="outline" size="sm" disabled={busy || !rows.some((i) => labelOf(i))} onClick={() => void approveShown()}>
+                <Button variant="outline" size="sm" disabled={!rows.some((i) => labelOf(i))} onClick={() => void approveShown()}>
                   <CheckCheck /> Approve all{willMove(rows) > 0 ? ` · move ${willMove(rows)} to Trash` : ''}
                 </Button>
               </>
@@ -176,12 +174,14 @@ export function ExecutionPage() {
           {rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">{needle ? `Nothing here matches “${q}”.` : 'Nothing here.'}</p>
           ) : (
-            <ul className="grid gap-1">
+            <ul className="grid">
+              <AnimatePresence initial={false}>
               {rows.map((i) => {
                 const m = parseMail(i.excerpt)
                 const chip = STATUS_CHIP[i.status]
                 return (
-                  <li key={i.id} className="grid gap-2 rounded-xl px-2.5 py-2.5 hover:bg-muted/40 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                  <motion.li key={i.id} layout="position" initial={false} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, x: 24 }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden">
+                    <div className="grid gap-2 rounded-xl px-2.5 py-2.5 hover:bg-muted/40 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                     <button type="button" onClick={() => setPreview(i)} className="min-w-0 text-left" aria-label={`Preview ${m.subject || i.title}`}>
                       <span className="block truncate text-sm font-medium">{m.subject || i.title}</span>
                       <span className="block truncate text-xs text-muted-foreground">
@@ -220,23 +220,26 @@ export function ExecutionPage() {
                       </Button>
                       {active?.pending && (
                         <>
-                          <Button variant="outline" size="icon-sm" title={trashLabel && labelOf(i) === trashLabel ? 'Approve: moves this email to Trash' : 'Approve: keeps this email'} aria-label={`Approve ${m.subject || i.title}${trashLabel && labelOf(i) === trashLabel ? ', moves it to Trash' : ''}`} disabled={busy || !labelOf(i)} onClick={() => void decide([i.id], 'approve', labelOf(i) !== i.label ? labelOf(i) : undefined)}>
+                          <Button variant="outline" size="icon-sm" title={trashLabel && labelOf(i) === trashLabel ? 'Approve: moves this email to Trash' : 'Approve: keeps this email'} aria-label={`Approve ${m.subject || i.title}${trashLabel && labelOf(i) === trashLabel ? ', moves it to Trash' : ''}`} disabled={!labelOf(i)} onClick={() => void decide([i.id], 'approve', labelOf(i) !== i.label ? labelOf(i) : undefined)}>
                             <Check />
                           </Button>
-                          <Button variant="ghost" size="icon-sm" aria-label={`Dismiss ${m.subject || i.title}`} disabled={busy} onClick={() => void decide([i.id], 'dismiss')}>
+                          <Button variant="ghost" size="icon-sm" aria-label={`Dismiss ${m.subject || i.title}`} onClick={() => void decide([i.id], 'dismiss')}>
                             <X />
                           </Button>
                         </>
                       )}
                     </div>
-                  </li>
+                    </div>
+                  </motion.li>
                 )
               })}
+              </AnimatePresence>
             </ul>
           )}
         </Section>
       )}
 
+      {dialog}
       <NotSpamDialog workflowId={w.id} keepLabel={keepLabel} item={notSpam} pending={!!notSpam && ['needs_review', 'proposed'].includes(notSpam.status)} onClose={() => setNotSpam(null)} />
       <EmailPreview item={preview} folder={folder} trashed={!!preview && isTrashed(preview)} onClose={() => setPreview(null)} />
     </div>
