@@ -1,4 +1,4 @@
-import type { AgentApi, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -131,8 +131,8 @@ export class RemoteAgent implements AgentApi {
     return this.http.post<{ status: string; meetingId?: string }>('/v1/agent/attention/act', a)
   }
 
-  news(workspace: string | undefined, days: number) {
-    return this.http.get<{ items: NewsStory[]; total: number; generatedAt: string }>('/v1/agent/news', { workspace, days, limit: 20 })
+  news(workspace: string | undefined, days: number, sort: NewsSort) {
+    return this.http.get<{ items: NewsStory[]; total: number; sort: NewsSort; generatedAt: string }>('/v1/agent/news', { workspace, days, sort, limit: 20 })
   }
 
   async hideNews(agentId: string, itemId: string) {
