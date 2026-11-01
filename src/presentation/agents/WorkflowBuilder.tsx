@@ -34,6 +34,7 @@ const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm o
 const DAYS = [
   { value: '', label: 'Any time' },
   { value: '1', label: 'Today' },
+  { value: '3', label: 'Last 3 days' },
   { value: '7', label: 'Last 7 days' },
   { value: '30', label: 'Last 30 days' },
   { value: '90', label: 'Last 90 days' },
@@ -64,12 +65,13 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
   const setLabel = (i: number, p: Partial<WorkflowConfig['labels'][number]>) => setCfg((c) => ({ ...c, labels: c.labels.map((l, j) => (j === i ? { ...l, ...p } : l)) }))
   const manual = cfg.source.kind === 'manual'
   const mail = cfg.source.kind === 'mail'
+  const news = cfg.source.kind === 'feed'
   const rules = cfg.rules ?? { protectedDomains: [], protectedPhrases: [], protectCorrespondents: true, protectedAddresses: [] }
   const action = cfg.action ?? { trashLabel: null, auto: false }
   const setRules = (p: Partial<typeof rules>) => set({ rules: { ...rules, ...p } })
   const setAction = (p: Partial<typeof action>) => set({ action: { ...action, ...p } })
   const mailboxes = cfg.source.accountIds ?? []
-  const needsMailbox = (mail && mailboxes.length === 0) || (cfg.source.kind === 'agent' && !cfg.source.upstreamId)
+  const needsMailbox = (mail && mailboxes.length === 0) || (cfg.source.kind === 'agent' && !cfg.source.upstreamId) || (news && (cfg.source.feeds ?? []).length === 0)
   const dirty = JSON.stringify({ name, description, cfg }) !== JSON.stringify({ name: initial.name, description: initial.description, cfg: initial.config })
 
   async function test() {
@@ -120,11 +122,17 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                   <Input value={l.name} onChange={(e) => setLabel(i, { name: slug(e.target.value) })} placeholder="label_name" aria-label="Label name" className="h-8 font-mono text-xs" />
                   <Input value={l.description} onChange={(e) => setLabel(i, { description: e.target.value })} placeholder="What makes an item this label" aria-label="What the label means" className="h-8 text-sm" maxLength={300} />
                   <div className="flex items-center gap-1">
-                    {cfg.source.kind === 'agent' && (
-                      <select aria-label="What happens to it" value={l.route ?? 'none'} onChange={(e) => setLabel(i, { route: e.target.value as 'none' | 'attention' | 'event' })} className={SELECT} title="What happens to mail with this label">
+                    {(cfg.source.kind === 'agent' || news) && (
+                      <select aria-label="What happens to it" value={l.route ?? 'none'} onChange={(e) => setLabel(i, { route: e.target.value as 'none' | 'attention' | 'event' | 'publish' })} className={SELECT} title="What happens to items with this label">
                         <option value="none">Just keep</option>
-                        <option value="attention">Attention</option>
-                        <option value="event">Attention + event</option>
+                        {news ? (
+                          <option value="publish">On the News page</option>
+                        ) : (
+                          <>
+                            <option value="attention">Attention</option>
+                            <option value="event">Attention + event</option>
+                          </>
+                        )}
                       </select>
                     )}
                     <Input
@@ -194,6 +202,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                 { kind: 'manual' as const, title: 'Text you paste', hint: 'To try an idea. Separate items with a line of ---.' },
                 { kind: 'table' as const, title: 'A Stiamo collection', hint: 'Your cases, tasks, follow-ups, meetings, clients or projects.' },
                 ...(mailAvailable || mail ? [{ kind: 'mail' as const, title: 'A mailbox', hint: 'A mailbox you connected in Mail. It reads the inbox, newest first.' }] : []),
+                ...(mailAvailable || news ? [{ kind: 'feed' as const, title: 'News feeds', hint: 'RSS feeds or Google News searches, read every so often. Only new stories are read.' }] : []),
                 ...(mailAvailable && upstreams.length > 0 ? [{ kind: 'agent' as const, title: 'Mail another agent kept', hint: 'It goes on from an agent that already filtered the mailbox, and reads only what that agent kept.' }] : []),
               ].map((o) => (
                 <button
@@ -201,7 +210,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                   type="button"
                   role="radio"
                   aria-checked={cfg.source.kind === o.kind}
-                  onClick={() => set({ source: { kind: o.kind, table: o.kind === 'table' ? (cfg.source.table ?? 'tasks') : null, accountIds: o.kind === 'mail' ? (mailboxes.length ? mailboxes : accounts.slice(0, 1).map((a) => a.id)) : undefined, folder: 'INBOX', upstreamId: o.kind === 'agent' ? (cfg.source.upstreamId ?? upstreams[0]?.id ?? null) : undefined, runUpstream: o.kind === 'agent' ? (cfg.source.runUpstream ?? true) : undefined }, filters: { ...cfg.filters, newOnly: o.kind !== 'manual' } })}
+                  onClick={() => set({ source: { kind: o.kind, table: o.kind === 'table' ? (cfg.source.table ?? 'tasks') : null, accountIds: o.kind === 'mail' ? (mailboxes.length ? mailboxes : accounts.slice(0, 1).map((a) => a.id)) : undefined, folder: 'INBOX', feeds: o.kind === 'feed' ? (cfg.source.feeds ?? []) : undefined, upstreamId: o.kind === 'agent' ? (cfg.source.upstreamId ?? upstreams[0]?.id ?? null) : undefined, runUpstream: o.kind === 'agent' ? (cfg.source.runUpstream ?? true) : undefined }, filters: { ...cfg.filters, newOnly: o.kind !== 'manual' } })}
                   className={cn('rounded-xl border p-3 text-left transition-colors', cfg.source.kind === o.kind ? 'border-foreground/40 bg-background shadow-float' : 'hover:border-foreground/20')}
                 >
                   <span className="block text-sm font-medium">{o.title}</span>
@@ -235,6 +244,10 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                       })
                     )}
                   </fieldset>
+                ) : news ? (
+                  <div className="sm:col-span-2">
+                    <FeedsEditor feeds={cfg.source.feeds ?? []} onChange={(feeds) => set({ source: { ...cfg.source, feeds } })} />
+                  </div>
                 ) : cfg.source.kind === 'agent' ? (
                   <div className="grid gap-2 sm:col-span-2">
                     <label className="grid gap-1 text-xs text-muted-foreground">
@@ -405,6 +418,28 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
         <Section title={n(7, 'The prompt')} description="Exactly what the model is sent for this setup, filled with two example emails. Nothing is asked of any model to show it.">
           <PromptView cfg={cfg} />
         </Section>
+
+        {news && (
+          <Section title="How the stories are ranked" description="Stories that pass the first question are graded by how much they matter. The most important and most recent come first: a story’s rank halves every 36 hours.">
+            <ImportanceEditor importance={cfg.importance ?? null} onChange={(importance) => set({ importance })} />
+          </Section>
+        )}
+
+        {news && (
+          <Section title="How often" description="Feeds can’t say when something is new, so the agent checks them on a schedule. Only stories it hasn’t read are fetched and judged.">
+            <label className="grid gap-1 text-xs text-muted-foreground sm:max-w-xs">
+              Run every
+              <select value={cfg.scheduleMinutes ?? ''} onChange={(e) => set({ scheduleMinutes: e.target.value ? Number(e.target.value) : null })} className={SELECT}>
+                <option value="">Only when I press Run</option>
+                {[15, 30, 60, 120, 360, 720].map((m) => (
+                  <option key={m} value={m}>
+                    {m < 60 ? `${m} minutes` : m === 60 ? 'hour' : `${m / 60} hours`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </Section>
+        )}
 
         {(mail || cfg.source.kind === 'agent') && (
           <Section title="Listening" description="Run by itself when new mail arrives, instead of only when you press Run.">
@@ -733,6 +768,88 @@ function Learned({ points, onChange }: { points: string[]; onChange: (p: string[
           <Plus /> Add
         </Button>
       </div>
+    </div>
+  )
+}
+
+/** The feeds to read: a name, an address and a language each. Paste several addresses at once, one to a line. */
+function FeedsEditor({ feeds, onChange }: { feeds: { key: string; url: string; lang: string }[]; onChange: (f: { key: string; url: string; lang: string }[]) => void }) {
+  const [paste, setPaste] = useState('')
+  const set = (i: number, p: Partial<{ key: string; url: string; lang: string }>) => onChange(feeds.map((f, j) => (j === i ? { ...f, ...p } : f)))
+  const addPasted = () => {
+    const urls = paste.split(/\s*\n\s*/).map((l) => l.trim()).filter((l) => /^https?:\/\//.test(l))
+    const next = urls.filter((u) => !feeds.some((f) => f.url === u)).map((url, i) => ({ key: `feed_${feeds.length + i + 1}`, url, lang: 'en' }))
+    onChange([...feeds, ...next])
+    setPaste('')
+  }
+  return (
+    <div className="grid gap-2">
+      <span className="text-xs text-muted-foreground">Feeds ({feeds.length})</span>
+      <ul className="grid max-h-80 gap-1.5 overflow-y-auto pr-1">
+        {feeds.map((f, i) => (
+          <li key={i} className="grid grid-cols-[7rem_minmax(0,1fr)_3.5rem_auto] items-center gap-1.5">
+            <Input aria-label="Feed name" value={f.key} onChange={(e) => set(i, { key: e.target.value.replace(/[^a-z0-9_]+/gi, '_').slice(0, 60) })} className="h-8 font-mono text-xs" />
+            <Input aria-label="Feed address" value={f.url} onChange={(e) => set(i, { url: e.target.value })} className="h-8 text-xs" />
+            <Input aria-label="Language" value={f.lang} onChange={(e) => set(i, { lang: e.target.value.slice(0, 8) })} className="h-8 text-center text-xs uppercase" />
+            <Button variant="ghost" size="icon-xs" aria-label={`Remove ${f.key}`} onClick={() => onChange(feeds.filter((_, j) => j !== i))}>
+              <Trash2 />
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <div className="grid gap-1.5">
+        <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={2} placeholder={'Paste feed addresses here, one to a line'} aria-label="Feed addresses to add" className={AREA} />
+        <Button variant="outline" size="sm" className="w-fit" onClick={addPasted} disabled={!/https?:\/\//.test(paste)}>
+          <Plus /> Add
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+const LEVEL_DEFAULTS = [
+  { name: 'minor', weight: 1, description: 'Only touches the subject.' },
+  { name: 'notable', weight: 2, description: 'A useful report or feature.' },
+  { name: 'major', weight: 3, description: 'A significant new incident or development.' },
+  { name: 'critical', weight: 4, description: 'Deaths, a disaster, or something that affects many people at once.' },
+]
+
+/** The levels a relevant story is graded into, from least to most important. */
+function ImportanceEditor({ importance, onChange }: { importance: NonNullable<WorkflowConfig['importance']> | null; onChange: (i: NonNullable<WorkflowConfig['importance']> | null) => void }) {
+  if (!importance)
+    return (
+      <div className="grid gap-2">
+        <p className="text-sm text-muted-foreground">Without this every relevant story ranks the same except by how recent it is.</p>
+        <Button variant="outline" size="sm" className="w-fit" onClick={() => onChange({ prompt: 'Say how much each story matters to my work: how serious it is, how many people it affects, and whether something must be done about it.', levels: LEVEL_DEFAULTS })}>
+          <Plus /> Rank by importance
+        </Button>
+      </div>
+    )
+  const setLevel = (i: number, p: Partial<(typeof importance.levels)[number]>) => onChange({ ...importance, levels: importance.levels.map((l, j) => (j === i ? { ...l, ...p } : l)) })
+  return (
+    <div className="grid gap-3">
+      <label className="grid gap-1 text-xs text-muted-foreground">
+        What makes a story matter
+        <textarea value={importance.prompt} onChange={(e) => onChange({ ...importance, prompt: e.target.value })} rows={3} maxLength={2000} className={AREA} />
+      </label>
+      <ul className="grid gap-2" aria-label="Levels">
+        {importance.levels.map((l, i) => (
+          <li key={i} className="grid gap-2 rounded-xl border p-2.5 sm:grid-cols-[7rem_1fr_4rem]">
+            <Input aria-label="Level name" value={l.name} onChange={(e) => setLevel(i, { name: slug(e.target.value) })} className="h-8 font-mono text-xs" />
+            <Input aria-label="What puts a story at this level" value={l.description} onChange={(e) => setLevel(i, { description: e.target.value })} className="h-8 text-sm" maxLength={600} />
+            <select aria-label="Weight" value={l.weight} onChange={(e) => setLevel(i, { weight: Number(e.target.value) })} className={SELECT} title="How much it counts in the ranking, 1 to 4">
+              {[1, 2, 3, 4].map((w) => (
+                <option key={w} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </li>
+        ))}
+      </ul>
+      <Button variant="ghost" size="sm" className="w-fit text-muted-foreground" onClick={() => onChange(null)}>
+        <Trash2 /> Don’t rank by importance
+      </Button>
     </div>
   )
 }

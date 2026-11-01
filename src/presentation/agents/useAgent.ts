@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -115,6 +115,14 @@ export function useAgentAttention(workspace?: string) {
   const userId = useUserId()
   const available = useAgentAvailable()
   return useQuery<{ items: AttentionItem[]; count: number }>({ queryKey: ['agent', 'attention', userId, workspace ?? 'all'], queryFn: () => agent.attention(workspace), enabled: available, refetchInterval: 60_000, staleTime: 15_000, retry: false })
+}
+
+/** The top stories. Looked at again every five minutes. */
+export function useNews(workspace: string | undefined, days: number) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<{ items: NewsStory[]; total: number; generatedAt: string }>({ queryKey: ['agent', 'news', userId, workspace ?? 'all', days], queryFn: () => agent.news(workspace, days), enabled: available, refetchInterval: 5 * 60_000, staleTime: 60_000, retry: false })
 }
 
 /** Whether the agent is listening to its mailbox. Looked at every 20 seconds while it is. */

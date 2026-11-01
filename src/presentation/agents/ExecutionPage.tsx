@@ -33,6 +33,8 @@ const STATUS_CHIP: Record<LedgerStatus, { text: string; tone: string }> = {
   queued: { text: 'In Attention', tone: 'bg-warning/15 text-warning' },
   event_proposed: { text: 'Event to approve', tone: 'bg-warning/15 text-warning' },
   done: { text: 'Done', tone: 'bg-success/12 text-success' },
+  published: { text: 'On the news page', tone: 'bg-success/12 text-success' },
+  irrelevant: { text: 'Not relevant', tone: 'bg-muted text-muted-foreground' },
 }
 
 /** One run of the agent: what it read, and every email it decided about, grouped so what needs you comes first. */

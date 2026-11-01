@@ -7,6 +7,7 @@ export const TOGGLEABLE_PAGES = [
   { id: 'calendar', label: 'Calendar', hint: 'Meetings, hearings and due dates' },
   { id: 'mail', label: 'Mail', hint: 'The workspace’s mailboxes' },
   { id: 'attention', label: 'Attention', hint: 'Mail your agents found that needs you' },
+  { id: 'news', label: 'News', hint: 'The top stories your news agent found' },
   { id: 'tasks', label: 'Tasks', hint: '' },
   { id: 'follow-ups', label: 'Follow-ups', hint: '' },
   { id: 'meetings', label: 'Meetings', hint: '' },
