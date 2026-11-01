@@ -1,4 +1,4 @@
-import type { AgentApi, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -121,6 +121,14 @@ export class RemoteAgent implements AgentApi {
 
   runWorkflow(id: string, manual?: string) {
     return this.http.post<WorkflowRun>(`/v1/agent/workflows/${encodeURIComponent(id)}/run`, { manual })
+  }
+
+  attention(workspace?: string) {
+    return this.http.get<{ items: AttentionItem[]; count: number }>('/v1/agent/attention', { workspace })
+  }
+
+  actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }) {
+    return this.http.post<{ status: string; meetingId?: string }>('/v1/agent/attention/act', a)
   }
 
   async startSweep(id: string) {

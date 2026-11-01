@@ -84,6 +84,26 @@ export const TEMPLATES: WorkflowTemplate[] = [
     }, DEFAULT_GUIDE),
   },
   {
+    id: 'triage',
+    name: 'Mail triage',
+    description: 'Reads the mail a filter kept and queues what needs you, with calendar events to approve.',
+    pitch: 'Issues and important mail go to Attention; meetings and events can be added to your calendar.',
+    config: {
+      ...base,
+      filters: { sinceDays: null, newOnly: true, contains: null, limit: 50 },
+      source: { kind: 'agent', upstreamId: null, runUpstream: true },
+      defaultThreshold: 0.6,
+      prompt:
+        'You read the email of S&B Consultants, a legal and advocacy practice, after a spam filter has already kept it. For each email decide what it is and whether the owner needs to act on it. When unsure whether something matters, choose the label that puts it in front of the owner.',
+      labels: [
+        { name: 'meeting', description: 'An invitation or request for a meeting, call, hearing, conference, webinar, workshop or other event, especially one with a date and time.', route: 'event' },
+        { name: 'issue', description: 'A problem, complaint, dispute, legal matter or urgent request that needs action or a reply, including anything about a client or case in trouble.', route: 'attention' },
+        { name: 'important', description: 'An important message that should not be missed: funders, partners, government or court notices, deadlines, calls to apply or contribute.', route: 'attention' },
+        { name: 'fyi', description: 'Informational or routine mail that needs nothing from the owner.', route: 'none' },
+      ],
+    },
+  },
+  {
     id: 'blank',
     name: 'Start from nothing',
     description: 'Choose the source, write the prompt, define the labels.',

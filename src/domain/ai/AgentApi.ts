@@ -139,11 +139,13 @@ export interface WorkflowLabel {
   description: string
   /** The confidence needed to propose it; under this the item goes to review. */
   threshold?: number | null
+  /** What happens to an item with this label: kept, queued for your attention, or queued with a calendar event to approve. */
+  route?: 'none' | 'attention' | 'event'
 }
 
 /** What a person configures for an agent that sorts a source's items. */
 export interface WorkflowConfig {
-  source: { kind: 'manual' | 'table' | 'mail'; table?: string | null; /** The mailboxes, for `mail`: one or several. */ accountIds?: string[]; folder?: string }
+  source: { kind: 'manual' | 'table' | 'mail' | 'agent'; /** For `agent`: the agent whose kept mail this one reads, and whether to run it first. */ upstreamId?: string | null; runUpstream?: boolean; table?: string | null; /** The mailboxes, for `mail`: one or several. */ accountIds?: string[]; folder?: string }
   filters: { sinceDays?: number | null; /** A date range instead: from this day (included)… */ after?: string | null; /** …up to this day (not included). */ before?: string | null; newOnly: boolean; contains?: string | null; limit: number }
   prompt: string
   labels: WorkflowLabel[]
@@ -185,9 +187,11 @@ export interface DecisionItem {
   confidence: number
   reason: string
   /** `kept`: judged fine, nothing to do. `applied`: moved to Trash. */
-  status: 'proposed' | 'needs_review' | 'failed' | 'kept' | 'applied'
+  status: 'proposed' | 'needs_review' | 'failed' | 'kept' | 'applied' | 'queued' | 'event_proposed'
   /** What is (in a test run, would be) done with it. */
   action?: 'trash'
+  /** What the agent worked out: a summary, priority, suggested action and any event. */
+  data?: { summary?: string; priority?: string; action?: string | null; event?: AttentionEvent | null }
   error?: string
   ms: number
 }
@@ -196,7 +200,7 @@ export interface DecisionItem {
 export interface WorkflowRun {
   runId: string | null
   mode: 'test' | 'run'
-  counts: { items: number; proposed: number; needsReview: number; failed: number; kept?: number; applied?: number; protected?: number }
+  counts: { items: number; proposed: number; needsReview: number; failed: number; kept?: number; applied?: number; protected?: number; queued?: number; events?: number }
   /** How many items matched the filters before the cap. */
   matched: number
   usage: { inputTokens: number; outputTokens: number }
@@ -289,7 +293,41 @@ export interface Sweep {
   finishedAt: string | null
 }
 
-export type LedgerStatus = 'proposed' | 'needs_review' | 'approved' | 'dismissed' | 'kept' | 'applied' | 'protected'
+/** An event an email names, to check before it goes in the calendar. */
+export interface AttentionEvent {
+  title: string
+  date: string
+  start: string | null
+  end: string | null
+  durationMinutes: number | null
+  location: string | null
+  link: string | null
+  mode: 'in_person' | 'virtual' | 'phone'
+  attendees: string[]
+}
+
+/** An email an agent read and found worth your time. */
+export interface AttentionItem {
+  agentId: string
+  agentName: string
+  itemId: string
+  title: string
+  excerpt: string
+  label: string | null
+  confidence: number
+  status: 'queued' | 'event_proposed'
+  summary: string
+  priority: 'high' | 'normal' | 'low' | string
+  action: string | null
+  due: string | null
+  event: AttentionEvent | null
+  note: string | null
+  at: string | null
+  folder: string
+  workspaces: string[]
+}
+
+export type LedgerStatus = 'proposed' | 'needs_review' | 'approved' | 'dismissed' | 'kept' | 'applied' | 'protected' | 'queued' | 'event_proposed' | 'done'
 
 /** One real run of an agent you built. `counts` is what the run did; `now` is where its items stand today. */
 export interface Execution {
@@ -500,6 +538,8 @@ export interface AgentApi {
   testWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   runWorkflow(id: string, manual?: string): Promise<WorkflowRun>
   review(id: string): Promise<ReviewItem[]>
+  attention(workspace?: string): Promise<{ items: AttentionItem[]; count: number }>
+  actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }): Promise<{ status: string; meetingId?: string }>
   startSweep(id: string): Promise<Sweep>
   sweepStatus(id: string): Promise<Sweep | null>
   stopSweep(id: string): Promise<Sweep | null>

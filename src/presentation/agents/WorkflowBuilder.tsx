@@ -47,6 +47,9 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace
 export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onDelete }: { initial: WorkflowDraft; saveLabel: string; saving: boolean; onSave: (d: WorkflowDraft) => void; extra?: ReactNode; onDelete?: () => void }) {
   const { agent } = useServices()
   const mailAvailable = useMailAvailable()
+  const { settings: agentSettings } = useAgentSettings()
+  /** The agents built here that another one could go on from. */
+  const upstreams = (agentSettings?.agents ?? []).filter((a) => a.kind === 'workflow')
   const { accounts } = useMailAccounts()
   const [name, setName] = useState(initial.name)
   const [description, setDescription] = useState(initial.description)
@@ -66,7 +69,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
   const setRules = (p: Partial<typeof rules>) => set({ rules: { ...rules, ...p } })
   const setAction = (p: Partial<typeof action>) => set({ action: { ...action, ...p } })
   const mailboxes = cfg.source.accountIds ?? []
-  const needsMailbox = mail && mailboxes.length === 0
+  const needsMailbox = (mail && mailboxes.length === 0) || (cfg.source.kind === 'agent' && !cfg.source.upstreamId)
   const dirty = JSON.stringify({ name, description, cfg }) !== JSON.stringify({ name: initial.name, description: initial.description, cfg: initial.config })
 
   async function test() {
@@ -117,6 +120,13 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                   <Input value={l.name} onChange={(e) => setLabel(i, { name: slug(e.target.value) })} placeholder="label_name" aria-label="Label name" className="h-8 font-mono text-xs" />
                   <Input value={l.description} onChange={(e) => setLabel(i, { description: e.target.value })} placeholder="What makes an item this label" aria-label="What the label means" className="h-8 text-sm" maxLength={300} />
                   <div className="flex items-center gap-1">
+                    {cfg.source.kind === 'agent' && (
+                      <select aria-label="What happens to it" value={l.route ?? 'none'} onChange={(e) => setLabel(i, { route: e.target.value as 'none' | 'attention' | 'event' })} className={SELECT} title="What happens to mail with this label">
+                        <option value="none">Just keep</option>
+                        <option value="attention">Attention</option>
+                        <option value="event">Attention + event</option>
+                      </select>
+                    )}
                     <Input
                       type="number"
                       min={0}
@@ -184,13 +194,14 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                 { kind: 'manual' as const, title: 'Text you paste', hint: 'To try an idea. Separate items with a line of ---.' },
                 { kind: 'table' as const, title: 'A Stiamo collection', hint: 'Your cases, tasks, follow-ups, meetings, clients or projects.' },
                 ...(mailAvailable || mail ? [{ kind: 'mail' as const, title: 'A mailbox', hint: 'A mailbox you connected in Mail. It reads the inbox, newest first.' }] : []),
+                ...(mailAvailable && upstreams.length > 0 ? [{ kind: 'agent' as const, title: 'Mail another agent kept', hint: 'It goes on from an agent that already filtered the mailbox, and reads only what that agent kept.' }] : []),
               ].map((o) => (
                 <button
                   key={o.kind}
                   type="button"
                   role="radio"
                   aria-checked={cfg.source.kind === o.kind}
-                  onClick={() => set({ source: { kind: o.kind, table: o.kind === 'table' ? (cfg.source.table ?? 'tasks') : null, accountIds: o.kind === 'mail' ? (mailboxes.length ? mailboxes : accounts.slice(0, 1).map((a) => a.id)) : undefined, folder: 'INBOX' }, filters: { ...cfg.filters, newOnly: o.kind !== 'manual' } })}
+                  onClick={() => set({ source: { kind: o.kind, table: o.kind === 'table' ? (cfg.source.table ?? 'tasks') : null, accountIds: o.kind === 'mail' ? (mailboxes.length ? mailboxes : accounts.slice(0, 1).map((a) => a.id)) : undefined, folder: 'INBOX', upstreamId: o.kind === 'agent' ? (cfg.source.upstreamId ?? upstreams[0]?.id ?? null) : undefined, runUpstream: o.kind === 'agent' ? (cfg.source.runUpstream ?? true) : undefined }, filters: { ...cfg.filters, newOnly: o.kind !== 'manual' } })}
                   className={cn('rounded-xl border p-3 text-left transition-colors', cfg.source.kind === o.kind ? 'border-foreground/40 bg-background shadow-float' : 'hover:border-foreground/20')}
                 >
                   <span className="block text-sm font-medium">{o.title}</span>
@@ -224,6 +235,27 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                       })
                     )}
                   </fieldset>
+                ) : cfg.source.kind === 'agent' ? (
+                  <div className="grid gap-2 sm:col-span-2">
+                    <label className="grid gap-1 text-xs text-muted-foreground">
+                      Goes on from
+                      <select value={cfg.source.upstreamId ?? ''} onChange={(e) => set({ source: { ...cfg.source, upstreamId: e.target.value || null } })} className={SELECT}>
+                        <option value="">Choose an agent…</option>
+                        {upstreams.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex items-start gap-2 text-sm">
+                      <input type="checkbox" checked={cfg.source.runUpstream ?? true} onChange={(e) => set({ source: { ...cfg.source, runUpstream: e.target.checked } })} className="mt-0.5 size-4 accent-[var(--foreground)]" />
+                      <span>
+                        Run it first, so new mail goes through it
+                        <span className="block text-xs text-muted-foreground">What it moves to Trash never reaches this agent, and its rules for people you know apply. A test run doesn’t run it.</span>
+                      </span>
+                    </label>
+                  </div>
                 ) : (
                   <label className="grid gap-1 text-xs text-muted-foreground">
                     Collection
