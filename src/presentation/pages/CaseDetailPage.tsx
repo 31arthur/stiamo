@@ -28,7 +28,7 @@ import { ProgressBar } from '@/presentation/components/progress'
 import { useAction, useEntities, useEntity, useGraph, useSave, useStepPool, useToday } from '@/presentation/data/hooks'
 import type { RecordInfo } from '@/presentation/components/records'
 import { LinkPicker } from '@/presentation/relations/LinkPicker'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
 import { caseSearchTerms } from '@/domain/drive/Drive'
 import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
@@ -246,15 +246,20 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
       </div>
 
       <RecordHearingDialog hearing={recording} legalCase={c} onClose={() => setRecording(null)} />
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display text-3xl font-normal tracking-tight">Thread & history</DialogTitle>
-            <DialogDescription>Everything connected to this case, and everything that happened.</DialogDescription>
-          </DialogHeader>
-          <ThreadPanel root={{ kind: 'case', id: c.id }} />
-        </DialogContent>
-      </Dialog>
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetContent
+          side="right"
+          className="w-full gap-0 p-0 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] data-[side=right]:data-ending-style:translate-x-full data-[side=right]:data-starting-style:translate-x-full data-ending-style:opacity-100 data-starting-style:opacity-100 sm:max-w-xl"
+        >
+          <SheetHeader className="border-b px-5 py-4 pr-12">
+            <SheetTitle className="font-display text-2xl font-normal">Thread & history</SheetTitle>
+            <SheetDescription className="text-xs">Everything connected to this case, and everything that happened.</SheetDescription>
+          </SheetHeader>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.3, ease: [0.16, 1, 0.3, 1] }} className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            <ThreadPanel root={{ kind: 'case', id: c.id }} />
+          </motion.div>
+        </SheetContent>
+      </Sheet>
     </>
   )
 }
