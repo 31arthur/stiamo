@@ -67,7 +67,7 @@ export function NewsPage() {
         ))}
       </div>
       {isLoading ? (
-        <Spinner label="Loading"
+        <Spinner label="Loading" />
       ) : error ? (
         <p role="alert" className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load the news.'}</p>
       ) : items.length === 0 ? (
