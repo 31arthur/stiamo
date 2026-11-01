@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 /** A destructive action that asks once, in place. */
-export function ConfirmDelete({ what, onConfirm, children }: { what: string; onConfirm: () => Promise<unknown> | void; children?: ReactNode }) {
+export function ConfirmDelete({ what, onConfirm, children, verb = 'Delete', note = 'This can’t be undone.' }: { what: string; onConfirm: () => Promise<unknown> | void; children?: ReactNode; /** The action's name, on the question and the button. */ verb?: string; note?: string }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   return (
@@ -19,7 +19,7 @@ export function ConfirmDelete({ what, onConfirm, children }: { what: string; onC
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64">
         <p className="text-sm">
-          Delete <span className="font-medium">{what}</span>? This can’t be undone.
+          {verb} <span className="font-medium">{what}</span>? {note}
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
@@ -39,7 +39,7 @@ export function ConfirmDelete({ what, onConfirm, children }: { what: string; onC
               }
             }}
           >
-            Delete
+            {verb}
           </Button>
         </div>
       </PopoverContent>
