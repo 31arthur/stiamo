@@ -22,7 +22,56 @@ export interface DocumentHit extends DriveFile {
 }
 
 /** What the agent found, in a form the page shows as a card. */
-export type Found = ({ kind: 'case' } & CaseHit) | ({ kind: 'document' } & DocumentHit)
+export type Found = ({ kind: 'case' } & CaseHit) | ({ kind: 'document' } & DocumentHit) | ({ kind: 'schedule' } & ScheduleHit)
+
+/** A day's schedule an agent proposed: time blocks for tasks and calls. Nothing is booked until it is approved. */
+export interface ScheduleHit {
+  id: string
+  date: string
+  blocks: DayPlanBlock[]
+}
+
+export interface DayPlanBlock {
+  kind: 'task' | 'followUp'
+  id: string
+  title: string
+  /** Minutes after midnight. */
+  start: number
+  duration: number
+  from: string
+  to: string
+}
+
+/** What the daily planner made for one day, waiting for you to approve or dismiss it. */
+export interface DayPlan {
+  id: string
+  day: string
+  status: 'proposed' | 'applied' | 'dismissed'
+  briefing: string
+  blocks: DayPlanBlock[]
+  trigger: string
+  createdAt: string
+  decidedAt: string | null
+}
+
+/** Whether the planner runs by itself in the evening, and when. */
+export interface DayPlanSettings {
+  enabled: boolean
+  /** 24-hour clock, like 21:00. */
+  time: string
+  timezone: string
+  /** Also send it to the connected Telegram and WhatsApp. */
+  channels: boolean
+}
+
+export interface DayPlanSchedule {
+  scheduled: boolean
+  at: string | null
+  timezone: string | null
+  nextRunAt: string | null
+  lastRunAt: string | null
+  error: string | null
+}
 
 export interface ProviderState {
   connected: boolean
@@ -580,6 +629,11 @@ export interface AgentApi {
   attention(workspace?: string): Promise<{ items: AttentionItem[]; count: number }>
   actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }): Promise<{ status: string; meetingId?: string }>
   listenStatus(id: string): Promise<ListenStatus>
+  dayPlans(): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>
+  setDayPlanSettings(settings: DayPlanSettings): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule }>
+  generateDayPlan(day?: string, force?: boolean): Promise<DayPlan>
+  applyDayPlan(id: string): Promise<{ plan: DayPlan; booked: number; skipped: number }>
+  dismissDayPlan(id: string): Promise<DayPlan>
   news(workspace: string | undefined, days: number, sort: NewsSort): Promise<{ items: NewsStory[]; total: number; sort: NewsSort; generatedAt: string }>
   hideNews(agentId: string, itemId: string): Promise<void>
   startSweep(id: string): Promise<Sweep>

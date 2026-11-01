@@ -10,12 +10,13 @@ import { useScope } from '@/presentation/app/workspaceFilter'
 import { EmptyState, PageHeader } from '@/presentation/components/layout'
 import { Link } from '@/presentation/routing'
 import { AttentionCard } from './AttentionCard'
+import { DayPlanCard } from './DayPlanCard'
 import { AttentionSheet } from './AttentionSheet'
 import { CARD_KINDS, CARD_SORTS, KIND_ORDER, cardKey, countKinds, filterCards, nextCard, sortCards } from './attentionCards'
 import type { CardKind, CardSort } from './attentionCards'
 import { useAttentionActions } from './useAttentionActions'
 import type { AttentionAction } from './useAttentionActions'
-import { useAgentAttention } from './useAgent'
+import { useAgentAttention, useDayPlans } from './useAgent'
 
 const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
 
@@ -25,6 +26,7 @@ export function AttentionPage() {
   const here = scope === 'all' ? null : WORKSPACES[scope]
   const { data, isLoading, error } = useAgentAttention(scope === 'all' ? undefined : scope)
   const act = useAttentionActions()
+  const plans = (useDayPlans().data?.plans ?? []).filter((p) => p.status === 'proposed')
   const [kind, setKind] = useState<CardKind | 'all'>('all')
   const [sort, setSort] = useState<CardSort>('urgent')
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -54,11 +56,20 @@ export function AttentionPage() {
         title="Attention"
         description="What your agents read and found worth your time: problems, important mail, and meetings or events they could add to your calendar. Open a card to decide. Nothing is added until you say so."
       />
+      {plans.length > 0 && (
+        <section aria-label="Plans for your approval" className="grid gap-3">
+          <AnimatePresence initial={false}>
+            {plans.map((p) => (
+              <DayPlanCard key={p.id} plan={p} />
+            ))}
+          </AnimatePresence>
+        </section>
+      )}
       {isLoading ? (
         <Spinner label="Loading" />
       ) : error ? (
         <p role="alert" className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load the queue.'}</p>
-      ) : all.length === 0 ? (
+      ) : all.length === 0 && plans.length > 0 ? null : all.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed">
           <EmptyState
             title="Nothing needs you"
