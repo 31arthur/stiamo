@@ -22,7 +22,15 @@ export interface DocumentHit extends DriveFile {
 }
 
 /** What the agent found, in a form the page shows as a card. */
-export type Found = ({ kind: 'case' } & CaseHit) | ({ kind: 'document' } & DocumentHit) | ({ kind: 'schedule' } & ScheduleHit)
+export type Found = ({ kind: 'case' } & CaseHit) | ({ kind: 'document' } & DocumentHit) | ({ kind: 'schedule' } & ScheduleHit) | ({ kind: 'proposal' } & ProposalHit)
+
+/** Something an agent suggests adding or changing. Nothing is saved until it is approved. */
+export interface ProposalHit {
+  id: string
+  action: string
+  title: string
+  lines: string[]
+}
 
 /** A day's schedule an agent proposed: time blocks for tasks and calls. Nothing is booked until it is approved. */
 export interface ScheduleHit {
@@ -629,6 +637,8 @@ export interface AgentApi {
   attention(workspace?: string): Promise<{ items: AttentionItem[]; count: number }>
   actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }): Promise<{ status: string; meetingId?: string }>
   listenStatus(id: string): Promise<ListenStatus>
+  approveProposal(id: string): Promise<{ id: string; status: string }>
+  dropProposal(id: string): Promise<{ id: string; status: string }>
   dayPlans(): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>
   setDayPlanSettings(settings: DayPlanSettings): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule }>
   generateDayPlan(day?: string, force?: boolean): Promise<DayPlan>
