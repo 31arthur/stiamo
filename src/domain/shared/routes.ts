@@ -14,9 +14,12 @@ const HOME: Record<string, WorkspaceScope> = {
   clients: 'fsa',
   projects: 'fsa',
   overview: 'all',
+  // What the S&B desk watches: the mail that needs it, and the news. They belong to S&B, like its cases.
+  attention: 'sb',
+  news: 'sb',
   pages: 'all',
 }
-const SHARED = ['today', 'calendar', 'mail', 'attention', 'news', 'tasks', 'follow-ups', 'meetings', 'plans', 'goals', 'agents']
+const SHARED = ['today', 'calendar', 'mail', 'tasks', 'follow-ups', 'meetings', 'plans', 'goals', 'agents']
 
 export const SECTIONS = [...Object.keys(HOME), ...SHARED]
 

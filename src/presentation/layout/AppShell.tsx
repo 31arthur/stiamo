@@ -152,7 +152,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
   const { backend } = useServices()
   const { enabled } = usePages()
   const on = (page: string) => enabled(scope, page)
-  const waiting = useAgentAttention(scope === 'all' ? undefined : scope).data?.count ?? 0
+  const waiting = useAgentAttention(scope === 'sb' ? 'sb' : undefined, scope === 'sb').data?.count ?? 0
 
   // Each workspace owns its section; the others stay out of the way. "All workspaces" shows the overview instead.
   // What belongs to a workspace is grouped by what it is, not labelled with the workspace's name: you already chose the workspace.
@@ -187,6 +187,12 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
   const teamAgents = here.filter((a) => a.kind !== 'workflow')
   const taskForce = here.filter((a) => a.kind === 'workflow')
 
+  // The S&B desk's own section: what its agents found in the mail and in the news. Not in the other workspaces.
+  const monitoring: NavGroup[] =
+    backend === 'api' && scope === 'sb'
+      ? [{ label: 'Monitoring', items: [{ to: '/attention', label: 'Attention', icon: BellRing, badge: waiting }, { to: '/news', label: 'News', icon: Newspaper }] }]
+      : []
+
   const groups: NavGroup[] = [
     {
       label: 'Plan',
@@ -194,11 +200,12 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
         { to: '/today', label: 'Today', icon: Sun },
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
-        ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }, { to: '/attention', label: 'Attention', icon: BellRing, badge: waiting }, { to: '/news', label: 'News', icon: Newspaper }] : []),
+        ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }] : []),
       ].filter((i) => on(i.to.slice(1))),
       action: scope === 'all' ? { to: '/pages', label: 'Choose each workspace’s pages', icon: SlidersHorizontal } : undefined,
     },
     ...workspaceGroups,
+    ...monitoring,
     {
       label: 'Execute',
       items: [
