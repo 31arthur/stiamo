@@ -22,6 +22,7 @@ const CounselPage = lazy(() => import('@/presentation/pages/CounselPage').then((
 const CounselDetailPage = lazy(() => import('@/presentation/pages/CounselDetailPage').then((m) => ({ default: m.CounselDetailPage })))
 const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
 const WorkspacePagesPage = lazy(() => import('@/presentation/pages/WorkspacePagesPage').then((m) => ({ default: m.WorkspacePagesPage })))
+const AttentionPage = lazy(() => import('@/presentation/agents/AttentionPage').then((m) => ({ default: m.AttentionPage })))
 const UsagePage = lazy(() => import('@/presentation/agents/UsagePage').then((m) => ({ default: m.UsagePage })))
 const ExecutionsTab = lazy(() => import('@/presentation/agents/ExecutionsTab').then((m) => ({ default: m.ExecutionsTab })))
 const ExecutionPage = lazy(() => import('@/presentation/agents/ExecutionPage').then((m) => ({ default: m.ExecutionPage })))
@@ -89,6 +90,7 @@ export default function App({ container }: { container: Container }) {
                   <Route path="cases" element={<CasesPage />} />
                   <Route path="cases/:id" element={<CaseDetailPage />} />
                   <Route path="mail" element={<MailPage />} />
+                  <Route path="attention" element={<AttentionPage />} />
                   <Route path="pages" element={<WorkspacePagesPage />} />
                   <Route path="letters" element={<LettersPage />} />
                   <Route path="diary" element={<DiaryPage />} />

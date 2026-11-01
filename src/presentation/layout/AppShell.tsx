@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bot, Check, Coins, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
+import { BellRing, Bot, Check, Coins, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -15,7 +15,7 @@ import { useAttention } from '@/presentation/app/attention'
 import { NotificationsButton, NotificationsDrawer } from '@/presentation/notifications/NotificationsDrawer'
 import { usePages } from '@/presentation/app/pages'
 import { useServices } from '@/presentation/app/services'
-import { useAgentSettings } from '@/presentation/agents/useAgent'
+import { useAgentAttention, useAgentSettings } from '@/presentation/agents/useAgent'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
@@ -152,6 +152,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
   const { backend } = useServices()
   const { enabled } = usePages()
   const on = (page: string) => enabled(scope, page)
+  const waiting = useAgentAttention(scope === 'all' ? undefined : scope).data?.count ?? 0
 
   // Each workspace owns its section; the others stay out of the way. "All workspaces" shows the overview instead.
   // What belongs to a workspace is grouped by what it is, not labelled with the workspace's name: you already chose the workspace.
@@ -193,7 +194,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
         { to: '/today', label: 'Today', icon: Sun },
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
-        ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }] : []),
+        ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }, { to: '/attention', label: 'Attention', icon: BellRing, badge: waiting }] : []),
       ].filter((i) => on(i.to.slice(1))),
       action: scope === 'all' ? { to: '/pages', label: 'Choose each workspace’s pages', icon: SlidersHorizontal } : undefined,
     },

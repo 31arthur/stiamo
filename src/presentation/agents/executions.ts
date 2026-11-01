@@ -28,6 +28,9 @@ export interface GroupMeta {
 export const GROUPS: GroupMeta[] = [
   { status: 'needs_review', title: 'Needs review', hint: 'The agent wasn’t sure enough. Choose the right label and approve, or dismiss to leave the email where it is.', pending: true },
   { status: 'proposed', title: 'Waiting to move', hint: 'Sure enough to move to Trash, but waiting for your approval.', pending: true },
+  { status: 'event_proposed', title: 'Events to approve', hint: 'Found in an email. Approve them in Attention to add them to the calendar.', pending: false },
+  { status: 'queued', title: 'For your attention', hint: 'Read and summarised, waiting in Attention.', pending: false },
+  { status: 'done', title: 'Done', hint: 'You dealt with these from Attention.', pending: false },
   { status: 'applied', title: 'Moved to Trash', hint: 'Moved by the agent. They are in the mailbox’s Trash folder, where you can put them back.', pending: false },
   { status: 'approved', title: 'Approved', hint: 'Approved by you.', pending: false },
   { status: 'dismissed', title: 'Dismissed', hint: 'You left these where they were.', pending: false },

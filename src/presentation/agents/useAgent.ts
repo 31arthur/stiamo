@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -107,6 +107,14 @@ export function useUsageTransactions(days: number | null, agentId?: string) {
     staleTime: 15_000,
     retry: false,
   })
+}
+
+/** What the agents found that needs you. Checked every minute, so a new item shows up without a refresh. */
+export function useAgentAttention(workspace?: string) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<{ items: AttentionItem[]; count: number }>({ queryKey: ['agent', 'attention', userId, workspace ?? 'all'], queryFn: () => agent.attention(workspace), enabled: available, refetchInterval: 60_000, staleTime: 15_000, retry: false })
 }
 
 /** The run through the whole inbox: refreshed every couple of seconds while it is going, and not at all once it has ended. */
