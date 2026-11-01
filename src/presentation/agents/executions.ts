@@ -44,8 +44,8 @@ export const SORTS: { key: SortKey; label: string }[] = [
   { key: 'sender', label: 'Sender A–Z' },
 ]
 
-export function sortItems(items: ExecutionItem[], by: SortKey): ExecutionItem[] {
-  const key = (i: ExecutionItem) => (by === 'sender' ? parseMail(i.excerpt).sender : (parseMail(i.excerpt).subject || i.title)).toLowerCase()
+export function sortItems<T extends Pick<ExecutionItem, 'excerpt' | 'title' | 'confidence'>>(items: T[], by: SortKey): T[] {
+  const key = (i: T) => (by === 'sender' ? parseMail(i.excerpt).sender : (parseMail(i.excerpt).subject || i.title)).toLowerCase()
   const out = [...items]
   if (by === 'sure-asc') out.sort((a, b) => a.confidence - b.confidence)
   else if (by === 'sure-desc') out.sort((a, b) => b.confidence - a.confidence)
