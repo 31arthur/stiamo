@@ -126,6 +126,20 @@ export function fileKind(mime: string, name: string): FileKind {
   return 'other'
 }
 
+/** What an attached document is, for its icon: a pasted Google Doc, Sheet or Slides link is that, anything else by its name. */
+export function attachmentKind(a: Pick<Attachment, 'mime' | 'name' | 'link'>): FileKind {
+  switch (a.link?.provider) {
+    case 'google-doc':
+      return 'doc'
+    case 'google-sheet':
+      return 'sheet'
+    case 'google-slides':
+      return 'slides'
+    default:
+      return fileKind(a.mime, a.name)
+  }
+}
+
 /** The short name of a format, for telling versions of one letter apart. */
 export const FILE_KIND_SHORT: Record<FileKind, string> = { doc: 'Doc', sheet: 'Sheet', slides: 'Slides', pdf: 'PDF', word: 'Word', excel: 'Excel', image: 'Image', other: 'File' }
 

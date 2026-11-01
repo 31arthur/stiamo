@@ -20,6 +20,8 @@ import { Skeleton } from '@/presentation/components/loading'
 import { DriveFinder } from '@/presentation/drive/DriveFinder'
 import { attachedDriveIds } from '@/presentation/drive/format'
 import { useDriveStatus } from '@/presentation/drive/useDrive'
+import { attachmentKind } from '@/domain/drive/Drive'
+import { FileTypeIcon } from '@/presentation/drive/FileTypeIcon'
 import { FileIcon, LinkTile } from './FileIcon'
 import { FilePreview } from './FilePreview'
 import { formatBytes, useAttachments, useFileUrl } from './useAttachments'
@@ -231,6 +233,7 @@ function LinkDialog({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
 
 function FileCard({ file, onOpen, onRemove }: { file: Attachment; onOpen: () => void; onRemove: () => void }) {
   const category = categoryOf(file)
+  const kind = category === 'image' ? 'other' : attachmentKind(file)
   const { data: url, isLoading: loadingThumb } = useFileUrl(category === 'image' ? file : undefined)
   const [confirming, setConfirming] = useState(false)
   return (
@@ -241,6 +244,10 @@ function FileCard({ file, onOpen, onRemove }: { file: Attachment; onOpen: () => 
             <img src={url} alt="" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
           ) : loadingThumb ? (
             <Skeleton className="size-full rounded-none" />
+          ) : kind !== 'other' ? (
+            <div className="flex size-full items-center justify-center bg-muted/50">
+              <FileTypeIcon kind={kind} className="h-16" />
+            </div>
           ) : file.link ? (
             <LinkTile provider={file.link.provider} className="size-full" />
           ) : (
