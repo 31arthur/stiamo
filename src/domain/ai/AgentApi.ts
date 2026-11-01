@@ -163,6 +163,8 @@ export interface WorkflowConfig {
   guide?: Record<string, string> | null
   /** Points the agent learned from corrections. They are added after the prompt, never in place of it. */
   refinements?: string[]
+  /** Run by itself when new mail arrives (the mail service says so), not only when asked. */
+  listen?: boolean
 }
 
 export interface Workflow {
@@ -325,6 +327,17 @@ export interface AttentionItem {
   at: string | null
   folder: string
   workspaces: string[]
+}
+
+/** Whether an agent is listening to its mailbox, and how that is going. */
+export interface ListenStatus {
+  listening: boolean
+  state: 'off' | 'connecting' | 'listening' | 'reconnecting'
+  mailboxes: number
+  lastEventAt: string | null
+  lastRunAt: string | null
+  runs: number
+  error: string | null
 }
 
 export type LedgerStatus = 'proposed' | 'needs_review' | 'approved' | 'dismissed' | 'kept' | 'applied' | 'protected' | 'queued' | 'event_proposed' | 'done'
@@ -540,6 +553,7 @@ export interface AgentApi {
   review(id: string): Promise<ReviewItem[]>
   attention(workspace?: string): Promise<{ items: AttentionItem[]; count: number }>
   actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }): Promise<{ status: string; meetingId?: string }>
+  listenStatus(id: string): Promise<ListenStatus>
   startSweep(id: string): Promise<Sweep>
   sweepStatus(id: string): Promise<Sweep | null>
   stopSweep(id: string): Promise<Sweep | null>
