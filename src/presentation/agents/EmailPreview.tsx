@@ -15,23 +15,24 @@ export function EmailPreview({ item, folder, trashed, onClose }: { item: Executi
       <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-2xl">
         <SheetTitle className="sr-only">Email preview</SheetTitle>
         <SheetDescription className="sr-only">The email as it is in the mailbox.</SheetDescription>
-        {item && <Body item={item} folder={folder} trashed={trashed} />}
+        {item && <EmailBody item={item} folder={folder} trashed={trashed} />}
       </SheetContent>
     </Sheet>
   )
 }
 
-function Body({ item, folder, trashed }: { item: ExecutionItem; folder: string; trashed: boolean }) {
+/** The email itself (or what was kept of it). `embedded` leaves out the space a side panel keeps for its close button. */
+export function EmailBody({ item, folder, trashed, embedded = false }: { item: ExecutionItem; folder: string; trashed: boolean; embedded?: boolean }) {
   const ref = mailRef(item.id)
   const live = !!ref && !trashed
   const { error, isLoading } = useMessage(ref?.accountId, folder, live ? ref.uid : undefined)
   const saved = parseMail(item.excerpt)
 
-  if (live && ref && !error) return <div className="h-full pt-10"><MessageReader key={item.id} accountId={ref.accountId} folder={folder} uid={ref.uid} markRead={false} /></div>
+  if (live && ref && !error) return <div className={embedded ? 'h-full' : 'h-full pt-10'}><MessageReader key={item.id} accountId={ref.accountId} folder={folder} uid={ref.uid} markRead={false} /></div>
   if (live && isLoading) return null
 
   return (
-    <div className="grid content-start gap-3 p-5 pt-12">
+    <div className={embedded ? 'grid content-start gap-3 p-5' : 'grid content-start gap-3 p-5 pt-12'}>
       <p className="flex items-start gap-2 rounded-xl border bg-muted/40 px-3.5 py-2.5 text-sm text-muted-foreground">
         <Inbox className="mt-0.5 size-4 shrink-0" />
         {trashed ? 'This email was moved to Trash, so only the start of it is shown. Open the mailbox’s Trash folder to read all of it or to put it back.' : 'The mailbox no longer has this email, so only the start of it is shown.'}
