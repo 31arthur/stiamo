@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { DetailSkeleton } from '@/presentation/components/loading'
 import { format, parseISO } from 'date-fns'
 import { motion } from 'motion/react'
-import { AlertCircle, CalendarPlus, Gavel, Link2, ListChecks, NotebookPen, Paperclip, Pencil } from 'lucide-react'
+import { AlertCircle, CalendarPlus, Gavel, History, Link2, ListChecks, NotebookPen, Paperclip, Pencil } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { Link, Navigate, useNavigate } from '@/presentation/routing'
 import { BackButton } from '@/presentation/components/BackButton'
@@ -28,6 +28,7 @@ import { ProgressBar } from '@/presentation/components/progress'
 import { useAction, useEntities, useEntity, useGraph, useSave, useStepPool, useToday } from '@/presentation/data/hooks'
 import type { RecordInfo } from '@/presentation/components/records'
 import { LinkPicker } from '@/presentation/relations/LinkPicker'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
 import { caseSearchTerms } from '@/domain/drive/Drive'
 import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
@@ -56,6 +57,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
   const navigate = useNavigate()
   const editor = useEditor()
   const [recording, setRecording] = useState<Hearing | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const { data: hearings } = useEntities('hearing')
   const { data: allCases } = useEntities('case')
   const { data: plans } = useEntities('plan')
@@ -85,6 +87,9 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <BackButton fallback="/cases" />
         <div className="flex gap-1">
+          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+            <History /> History
+          </Button>
           <Button variant="outline" size="sm" onClick={() => editor.open({ kind: 'hearing', value: newHearing(c.id, today) })}>
             <CalendarPlus /> List hearing
           </Button>
@@ -152,9 +157,6 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
                 ))}
               </ol>
             )}
-          </Section>
-          <Section title="Thread & history" description="Everything connected to this case, and everything that happened">
-            <ThreadPanel root={{ kind: 'case', id: c.id }} />
           </Section>
         </div>
 
@@ -244,6 +246,15 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
       </div>
 
       <RecordHearingDialog hearing={recording} legalCase={c} onClose={() => setRecording(null)} />
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-3xl font-normal tracking-tight">Thread & history</DialogTitle>
+            <DialogDescription>Everything connected to this case, and everything that happened.</DialogDescription>
+          </DialogHeader>
+          <ThreadPanel root={{ kind: 'case', id: c.id }} />
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
