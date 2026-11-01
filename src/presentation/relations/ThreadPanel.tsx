@@ -215,7 +215,7 @@ function History({ root, members, rootTitle, lookup }: { root: EntityRef; member
         {groups.map(([day, list]) => (
           <li key={day}>
             <div className="mb-2 text-xs font-medium text-muted-foreground">{dayLabel(day)}</div>
-            <ol className="relative grid gap-3 pl-5 before:absolute before:top-1 before:bottom-1 before:left-[9px] before:w-px before:bg-border">
+            <ol className="relative grid gap-4 pl-9 before:absolute before:top-3 before:bottom-3 before:left-[13px] before:w-px before:bg-border">
               {list.map((a) => (
                 <ActivityItem key={a.id} activity={a} showRecord={refKey(a.ref) !== refKey(root)} lookup={lookup} />
               ))}
@@ -235,10 +235,10 @@ function ActivityItem({ activity: a, showRecord, lookup }: { activity: Activity;
   const expandable = (a.changes?.length ?? 0) > 1 || a.changes?.some((c) => (c.to?.length ?? 0) > 50)
   return (
     <motion.li layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="relative">
-      <span className={cn('absolute top-0.5 -left-5 flex size-[18px] items-center justify-center rounded-full ring-4 ring-card', style.tone)}>
-        <style.icon className="size-2.5" />
+      <span className={cn('absolute top-0 -left-9 flex size-7 items-center justify-center rounded-full ring-4 ring-popover', style.tone)}>
+        <style.icon className="size-3.5" />
       </span>
-      <div className="min-w-0 text-sm">
+      <div className="min-w-0 pt-1 text-sm">
         {showRecord && (
           <div className="mb-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
             {record && <record.icon className="size-3" />}

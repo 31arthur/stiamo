@@ -249,7 +249,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
         <SheetContent
           side="right"
-          className="w-full gap-0 p-0 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] data-[side=right]:data-ending-style:translate-x-full data-[side=right]:data-starting-style:translate-x-full data-ending-style:opacity-100 data-starting-style:opacity-100 sm:max-w-xl"
+          className="gap-0 p-0 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] data-[side=right]:w-[min(96vw,54rem)] data-[side=right]:data-ending-style:translate-x-full data-[side=right]:data-starting-style:translate-x-full data-[side=right]:sm:max-w-none data-ending-style:opacity-100 data-starting-style:opacity-100"
         >
           <SheetHeader className="border-b px-5 py-4 pr-12">
             <SheetTitle className="font-display text-2xl font-normal">Thread & history</SheetTitle>
