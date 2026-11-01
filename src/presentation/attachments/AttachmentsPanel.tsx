@@ -20,7 +20,7 @@ import { Skeleton } from '@/presentation/components/loading'
 import { DriveFinder } from '@/presentation/drive/DriveFinder'
 import { attachedDriveIds } from '@/presentation/drive/format'
 import { useDriveStatus } from '@/presentation/drive/useDrive'
-import { attachmentKind } from '@/domain/drive/Drive'
+import { attachmentKind, driveFileId } from '@/domain/drive/Drive'
 import { FileTypeIcon } from '@/presentation/drive/FileTypeIcon'
 import { FileIcon, LinkTile } from './FileIcon'
 import { FilePreview } from './FilePreview'
@@ -47,6 +47,9 @@ export function AttachmentsPanel({ owner, compact = false, className, suggestTer
   const drive = useDriveStatus()
   const [preview, setPreview] = useState<number | null>(null)
   const remove = useAction<Attachment, void>((s, uid, a) => s.attachments.remove(uid, a, ownerTitle), { success: 'File removed' })
+  const unlink = useAction<Attachment[], void>(async (s, uid, list) => {
+    for (const a of list) await s.attachments.remove(uid, a, ownerTitle)
+  }, { success: 'Link removed. The file is still in Drive' })
 
   async function upload(list: FileList | File[]) {
     for (const file of Array.from(list)) {
@@ -165,7 +168,7 @@ export function AttachmentsPanel({ owner, compact = false, className, suggestTer
       </AnimatePresence>
 
       <FilePreview files={files} index={preview} onIndexChange={setPreview} onClose={() => setPreview(null)} />
-      {drive.available && <DriveFinder open={finding} onClose={() => setFinding(false)} owner={owner} ownerTitle={ownerTitle} suggestTerms={suggestTerms} attachedIds={attachedDriveIds(files.map((f) => f.link?.url))} />}
+      {drive.available && <DriveFinder open={finding} onClose={() => setFinding(false)} owner={owner} ownerTitle={ownerTitle} suggestTerms={suggestTerms} attachedIds={attachedDriveIds(files.map((f) => f.link?.url))} onUnlink={(id) => unlink.run(files.filter((f) => driveFileId(f.link?.url) === id))} />}
       <LinkDialog open={linking} onClose={() => setLinking(false)} onAdd={async (address, name) => void (await attachLink.run({ address, name }))} />
     </div>
   )

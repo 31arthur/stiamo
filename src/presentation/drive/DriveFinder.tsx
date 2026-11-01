@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ExternalLink, FileImage, FileSpreadsheet, FileText, Search, Sparkles } from 'lucide-react'
+import { Check, ExternalLink, FileImage, FileSpreadsheet, FileText, Search, Sparkles, Unlink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -29,6 +29,7 @@ export function DriveFinder({
   ownerTitle,
   suggestTerms = [],
   attachedIds,
+  onUnlink,
 }: {
   open: boolean
   onClose: () => void
@@ -37,6 +38,8 @@ export function DriveFinder({
   suggestTerms?: string[]
   /** Drive file ids already attached to this record. */
   attachedIds: Set<string>
+  /** Takes the link to this Drive file off the record; the file stays in Drive. */
+  onUnlink: (driveId: string) => Promise<void>
 }) {
   const [text, setText] = useState('')
   const settled = useDebounced(text, 350)
@@ -53,6 +56,23 @@ export function DriveFinder({
       setJustAttached((s) => new Set(s).add(f.id))
     } catch {
       // The action already showed what went wrong.
+    }
+  }
+
+  const [detaching, setDetaching] = useState(false)
+  const detach = async (f: DriveFile) => {
+    setDetaching(true)
+    try {
+      await onUnlink(f.id)
+      setJustAttached((s) => {
+        const next = new Set(s)
+        next.delete(f.id)
+        return next
+      })
+    } catch {
+      // The action already showed what went wrong.
+    } finally {
+      setDetaching(false)
     }
   }
 
@@ -111,7 +131,7 @@ export function DriveFinder({
           ) : (
             <ul className="grid gap-1">
               {rows.map((f) => (
-                <FileRow key={f.id} file={f} attached={isAttached(f)} busy={attach.pending} onAttach={() => add(f)} />
+                <FileRow key={f.id} file={f} attached={isAttached(f)} busy={attach.pending || detaching} onAttach={() => add(f)} onDetach={() => void detach(f)} />
               ))}
             </ul>
           )}
@@ -133,7 +153,7 @@ export function DriveFinder({
   )
 }
 
-function FileRow({ file, attached, busy, onAttach }: { file: DriveFile | DriveMatch; attached: boolean; busy: boolean; onAttach: () => void }) {
+function FileRow({ file, attached, busy, onAttach, onDetach }: { file: DriveFile | DriveMatch; attached: boolean; busy: boolean; onAttach: () => void; onDetach: () => void }) {
   const matched = 'matched' in file ? file.matched : []
   return (
     <li className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50">
@@ -155,9 +175,14 @@ function FileRow({ file, attached, busy, onAttach }: { file: DriveFile | DriveMa
         </Button>
       )}
       {attached ? (
-        <span className="flex items-center gap-1 px-2 text-xs text-success">
-          <Check className="size-3.5" /> Linked
-        </span>
+        <>
+          <span className="flex items-center gap-1 px-1 text-xs text-success">
+            <Check className="size-3.5" /> Linked
+          </span>
+          <Button size="sm" variant="outline" disabled={busy} onClick={onDetach}>
+            <Unlink /> Unlink
+          </Button>
+        </>
       ) : (
         <Button size="sm" variant="outline" disabled={busy || !file.webViewLink} onClick={onAttach}>
           Link
