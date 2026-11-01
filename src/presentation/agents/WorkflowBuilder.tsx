@@ -406,6 +406,20 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
           <PromptView cfg={cfg} />
         </Section>
 
+        {(mail || cfg.source.kind === 'agent') && (
+          <Section title="Listening" description="Run by itself when new mail arrives, instead of only when you press Run.">
+            <div className="flex items-start gap-3">
+              <Switch checked={cfg.listen ?? false} onChange={(on) => set({ listen: on })} label="Listen to the mailbox" />
+              <div className="min-w-0 text-sm">
+                Listen to the mailbox
+                <p className="text-xs text-muted-foreground">
+                  The mail server tells Stiamo the moment mail arrives (nothing is polled), and the agent runs once for it. These are real runs: with “move it by itself” on, spam is moved as it comes in. It also runs once when it starts listening, to catch up. A test run never listens.
+                </p>
+              </div>
+            </div>
+          </Section>
+        )}
+
         {extra}
 
         <div className="flex flex-wrap items-center gap-2">

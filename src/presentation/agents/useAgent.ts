@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -115,6 +115,14 @@ export function useAgentAttention(workspace?: string) {
   const userId = useUserId()
   const available = useAgentAvailable()
   return useQuery<{ items: AttentionItem[]; count: number }>({ queryKey: ['agent', 'attention', userId, workspace ?? 'all'], queryFn: () => agent.attention(workspace), enabled: available, refetchInterval: 60_000, staleTime: 15_000, retry: false })
+}
+
+/** Whether the agent is listening to its mailbox. Looked at every 20 seconds while it is. */
+export function useListen(id: string | undefined) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<ListenStatus>({ queryKey: ['agent', 'listen', userId, id], queryFn: () => agent.listenStatus(id!), enabled: !!id && available, refetchInterval: (q) => (q.state.data?.listening ? 20_000 : false), staleTime: 10_000, retry: false })
 }
 
 /** The run through the whole inbox: refreshed every couple of seconds while it is going, and not at all once it has ended. */
