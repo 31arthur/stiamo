@@ -345,6 +345,9 @@ export interface ListenStatus {
   schedule?: { scheduled: boolean; everyMinutes: number | null; nextRunAt: string | null; lastRunAt: string | null; runs: number; error: string | null }
 }
 
+/** The two rankings of the news page: what matters most, and what is newest. */
+export type NewsSort = 'importance' | 'latest'
+
 /** A story on the news page. */
 export interface NewsStory {
   agentId: string
@@ -577,7 +580,7 @@ export interface AgentApi {
   attention(workspace?: string): Promise<{ items: AttentionItem[]; count: number }>
   actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }): Promise<{ status: string; meetingId?: string }>
   listenStatus(id: string): Promise<ListenStatus>
-  news(workspace: string | undefined, days: number): Promise<{ items: NewsStory[]; total: number; generatedAt: string }>
+  news(workspace: string | undefined, days: number, sort: NewsSort): Promise<{ items: NewsStory[]; total: number; sort: NewsSort; generatedAt: string }>
   hideNews(agentId: string, itemId: string): Promise<void>
   startSweep(id: string): Promise<Sweep>
   sweepStatus(id: string): Promise<Sweep | null>

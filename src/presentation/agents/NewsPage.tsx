@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { ExternalLink, EyeOff, Newspaper, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import type { NewsStory } from '@/domain/ai/AgentApi'
+import type { NewsSort, NewsStory } from '@/domain/ai/AgentApi'
 import { WORKSPACES } from '@/domain/shared/workspace'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
@@ -34,7 +34,8 @@ export function NewsPage() {
   const scope = useScope()
   const here = scope === 'all' ? null : WORKSPACES[scope]
   const [days, setDays] = useState(3)
-  const { data, isLoading, error, isFetching, refetch } = useNews(scope === 'all' ? undefined : scope, days)
+  const [sort, setSort] = useState<NewsSort>('importance')
+  const { data, isLoading, error, isFetching, refetch } = useNews(scope === 'all' ? undefined : scope, days, sort)
   const items = data?.items ?? []
 
   return (
@@ -42,7 +43,7 @@ export function NewsPage() {
       <PageHeader
         eyebrow={here ? here.name : 'All workspaces'}
         title="News"
-        description="The twenty stories that matter most to your work, from the feeds your news agent reads. Each was judged relevant first, then graded for how much it matters; newer and more important stories rank higher, and a story’s rank fades as it ages."
+        description="Up to twenty stories at a time from the feeds your news agent reads, all judged relevant to your work. Choose what matters most, or what is newest."
         actions={
           <>
             <select aria-label="Period" value={days} onChange={(e) => setDays(Number(e.target.value))} className={SELECT}>
@@ -58,8 +59,15 @@ export function NewsPage() {
           </>
         }
       />
+      <div role="tablist" aria-label="Ranking" className="flex gap-1 border-b">
+        {([['importance', 'Most important', 'The ones that matter most to your work first; the newer first when they matter equally.'], ['latest', 'Latest', 'The newest first.']] as const).map(([id, label, hint]) => (
+          <button key={id} type="button" role="tab" aria-selected={sort === id} title={hint} onClick={() => setSort(id)} className={cn('-mb-px border-b-2 px-3 pb-2 text-sm font-medium transition-colors', sort === id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
+            {label}
+          </button>
+        ))}
+      </div>
       {isLoading ? (
-        <Spinner label="Loading" />
+        <Spinner label="Loading"
       ) : error ? (
         <p role="alert" className="text-sm text-destructive">{error instanceof Error ? error.message : 'Couldn’t load the news.'}</p>
       ) : items.length === 0 ? (
@@ -78,7 +86,7 @@ export function NewsPage() {
       ) : (
         <>
           <p className="-mt-2 text-xs text-muted-foreground">
-            {items.length} of {data?.total} relevant stories{data?.generatedAt ? ` · updated ${ago(data.generatedAt)}` : ''}.
+            {sort === 'importance' ? 'Most important first' : 'Newest first'}: {items.length} of {data?.total} relevant stories{data?.generatedAt ? ` · updated ${ago(data.generatedAt)}` : ''}.
           </p>
           <ol className="grid gap-3">
             <AnimatePresence initial={false}>
