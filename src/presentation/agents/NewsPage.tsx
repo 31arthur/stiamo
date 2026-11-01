@@ -46,13 +46,15 @@ export function NewsPage() {
         description="Up to twenty stories at a time from the feeds your news agent reads, all judged relevant to your work. Choose what matters most, or what is newest."
         actions={
           <>
-            <select aria-label="Period" value={days} onChange={(e) => setDays(Number(e.target.value))} className={SELECT}>
-              {PERIODS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+            {sort === 'importance' && (
+              <select aria-label="Period" value={days} onChange={(e) => setDays(Number(e.target.value))} className={SELECT}>
+                {PERIODS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            )}
             <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
               {isFetching ? <Spinner size="xs" tone="current" decorative /> : <RefreshCw />} Refresh
             </Button>
@@ -60,7 +62,7 @@ export function NewsPage() {
         }
       />
       <div role="tablist" aria-label="Ranking" className="flex gap-1 border-b">
-        {([['importance', 'Most important', 'The ones that matter most to your work first; the newer first when they matter equally.'], ['latest', 'Latest', 'The newest first.']] as const).map(([id, label, hint]) => (
+        {([['importance', 'Most important', 'The ones that matter most to your work first; the newer first when they matter equally.'], ['latest', 'Latest', 'The newest first, only from the last three hours.']] as const).map(([id, label, hint]) => (
           <button key={id} type="button" role="tab" aria-selected={sort === id} title={hint} onClick={() => setSort(id)} className={cn('-mb-px border-b-2 px-3 pb-2 text-sm font-medium transition-colors', sort === id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
             {label}
           </button>
@@ -73,20 +75,20 @@ export function NewsPage() {
       ) : items.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed">
           <EmptyState
-            title="No stories yet"
+            title={sort === 'latest' ? 'Nothing in the last three hours' : 'No stories yet'}
             action={
               <Button variant="outline" nativeButton={false} render={<Link to="/agents/new" />}>
                 <Newspaper /> Set up a news agent
               </Button>
             }
           >
-            When a news agent has read its feeds and found relevant stories, the top twenty appear here. It checks again every half hour.
+            {sort === 'latest' ? 'Stories appear here as soon as they are published and found relevant, and leave after three hours. The agent checks again every half hour.' : 'When a news agent has read its feeds and found relevant stories, the top twenty appear here. It checks again every half hour.'}
           </EmptyState>
         </div>
       ) : (
         <>
           <p className="-mt-2 text-xs text-muted-foreground">
-            {sort === 'importance' ? 'Most important first' : 'Newest first'}: {items.length} of {data?.total} relevant stories{data?.generatedAt ? ` · updated ${ago(data.generatedAt)}` : ''}.
+            {sort === 'importance' ? 'Most important first' : 'Newest first, from the last three hours'}: {items.length} of {data?.total} relevant stories{data?.generatedAt ? ` · updated ${ago(data.generatedAt)}` : ''}.
           </p>
           <ol className="grid gap-3">
             <AnimatePresence initial={false}>
