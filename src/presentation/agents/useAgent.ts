@@ -110,11 +110,11 @@ export function useUsageTransactions(days: number | null, agentId?: string) {
 }
 
 /** What the agents found that needs you. Checked every minute, so a new item shows up without a refresh. */
-export function useAgentAttention(workspace?: string) {
+export function useAgentAttention(workspace?: string, enabled = true) {
   const { agent } = useServices()
   const userId = useUserId()
   const available = useAgentAvailable()
-  return useQuery<{ items: AttentionItem[]; count: number }>({ queryKey: ['agent', 'attention', userId, workspace ?? 'all'], queryFn: () => agent.attention(workspace), enabled: available, refetchInterval: 60_000, staleTime: 15_000, retry: false })
+  return useQuery<{ items: AttentionItem[]; count: number }>({ queryKey: ['agent', 'attention', userId, workspace ?? 'all'], queryFn: () => agent.attention(workspace), enabled: available && enabled, refetchInterval: 60_000, staleTime: 15_000, retry: false })
 }
 
 /** The top stories. Looked at again every five minutes. */

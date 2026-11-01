@@ -60,4 +60,11 @@ describe('links written the short way', () => {
     expect(canonicalPath('/mail', 'fsa')).toBe('/fsa/mail')
     expect(switchWorkspace('/sb/mail', 'media')).toBe('/media/mail')
   })
+
+  it('keeps Attention and News under S&B', () => {
+    expect(canonicalPath('/personal/news', 'personal')).toBe('/sb/news')
+    expect(canonicalPath('/fsa/attention', 'fsa')).toBe('/sb/attention')
+    expect(switchWorkspace('/sb/news', 'personal')).toBe('/personal/today')
+    expect(switchWorkspace('/personal/today', 'sb')).toBe('/sb/today')
+  })
 })
