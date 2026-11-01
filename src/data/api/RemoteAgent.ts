@@ -131,6 +131,14 @@ export class RemoteAgent implements AgentApi {
     return this.http.post<{ status: string; meetingId?: string }>('/v1/agent/attention/act', a)
   }
 
+  approveProposal(id: string) {
+    return this.http.post<{ id: string; status: string }>(`/v1/agent/proposals/${encodeURIComponent(id)}/apply`, {})
+  }
+
+  dropProposal(id: string) {
+    return this.http.post<{ id: string; status: string }>(`/v1/agent/proposals/${encodeURIComponent(id)}/drop`, {})
+  }
+
   dayPlans() {
     return this.http.get<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>('/v1/agent/day-plans')
   }
