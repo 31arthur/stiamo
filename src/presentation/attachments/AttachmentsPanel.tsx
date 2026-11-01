@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { ClipboardEvent, DragEvent, FormEvent } from 'react'
 import { format, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { Link2, Paperclip, Search, Trash2, UploadCloud } from 'lucide-react'
+import { ExternalLink, Link2, ListChecks, Paperclip, Search, Trash2, Unlink, UploadCloud } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -44,6 +44,7 @@ export function AttachmentsPanel({ owner, compact = false, className, suggestTer
   const [dragging, setDragging] = useState(false)
   const [linking, setLinking] = useState(false)
   const [finding, setFinding] = useState(false)
+  const [managing, setManaging] = useState(false)
   const drive = useDriveStatus()
   const [preview, setPreview] = useState<number | null>(null)
   const remove = useAction<Attachment, void>((s, uid, a) => s.attachments.remove(uid, a, ownerTitle), { success: 'File removed' })
@@ -128,6 +129,9 @@ export function AttachmentsPanel({ owner, compact = false, className, suggestTer
               <Paperclip className="size-3.5" /> {files.length} file{files.length === 1 ? '' : 's'}
             </span>
             <div className="flex gap-1">
+              <Button variant="ghost" size="xs" onClick={() => setManaging(true)}>
+                <ListChecks /> Manage
+              </Button>
               {drive.available && (
                 <Button variant="ghost" size="xs" onClick={() => setFinding(true)}>
                   <Search /> Find in Drive
@@ -167,6 +171,15 @@ export function AttachmentsPanel({ owner, compact = false, className, suggestTer
         )}
       </AnimatePresence>
 
+      <ManageDialog
+        open={managing}
+        onClose={() => setManaging(false)}
+        files={files}
+        onView={(i) => (setManaging(false), setPreview(i))}
+        onRemove={(f) => remove.run(f)}
+        onFind={drive.available ? () => (setManaging(false), setFinding(true)) : undefined}
+        onAddLink={() => (setManaging(false), setLinking(true))}
+      />
       <FilePreview files={files} index={preview} onIndexChange={setPreview} onClose={() => setPreview(null)} />
       {drive.available && <DriveFinder open={finding} onClose={() => setFinding(false)} owner={owner} ownerTitle={ownerTitle} suggestTerms={suggestTerms} attachedIds={attachedDriveIds(files.map((f) => f.link?.url))} onUnlink={(id) => unlink.run(files.filter((f) => driveFileId(f.link?.url) === id))} />}
       <LinkDialog open={linking} onClose={() => setLinking(false)} onAdd={async (address, name) => void (await attachLink.run({ address, name }))} />
@@ -229,6 +242,61 @@ function LinkDialog({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
             </Button>
           </div>
         </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/** Every file on the record as a list, each one to open or take off (a linked document only loses its link). */
+function ManageDialog({ open, onClose, files, onView, onRemove, onFind, onAddLink }: { open: boolean; onClose: () => void; files: Attachment[]; onView: (index: number) => void; onRemove: (f: Attachment) => Promise<unknown>; onFind?: () => void; onAddLink: () => void }) {
+  const [confirming, setConfirming] = useState<string | null>(null)
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-3xl font-normal tracking-tight">Documents</DialogTitle>
+          <DialogDescription>{files.length} file{files.length === 1 ? '' : 's'} on this record. Taking a linked document off only removes the link; it stays in Google.</DialogDescription>
+        </DialogHeader>
+        <ul className="grid max-h-[55vh] gap-1 overflow-y-auto">
+          {files.map((f, i) => {
+            const kind = categoryOf(f) === 'image' ? 'other' : attachmentKind(f)
+            const address = f.link?.url
+            return (
+              <li key={f.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50">
+                {kind !== 'other' ? <FileTypeIcon kind={kind} className="h-8" /> : f.link ? <LinkTile provider={f.link.provider} className="size-8 rounded-md" /> : <FileIcon category={categoryOf(f)} name={f.name} className="size-8 rounded-md" />}
+                <button type="button" onClick={() => onView(i)} className="min-w-0 flex-1 text-left" aria-label={`Open ${f.name}`}>
+                  <div className="truncate text-sm font-medium">{f.name}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {f.link ? PROVIDER_LABELS[f.link.provider] : formatBytes(f.size)} · {format(parseISO(f.createdAt), 'd MMM yyyy')}
+                  </div>
+                </button>
+                {address && (
+                  <Button variant="ghost" size="icon-sm" aria-label={`Open ${f.name} in a new tab`} nativeButton={false} render={<a href={address} target="_blank" rel="noreferrer" />}>
+                    <ExternalLink />
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant={confirming === f.id ? 'destructive' : 'outline'}
+                  onBlur={() => setConfirming((c) => (c === f.id ? null : c))}
+                  onClick={() => (confirming === f.id ? void onRemove(f).then(() => setConfirming(null)) : setConfirming(f.id))}
+                >
+                  {f.link ? <Unlink /> : <Trash2 />} {confirming === f.id ? 'Sure?' : f.link ? 'Unlink' : 'Remove'}
+                </Button>
+              </li>
+            )
+          })}
+        </ul>
+        <div className="flex flex-wrap justify-end gap-1 border-t pt-3">
+          {onFind && (
+            <Button variant="ghost" size="sm" onClick={onFind}>
+              <Search /> Find in Drive to link more
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onAddLink}>
+            <Link2 /> Add link
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
