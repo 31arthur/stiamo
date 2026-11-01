@@ -1,4 +1,4 @@
-import type { AgentApi, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -129,6 +129,26 @@ export class RemoteAgent implements AgentApi {
 
   actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }) {
     return this.http.post<{ status: string; meetingId?: string }>('/v1/agent/attention/act', a)
+  }
+
+  dayPlans() {
+    return this.http.get<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>('/v1/agent/day-plans')
+  }
+
+  setDayPlanSettings(settings: DayPlanSettings) {
+    return this.http.put<{ settings: DayPlanSettings; schedule: DayPlanSchedule }>('/v1/agent/day-plans/settings', settings)
+  }
+
+  generateDayPlan(day?: string, force?: boolean) {
+    return this.http.post<DayPlan>('/v1/agent/day-plans/generate', { day, force })
+  }
+
+  applyDayPlan(id: string) {
+    return this.http.post<{ plan: DayPlan; booked: number; skipped: number }>(`/v1/agent/day-plans/${encodeURIComponent(id)}/apply`, {})
+  }
+
+  dismissDayPlan(id: string) {
+    return this.http.post<DayPlan>(`/v1/agent/day-plans/${encodeURIComponent(id)}/dismiss`, {})
   }
 
   news(workspace: string | undefined, days: number, sort: NewsSort) {

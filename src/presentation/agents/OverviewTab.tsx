@@ -7,6 +7,7 @@ import { Section, Stat } from '@/presentation/components/layout'
 import { Link } from '@/presentation/routing'
 import { useMailAccounts } from '@/presentation/mail/useMail'
 import { ago, compact, formatMs, money, triggerLabel } from './format'
+import { PlannerPanel } from './PlannerPanel'
 import { useAgentDetail, useAgentStats, useAgentSummary, useChannels, useWorkflow } from './useAgent'
 import { TABLE_LABELS } from './workflowTemplates'
 
@@ -20,6 +21,7 @@ export function OverviewTab() {
 
   return (
     <div className="grid gap-4">
+      {agent.id === 'daily-planner' && <PlannerPanel />}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={`Runs, last ${s.windowDays} days`} value={s.runs} />
         <Stat label="Succeeded" value={rate === null ? '—' : `${rate}%`} tone={rate === null ? 'default' : rate >= 95 ? 'success' : rate >= 80 ? 'warning' : 'danger'} />

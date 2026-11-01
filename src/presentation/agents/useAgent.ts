@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -115,6 +115,14 @@ export function useAgentAttention(workspace?: string, enabled = true) {
   const userId = useUserId()
   const available = useAgentAvailable()
   return useQuery<{ items: AttentionItem[]; count: number }>({ queryKey: ['agent', 'attention', userId, workspace ?? 'all'], queryFn: () => agent.attention(workspace), enabled: available && enabled, refetchInterval: 60_000, staleTime: 15_000, retry: false })
+}
+
+/** The evening plan: its settings, and the plans made for the latest days. Looked at every minute, so a plan made at nine shows up on its own. */
+export function useDayPlans(enabled = true) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>({ queryKey: ['agent', 'dayPlans', userId], queryFn: () => agent.dayPlans(), enabled: available && enabled, refetchInterval: 60_000, staleTime: 15_000, retry: false })
 }
 
 /** The top stories. Looked at again every five minutes. */

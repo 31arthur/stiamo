@@ -10,21 +10,31 @@ import { useUserId } from '@/presentation/data/hooks'
 import { FileTypeIcon } from '@/presentation/drive/FileTypeIcon'
 import { driveAgo } from '@/presentation/drive/format'
 import { Link } from '@/presentation/routing'
+import { ScheduleList } from './DayPlanCard'
 
 type CaseCard = Extract<Found, { kind: 'case' }>
 type DocCard = Extract<Found, { kind: 'document' }>
+type ScheduleCard = Extract<Found, { kind: 'schedule' }>
 
 /** What the agent found, as cards: the cases (each opens its page) and the documents (each opens in a reader). */
 export function FoundCards({ found }: { found: Found[] }) {
   const userId = useUserId()
   const cases = found.filter((f): f is CaseCard => f.kind === 'case')
   const docs = found.filter((f): f is DocCard => f.kind === 'document')
+  const schedules = found.filter((f): f is ScheduleCard => f.kind === 'schedule')
   const readable = useMemo(() => docs.flatMap((d) => driveFileAsAttachment(d, userId) ?? []), [docs, userId])
   const [open, setOpen] = useState<number | null>(null)
   if (found.length === 0) return null
 
   return (
     <div className="grid gap-4">
+      {schedules.map((s) => (
+        <section key={s.id} aria-label="Proposed schedule">
+          <h3 className="mb-1.5 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">Proposed for {format(parseISO(s.date), 'EEE d MMM')}</h3>
+          <ScheduleList blocks={s.blocks} />
+          <p className="mt-1.5 text-xs text-muted-foreground">A proposal only: nothing is booked. The evening plan in Attention is the one you approve.</p>
+        </section>
+      ))}
       {cases.length > 0 && (
         <section aria-label="Cases found">
           <h3 className="mb-1.5 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">Cases · {cases.length}</h3>
