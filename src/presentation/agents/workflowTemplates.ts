@@ -1,5 +1,6 @@
 import type { WorkflowConfig } from '@/domain/ai/AgentApi'
 import { DEFAULT_GUIDE, withGuide } from './mailGuide'
+import { SB_FEEDS, SB_IRRELEVANT, SB_LEVELS, SB_RELEVANT } from './newsFeeds'
 
 export interface WorkflowTemplate {
   id: string
@@ -101,6 +102,27 @@ export const TEMPLATES: WorkflowTemplate[] = [
         { name: 'important', description: 'An important message that should not be missed: funders, partners, government or court notices, deadlines, calls to apply or contribute.', route: 'attention' },
         { name: 'fyi', description: 'Informational or routine mail that needs nothing from the owner.', route: 'none' },
       ],
+    },
+  },
+  {
+    id: 'news',
+    name: 'News monitor',
+    description: 'Reads news feeds every half hour, keeps what matters to your work, and ranks the top stories.',
+    pitch: 'Filters out the irrelevant, grades the rest, and shows the top twenty on the News page.',
+    config: {
+      ...base,
+      filters: { sinceDays: 3, newOnly: true, contains: null, limit: 100 },
+      source: { kind: 'feed', feeds: SB_FEEDS },
+      decider: 'jev',
+      batchSize: 20,
+      defaultThreshold: 0.6,
+      scheduleMinutes: 30,
+      prompt: 'You choose news for S&B Consultants, a legal and advocacy practice that works with Indian migrant workers: their deaths, difficulties, and being stranded abroad. Say whether each story is relevant to that work. When unsure, a story about the welfare of Indian workers is relevant.',
+      labels: [
+        { name: 'relevant', description: SB_RELEVANT, route: 'publish' },
+        { name: 'irrelevant', description: SB_IRRELEVANT, route: 'none' },
+      ],
+      importance: { prompt: 'You grade news for S&B Consultants, which works with Indian migrant workers. Say how much each story matters to that work: how serious it is, how many workers it affects, and whether something must be done about it.', levels: SB_LEVELS },
     },
   },
   {

@@ -103,6 +103,16 @@ export function WorkflowRunTab() {
             )}
             <span className="text-xs text-muted-foreground">A test looks at up to 20 items and keeps nothing. Running keeps each decision in Review.</span>
           </div>
+          {listen?.schedule?.scheduled && (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border bg-success/5 px-3.5 py-2.5 text-sm" role="status">
+              <span className="size-2 animate-pulse rounded-full bg-success" />
+              Runs by itself every {listen.schedule.everyMinutes} minutes
+              <span className="text-xs text-muted-foreground">
+                {listen.schedule.lastRunAt ? `Last ${ago(listen.schedule.lastRunAt)}.` : 'Not yet.'} {listen.schedule.nextRunAt ? `Next ${ago(listen.schedule.nextRunAt).replace(' ago', '')}.` : ''}
+                {listen.schedule.error ? ` ${listen.schedule.error}` : ''}
+              </span>
+            </p>
+          )}
           {listen?.listening && (
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border bg-success/5 px-3.5 py-2.5 text-sm" role="status">
               <span className={listen.state === 'listening' ? 'size-2 animate-pulse rounded-full bg-success' : 'size-2 rounded-full bg-warning'} />

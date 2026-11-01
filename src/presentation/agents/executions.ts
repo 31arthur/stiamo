@@ -31,6 +31,8 @@ export const GROUPS: GroupMeta[] = [
   { status: 'event_proposed', title: 'Events to approve', hint: 'Found in an email. Approve them in Attention to add them to the calendar.', pending: false },
   { status: 'queued', title: 'For your attention', hint: 'Read and summarised, waiting in Attention.', pending: false },
   { status: 'done', title: 'Done', hint: 'You dealt with these from Attention.', pending: false },
+  { status: 'published', title: 'On the news page', hint: 'Relevant stories, ranked on the News page.', pending: false },
+  { status: 'irrelevant', title: 'Not relevant', hint: 'Read and judged not to be about your work.', pending: false },
   { status: 'applied', title: 'Moved to Trash', hint: 'Moved by the agent. They are in the mailbox’s Trash folder, where you can put them back.', pending: false },
   { status: 'approved', title: 'Approved', hint: 'Approved by you.', pending: false },
   { status: 'dismissed', title: 'Dismissed', hint: 'You left these where they were.', pending: false },

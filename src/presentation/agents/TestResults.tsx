@@ -19,6 +19,8 @@ const STATUS: Record<DecisionItem['status'], { text: string; tone: string }> = {
   applied: { text: 'Moved to Trash', tone: 'bg-success/12 text-success' },
   queued: { text: 'For your attention', tone: 'bg-warning/15 text-warning' },
   event_proposed: { text: 'Event to approve', tone: 'bg-warning/15 text-warning' },
+  published: { text: 'On the news page', tone: 'bg-success/12 text-success' },
+  irrelevant: { text: 'Not relevant', tone: 'bg-muted text-muted-foreground' },
 }
 
 /** What a test or a run did, item by item: the label it chose, how sure it was, and why. */

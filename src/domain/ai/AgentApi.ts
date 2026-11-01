@@ -140,12 +140,12 @@ export interface WorkflowLabel {
   /** The confidence needed to propose it; under this the item goes to review. */
   threshold?: number | null
   /** What happens to an item with this label: kept, queued for your attention, or queued with a calendar event to approve. */
-  route?: 'none' | 'attention' | 'event'
+  route?: 'none' | 'attention' | 'event' | 'publish'
 }
 
 /** What a person configures for an agent that sorts a source's items. */
 export interface WorkflowConfig {
-  source: { kind: 'manual' | 'table' | 'mail' | 'agent'; /** For `agent`: the agent whose kept mail this one reads, and whether to run it first. */ upstreamId?: string | null; runUpstream?: boolean; table?: string | null; /** The mailboxes, for `mail`: one or several. */ accountIds?: string[]; folder?: string }
+  source: { kind: 'manual' | 'table' | 'mail' | 'agent' | 'feed'; /** For `feed`: the news feeds to read. */ feeds?: { key: string; url: string; lang: string }[]; /** For `agent`: the agent whose kept mail this one reads, and whether to run it first. */ upstreamId?: string | null; runUpstream?: boolean; table?: string | null; /** The mailboxes, for `mail`: one or several. */ accountIds?: string[]; folder?: string }
   filters: { sinceDays?: number | null; /** A date range instead: from this day (included)… */ after?: string | null; /** …up to this day (not included). */ before?: string | null; newOnly: boolean; contains?: string | null; limit: number }
   prompt: string
   labels: WorkflowLabel[]
@@ -165,6 +165,10 @@ export interface WorkflowConfig {
   refinements?: string[]
   /** Run by itself when new mail arrives (the mail service says so), not only when asked. */
   listen?: boolean
+  /** Run by itself every this many minutes (for news feeds, which can't say when something is new). */
+  scheduleMinutes?: number | null
+  /** For news: how the relevant stories are graded, and so ranked. */
+  importance?: { prompt: string; levels: { name: string; description: string; weight: number }[] } | null
 }
 
 export interface Workflow {
@@ -189,7 +193,7 @@ export interface DecisionItem {
   confidence: number
   reason: string
   /** `kept`: judged fine, nothing to do. `applied`: moved to Trash. */
-  status: 'proposed' | 'needs_review' | 'failed' | 'kept' | 'applied' | 'queued' | 'event_proposed'
+  status: 'proposed' | 'needs_review' | 'failed' | 'kept' | 'applied' | 'queued' | 'event_proposed' | 'published' | 'irrelevant'
   /** What is (in a test run, would be) done with it. */
   action?: 'trash'
   /** What the agent worked out: a summary, priority, suggested action and any event. */
@@ -202,7 +206,7 @@ export interface DecisionItem {
 export interface WorkflowRun {
   runId: string | null
   mode: 'test' | 'run'
-  counts: { items: number; proposed: number; needsReview: number; failed: number; kept?: number; applied?: number; protected?: number; queued?: number; events?: number }
+  counts: { items: number; proposed: number; needsReview: number; failed: number; kept?: number; applied?: number; protected?: number; queued?: number; events?: number; published?: number; irrelevant?: number }
   /** How many items matched the filters before the cap. */
   matched: number
   usage: { inputTokens: number; outputTokens: number }
@@ -338,9 +342,28 @@ export interface ListenStatus {
   lastRunAt: string | null
   runs: number
   error: string | null
+  schedule?: { scheduled: boolean; everyMinutes: number | null; nextRunAt: string | null; lastRunAt: string | null; runs: number; error: string | null }
 }
 
-export type LedgerStatus = 'proposed' | 'needs_review' | 'approved' | 'dismissed' | 'kept' | 'applied' | 'protected' | 'queued' | 'event_proposed' | 'done'
+/** A story on the news page. */
+export interface NewsStory {
+  agentId: string
+  itemId: string
+  title: string
+  source: string | null
+  link: string | null
+  description: string | null
+  imageUrl: string | null
+  publishedAt: string | null
+  importance: string | null
+  weight: number
+  lang: string | null
+  feed: string | null
+  relevance: number | null
+  rank: number
+}
+
+export type LedgerStatus = 'proposed' | 'needs_review' | 'approved' | 'dismissed' | 'kept' | 'applied' | 'protected' | 'queued' | 'event_proposed' | 'done' | 'published' | 'irrelevant'
 
 /** One real run of an agent you built. `counts` is what the run did; `now` is where its items stand today. */
 export interface Execution {
@@ -554,6 +577,8 @@ export interface AgentApi {
   attention(workspace?: string): Promise<{ items: AttentionItem[]; count: number }>
   actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }): Promise<{ status: string; meetingId?: string }>
   listenStatus(id: string): Promise<ListenStatus>
+  news(workspace: string | undefined, days: number): Promise<{ items: NewsStory[]; total: number; generatedAt: string }>
+  hideNews(agentId: string, itemId: string): Promise<void>
   startSweep(id: string): Promise<Sweep>
   sweepStatus(id: string): Promise<Sweep | null>
   stopSweep(id: string): Promise<Sweep | null>

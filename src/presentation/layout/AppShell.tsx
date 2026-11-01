@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, Bot, Check, Coins, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
+import { BellRing, Bot, Newspaper, Check, Coins, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -194,7 +194,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
         { to: '/today', label: 'Today', icon: Sun },
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
-        ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }, { to: '/attention', label: 'Attention', icon: BellRing, badge: waiting }] : []),
+        ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }, { to: '/attention', label: 'Attention', icon: BellRing, badge: waiting }, { to: '/news', label: 'News', icon: Newspaper }] : []),
       ].filter((i) => on(i.to.slice(1))),
       action: scope === 'all' ? { to: '/pages', label: 'Choose each workspace’s pages', icon: SlidersHorizontal } : undefined,
     },
