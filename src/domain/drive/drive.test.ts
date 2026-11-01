@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { casesForFile, groupLetters, fileKind, nameForContent, caseSearchTerms, driveFileAsAttachment, driveFileId, isGoogleDoc, NO_DRIVE } from './Drive'
+import { attachmentKind, casesForFile,groupLetters, fileKind, nameForContent, caseSearchTerms, driveFileAsAttachment, driveFileId, isGoogleDoc, NO_DRIVE } from './Drive'
 
 describe('what identifies a case in a letter', () => {
   it('uses our number, the court’s number, the title, the client and the other side', () => {
@@ -72,6 +72,14 @@ describe('what kind of file it is', () => {
     expect(fileKind('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'a.xlsx')).toBe('excel')
     expect(fileKind('image/png', 'scan.png')).toBe('image')
     expect(fileKind('application/zip', 'a.zip')).toBe('other')
+  })
+  it('knows an attached document by its Google link, else by its name', () => {
+    const link = (provider: 'google-doc' | 'google-sheet' | 'google-slides' | 'google-drive') => ({ url: 'https://x', provider })
+    expect(attachmentKind({ mime: 'text/uri-list', name: 'Plaint', link: link('google-doc') })).toBe('doc')
+    expect(attachmentKind({ mime: 'text/uri-list', name: 'Wages', link: link('google-sheet') })).toBe('sheet')
+    expect(attachmentKind({ mime: 'text/uri-list', name: 'Deck', link: link('google-slides') })).toBe('slides')
+    expect(attachmentKind({ mime: 'text/uri-list', name: 'Form D Alur.pdf', link: link('google-drive') })).toBe('pdf')
+    expect(attachmentKind({ mime: 'application/zip', name: 'a.zip' })).toBe('other')
   })
   it('gives an exported Google document the extension of what arrived', () => {
     expect(nameForContent('Notes', 'application/pdf')).toBe('Notes.pdf')
