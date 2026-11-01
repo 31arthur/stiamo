@@ -2,6 +2,7 @@ import { ApiAuthRepository } from '@/data/api/ApiAuthRepository'
 import { ApiHttp } from '@/data/api/ApiHttp'
 import { RemoteAgent } from '@/data/api/RemoteAgent'
 import { RemoteDrive } from '@/data/api/RemoteDrive'
+import { RemoteCalendar } from '@/data/api/RemoteCalendar'
 import { RemoteMail } from '@/data/api/RemoteMail'
 import type { ApiConfig } from '@/data/api/config'
 import { ChangeBus } from '@/data/api/ChangeBus'
@@ -87,6 +88,7 @@ export function createApiContainer(config: ApiConfig, options: { sessions?: Sess
     drive: new RemoteDrive(http),
     agent: new RemoteAgent(http),
     mail: new RemoteMail(http),
+    calendar: new RemoteCalendar(http),
     live: {
       subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) =>
         crud[kind].subscribe(userId, listener as never, onError),

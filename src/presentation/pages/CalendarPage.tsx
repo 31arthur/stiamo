@@ -1,13 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { addMonths, format, isSameMonth, isWeekend, parseISO, startOfMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { useNavigate } from '@/presentation/routing'
 import { Button } from '@/components/ui/button'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { cn } from '@/lib/utils'
 import type { AgendaEntry } from '@/domain/agenda/agenda'
 import { buildMonthGrid } from '@/domain/agenda/monthGrid'
+import { googleOn } from '@/domain/calendar/GoogleCalendar'
+import type { GoogleEvent } from '@/domain/calendar/GoogleCalendar'
 import { formatClock } from "@/domain/shared/time"
 import type { ISODate } from '@/domain/shared/types'
 import { WORKSPACE_IDS, WORKSPACES } from '@/domain/shared/workspace'
@@ -22,6 +25,9 @@ import { useAgenda, useToday } from '@/presentation/data/hooks'
 import { CREATE_MENU } from '@/presentation/layout/createMenu'
 import { easeOutExpo, spring } from '@/presentation/motion/presets'
 import { useIsCompact } from '@/presentation/layout/useMediaQuery'
+import { CalendarsSheet } from '@/presentation/calendar/CalendarsSheet'
+import { useCalendarAutoSync, useCalendarAvailable, useCalendarStatus, useGoogleEvents } from '@/presentation/calendar/useGoogleCalendar'
+import { toast } from '@/presentation/notifications/toast'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const MAX_VISIBLE = 4
@@ -38,9 +44,29 @@ export function CalendarPage() {
   const [direction, setDirection] = useState(0)
   const grid = useMemo(() => buildMonthGrid(month), [month])
   const { data: entries } = useAgenda(grid.from, grid.to)
-  const { matches } = useWorkspaceFilter()
+  const { matches, scope } = useWorkspaceFilter()
   const compact = useIsCompact()
   const [selected, setSelected] = useState(today)
+  const [calendarsOpen, setCalendarsOpen] = useState(false)
+  const available = useCalendarAvailable()
+  const status = useCalendarStatus()
+  useCalendarAutoSync(status.data)
+  const connected = (status.data?.accounts.length ?? 0) > 0
+  const google = useGoogleEvents(grid.from, grid.to, available && connected)
+  const googleShown = useMemo(() => google.filter((g) => matches(g.workspace)), [google, matches])
+  const googleByDate = useMemo(() => new Map(grid.weeks.flat().map((day) => [day, googleOn(googleShown, day)] as const)), [grid, googleShown])
+
+  // Coming back from Google after allowing access (or not): say how it went, and tidy the address.
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    const ok = params.get('calendar_connected')
+    const bad = params.get('calendar_error')
+    if (!ok && !bad) return
+    if (ok) toast.success('Google calendar connected', { description: `${ok} is being read now.` })
+    else toast.error('Couldn’t connect the calendar', { description: bad ?? undefined })
+    setParams((p) => (p.delete('calendar_connected'), p.delete('calendar_error'), p), { replace: true })
+    if (ok) setCalendarsOpen(true)
+  }, [params, setParams])
 
   const byDate = useMemo(() => {
     const map = new Map<ISODate, AgendaEntry[]>()
@@ -81,6 +107,7 @@ export function CalendarPage() {
             <span className="tabular-nums">{meetings} meetings & appointments</span>
             <span className="tabular-nums">· {hearings} hearings</span>
             <span className="tabular-nums">· {inMonth.length - meetings - hearings} tasks & follow-ups</span>
+            {googleShown.some((g) => g.date.startsWith(monthPrefix)) && <span className="tabular-nums">· {googleShown.filter((g) => g.date.startsWith(monthPrefix)).length} from Google</span>}
             <span className="flex items-center gap-3 border-l pl-3">
               {WORKSPACE_IDS.map((ws) => (
                 <span key={ws} className="flex items-center gap-1 text-xs">
@@ -91,6 +118,11 @@ export function CalendarPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {available && (
+            <Button variant="outline" size="sm" className="rounded-full" onClick={() => setCalendarsOpen(true)}>
+              <CalendarDays /> Calendars
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="rounded-full" onClick={() => goTo(new Date())}>
             Today
           </Button>
@@ -121,9 +153,9 @@ export function CalendarPage() {
               <div key={week[0]} className="grid grid-cols-7 border-b last:border-b-0">
                 {week.map((day) => (
                   compact ? (
-                    <CompactDayCell key={day} day={day} month={month} today={today} selected={day === selected} entries={byDate.get(day) ?? []} onSelect={() => setSelected(day)} />
+                    <CompactDayCell key={day} day={day} month={month} today={today} selected={day === selected} entries={byDate.get(day) ?? []} google={googleByDate.get(day) ?? []} onSelect={() => setSelected(day)} />
                   ) : (
-                    <DayCell key={day} day={day} month={month} today={today} entries={byDate.get(day) ?? []} />
+                    <DayCell key={day} day={day} month={month} today={today} entries={byDate.get(day) ?? []} google={googleByDate.get(day) ?? []} />
                   )
                 ))}
               </div>
@@ -131,20 +163,21 @@ export function CalendarPage() {
           </motion.div>
         </AnimatePresence>
       </div>
-      {compact && <SelectedDay day={selected} today={today} entries={byDate.get(selected) ?? []} />}
+      {compact && <SelectedDay day={selected} today={today} entries={byDate.get(selected) ?? []} google={googleByDate.get(selected) ?? []} />}
+      {available && <CalendarsSheet open={calendarsOpen} onOpenChange={setCalendarsOpen} scope={scope} />}
     </>
   )
 }
 
 /** Phone layout: a dot per item, colour = workspace; tap a day to list it below. */
-function CompactDayCell({ day, month, today, selected, entries, onSelect }: { day: ISODate; month: Date; today: ISODate; selected: boolean; entries: AgendaEntry[]; onSelect: () => void }) {
+function CompactDayCell({ day, month, today, selected, entries, google, onSelect }: { day: ISODate; month: Date; today: ISODate; selected: boolean; entries: AgendaEntry[]; google: GoogleEvent[]; onSelect: () => void }) {
   const date = parseISO(day)
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      aria-label={`${format(date, 'EEEE d MMMM')}, ${entries.length} item${entries.length === 1 ? '' : 's'}`}
+      aria-label={`${format(date, 'EEEE d MMMM')}, ${entries.length + google.length} item${entries.length + google.length === 1 ? '' : 's'}`}
       className={cn('flex h-14 flex-col items-center gap-1 border-r pt-1.5 last:border-r-0', !isSameMonth(date, month) && 'text-muted-foreground/50')}
     >
       <span
@@ -160,12 +193,15 @@ function CompactDayCell({ day, month, today, selected, entries, onSelect }: { da
         {entries.slice(0, 4).map((e) => (
           <span key={e.key} className={cn('size-1.5 rounded-full', WS_STYLE[e.workspace].dot, e.outcome.status !== 'open' && 'opacity-40')} />
         ))}
+        {google.slice(0, Math.max(0, 4 - entries.length)).map((g) => (
+          <span key={g.id} className="size-1.5 rounded-full" style={{ background: g.color }} />
+        ))}
       </span>
     </button>
   )
 }
 
-function SelectedDay({ day, today, entries }: { day: ISODate; today: ISODate; entries: AgendaEntry[] }) {
+function SelectedDay({ day, today, entries, google }: { day: ISODate; today: ISODate; entries: AgendaEntry[]; google: GoogleEvent[] }) {
   const navigate = useNavigate()
   return (
     <section className="grid gap-2">
@@ -175,12 +211,15 @@ function SelectedDay({ day, today, entries }: { day: ISODate; today: ISODate; en
           Plan day
         </Button>
       </div>
-      {entries.length === 0 ? (
+      {entries.length + google.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Nothing on this day.</p>
       ) : (
         <ul className="grid gap-1.5">
           {entries.map((e) => (
             <EntryChip key={e.key} entry={e} large />
+          ))}
+          {google.map((g) => (
+            <GoogleChip key={g.id} event={g} day={day} large />
           ))}
         </ul>
       )}
@@ -188,13 +227,14 @@ function SelectedDay({ day, today, entries }: { day: ISODate; today: ISODate; en
   )
 }
 
-function DayCell({ day, month, today, entries }: { day: ISODate; month: Date; today: ISODate; entries: AgendaEntry[] }) {
+function DayCell({ day, month, today, entries, google }: { day: ISODate; month: Date; today: ISODate; entries: AgendaEntry[]; google: GoogleEvent[] }) {
   const navigate = useNavigate()
   const editor = useEditor()
   const date = parseISO(day)
   const isToday = day === today
   const visible = entries.slice(0, MAX_VISIBLE)
-  const hidden = entries.length - visible.length
+  const visibleGoogle = google.slice(0, Math.max(0, MAX_VISIBLE - visible.length))
+  const hidden = entries.length + google.length - visible.length - visibleGoogle.length
 
   const presets = (kind: EditorRequest['kind']): EditorRequest => {
     switch (kind) {
@@ -241,6 +281,9 @@ function DayCell({ day, month, today, entries }: { day: ISODate; month: Date; to
         {visible.map((e) => (
           <EntryChip key={e.key} entry={e} />
         ))}
+        {visibleGoogle.map((g) => (
+          <GoogleChip key={g.id} event={g} day={day} />
+        ))}
         {hidden > 0 && (
           <li>
             <button type="button" onClick={() => navigate(`/today/${day}`)} className="px-1.5 text-[11px] text-muted-foreground hover:text-foreground">
@@ -250,6 +293,28 @@ function DayCell({ day, month, today, entries }: { day: ISODate; month: Date; to
         )}
       </ul>
     </div>
+  )
+}
+
+/** An event from a Google calendar: in that calendar's colour, opens in Google. Changing it happens there. */
+function GoogleChip({ event: g, day, large = false }: { event: GoogleEvent; day: ISODate; large?: boolean }) {
+  const when = g.allDay ? (g.date === g.endDate ? 'All day' : `${format(parseISO(g.date), 'd MMM')} – ${format(parseISO(g.endDate), 'd MMM')}`) : `${formatClock(g.startMinute ?? 0)}–${formatClock(g.endMinute ?? 0)}`
+  const first = g.date === day
+  return (
+    <motion.li layout initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={spring.snappy}>
+      <a
+        href={g.link || undefined}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`${g.title} · ${when} · ${g.calendar} (${g.account}), opens in Google`}
+        className={cn('flex w-full items-center gap-1 rounded-md border-l-[3px] px-1 py-0.5 text-left text-[11.5px] font-medium transition-[filter] hover:brightness-95', large && 'gap-2 rounded-xl px-3 py-2.5 text-sm')}
+        style={{ borderLeftColor: g.color, background: `color-mix(in oklab, ${g.color} 14%, transparent)` }}
+      >
+        {!g.allDay && first && <span className="shrink-0 text-foreground/50 tabular-nums">{formatClock(g.startMinute ?? 0)}</span>}
+        <span className="truncate text-foreground/85">{g.title}</span>
+        {large && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{when}</span>}
+      </a>
+    </motion.li>
   )
 }
 
