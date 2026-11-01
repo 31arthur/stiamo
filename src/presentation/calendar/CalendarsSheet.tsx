@@ -152,8 +152,8 @@ function CalendarRow({ source: c, sends, onChange }: { source: CalendarSource; s
         <span className={cn('min-w-0 flex-1 truncate text-sm', !c.enabled && 'text-muted-foreground')}>{c.name}</span>
         {!c.writable && <span className="rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">read only</span>}
         {c.writable && sends && (
-          <Button variant={c.export ? 'secondary' : 'ghost'} size="xs" aria-pressed={c.export} onClick={() => onChange(c.id, { export: !c.export })} title="Meetings and hearings of this workspace are added to this calendar">
-            <Send /> {c.export ? 'Receiving meetings & hearings' : 'Send meetings & hearings here'}
+          <Button variant={c.export ? 'secondary' : 'ghost'} size="xs" aria-pressed={c.export} onClick={() => onChange(c.id, { export: !c.export })} title="This workspace's meetings, hearings, tasks and follow-ups are added to this calendar">
+            <Send /> {c.export ? 'Receiving my schedule' : 'Send my schedule here'}
           </Button>
         )}
       </div>
