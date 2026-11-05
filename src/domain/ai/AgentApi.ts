@@ -30,7 +30,34 @@ export interface ProposalHit {
   action: string
   title: string
   lines: string[]
+  /** Where it stands, when a saved conversation is reopened: still waiting, saved, or dropped. */
+  status?: 'pending' | 'applied' | 'dropped'
 }
+
+/** A conversation in the list. */
+export interface ConversationSummary {
+  id: string
+  agentId: string
+  /** A workspace id, or `all`. */
+  workspace: string
+  title: string
+  updatedAt: string
+  createdAt: string
+  turns: number
+  preview: string
+}
+
+/** One question and the agent's answer. */
+export interface ConversationTurn {
+  id: string
+  question: string
+  answer: string
+  steps: AgentStep[]
+  found: Found[]
+  at: string
+}
+
+export type Conversation = Omit<ConversationSummary, 'turns'> & { turns: ConversationTurn[] }
 
 /** A day's schedule an agent proposed: time blocks for tasks and calls. Nothing is booked until it is approved. */
 export interface ScheduleHit {
@@ -637,6 +664,12 @@ export interface AgentApi {
   attention(workspace?: string): Promise<{ items: AttentionItem[]; count: number }>
   actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }): Promise<{ status: string; meetingId?: string }>
   listenStatus(id: string): Promise<ListenStatus>
+  conversations(workspace: string): Promise<ConversationSummary[]>
+  conversation(id: string): Promise<Conversation>
+  startConversation(agentId: string, workspace: string): Promise<Conversation>
+  say(id: string, message: string): Promise<{ turn: ConversationTurn; conversation: ConversationSummary }>
+  renameConversation(id: string, title: string): Promise<ConversationSummary>
+  deleteConversation(id: string): Promise<void>
   approveProposal(id: string): Promise<{ id: string; status: string }>
   dropProposal(id: string): Promise<{ id: string; status: string }>
   dayPlans(): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>

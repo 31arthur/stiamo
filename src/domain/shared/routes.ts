@@ -19,7 +19,7 @@ const HOME: Record<string, WorkspaceScope> = {
   news: 'sb',
   pages: 'all',
 }
-const SHARED = ['today', 'calendar', 'mail', 'tasks', 'follow-ups', 'meetings', 'plans', 'goals', 'agents']
+const SHARED = ['today', 'calendar', 'mail', 'assistant', 'tasks', 'follow-ups', 'meetings', 'plans', 'goals', 'agents']
 
 export const SECTIONS = [...Object.keys(HOME), ...SHARED]
 
