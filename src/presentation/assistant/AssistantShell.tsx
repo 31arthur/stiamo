@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useNavigate as useRouterNavigate, useOutlet, useParams } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { ArrowLeft, Code2, Menu, MessageSquarePlus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -10,6 +11,7 @@ import type { WorkspaceId, WorkspaceScope } from '@/domain/shared/workspace'
 import { cn } from '@/lib/utils'
 import { useScope } from '@/presentation/app/workspaceFilter'
 import { ConfirmDelete } from '@/presentation/components/confirm'
+import { PopOut } from '@/presentation/components/PopOut'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { Logo } from '@/presentation/layout/Logo'
@@ -50,7 +52,9 @@ export function AssistantShell() {
           <span className="font-display text-lg">Assistant</span>
         </div>
         <main className="flex min-h-0 flex-1 flex-col">
-          <Suspense fallback={<PageLoader />}>{outlet}</Suspense>
+          <motion.div key={threadId ?? 'new'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} className="flex min-h-0 flex-1 flex-col">
+            <Suspense fallback={<PageLoader />}>{outlet}</Suspense>
+          </motion.div>
         </main>
       </div>
     </div>
@@ -126,9 +130,12 @@ function ChatSidebar() {
         )}
       </nav>
 
-      <Link to="/agents" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
-        <Code2 className="size-4" /> Developer
-      </Link>
+      <div className="flex items-center rounded-lg pr-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+        <Link to="/agents" className="flex flex-1 items-center gap-2 px-2.5 py-2 text-sm">
+          <Code2 className="size-4" /> Developer
+        </Link>
+        <PopOut to="/agents" label="Developer" />
+      </div>
     </div>
   )
 }

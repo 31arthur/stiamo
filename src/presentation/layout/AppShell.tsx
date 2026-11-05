@@ -28,6 +28,7 @@ import { AccountCard, SyncBanner } from './AccountCard'
 import { CommandPalette } from './CommandPalette'
 import { MobileTabBar } from './MobileTabBar'
 import { SECTION_TITLES, useDocumentTitle } from './useDocumentTitle'
+import { PopOut } from '@/presentation/components/PopOut'
 import { Logo } from './Logo'
 
 interface NavItem {
@@ -38,6 +39,8 @@ interface NavItem {
   tone?: 'danger' | 'default'
   /** Active only on exactly this address, not on what is under it. */
   end?: boolean
+  /** Offers a button beside it that opens it in a new tab. */
+  popout?: boolean
 }
 
 interface NavGroup {
@@ -123,7 +126,7 @@ export function AppShell() {
         </div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
-            key={section}
+            key={segments.slice(1, 3).join('/')}
             initial={{ opacity: 0, y: 8, filter: 'blur(6px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: -4, filter: 'blur(4px)', transition: { duration: 0.12 } }}
@@ -191,7 +194,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       label: 'Plan',
       items: [
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
-        ...(backend === 'api' ? [{ to: '/assistant', label: 'Assistant', icon: Sparkles }] : []),
+        ...(backend === 'api' ? [{ to: '/assistant', label: 'Assistant', icon: Sparkles, popout: true }] : []),
         { to: '/today', label: 'Today', icon: Sun },
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
         ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }] : []),
@@ -216,7 +219,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       ].filter((i) => on(i.to.slice(1))),
     },
     // Building and tuning the agents is a place of its own, with its own sidebar.
-    ...(backend === 'api' ? [{ label: 'Tools', items: [{ to: '/agents', label: 'Developer', icon: Code2 }] }] : []),
+    ...(backend === 'api' ? [{ label: 'Tools', items: [{ to: '/agents', label: 'Developer', icon: Code2, popout: true }] }] : []),
   ]
 
   const scopes: { id: WorkspaceScope; label: string }[] = [{ id: 'all', label: 'All workspaces' }, ...WORKSPACE_IDS.map((id) => ({ id, label: WORKSPACES[id].name }))]
@@ -284,6 +287,17 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
 }
 
 function NavRow({ item, nested = false }: { item: NavItem; nested?: boolean }) {
+  return item.popout ? (
+    <div className="group/row relative">
+      <NavLinkRow item={item} nested={nested} />
+      <PopOut to={item.to} label={item.label} className="absolute top-1/2 right-1.5 -translate-y-1/2 opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100 max-lg:opacity-100" />
+    </div>
+  ) : (
+    <NavLinkRow item={item} nested={nested} />
+  )
+}
+
+function NavLinkRow({ item, nested }: { item: NavItem; nested: boolean }) {
   return (
     <NavLink to={item.to} end={item.end} className="group relative">
       {({ isActive }) => (

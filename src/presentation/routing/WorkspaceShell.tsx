@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { canonicalPath } from '@/domain/shared/routes'
 import { EditorHost } from '@/presentation/app/create'
 import { lastScope, WorkspaceFilterProvider } from '@/presentation/app/workspaceFilter'
@@ -21,7 +22,10 @@ export function WorkspaceShell() {
     <LiveDataProvider>
       <WorkspaceFilterProvider>
         <EditorHost>
-          {section === 'assistant' ? <AssistantShell /> : section === 'agents' ? <DeveloperShell /> : <AppShell />}
+          {/* Moving between Stiamo, the Assistant and Developer fades the new one in. */}
+          <motion.div key={section === 'assistant' || section === 'agents' ? section : 'app'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+            {section === 'assistant' ? <AssistantShell /> : section === 'agents' ? <DeveloperShell /> : <AppShell />}
+          </motion.div>
         </EditorHost>
       </WorkspaceFilterProvider>
     </LiveDataProvider>
