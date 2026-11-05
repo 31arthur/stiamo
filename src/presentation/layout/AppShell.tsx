@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, Bot, Newspaper, Check, Coins, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sparkles, Sun, Workflow } from 'lucide-react'
+import { BellRing, Code2, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -15,7 +15,7 @@ import { useAttention } from '@/presentation/app/attention'
 import { NotificationsButton, NotificationsDrawer } from '@/presentation/notifications/NotificationsDrawer'
 import { usePages } from '@/presentation/app/pages'
 import { useServices } from '@/presentation/app/services'
-import { useAgentAttention, useAgentSettings } from '@/presentation/agents/useAgent'
+import { useAgentAttention } from '@/presentation/agents/useAgent'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
@@ -148,7 +148,6 @@ export function AppShell() {
 function Sidebar({ onNotes }: { onNotes: () => void }) {
   const attention = useAttention()
   const { scope, setScope } = useWorkspaceFilter()
-  const { settings: agentSettings } = useAgentSettings()
   const { backend } = useServices()
   const { enabled } = usePages()
   const on = (page: string) => enabled(scope, page)
@@ -180,12 +179,6 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
             },
           ]
         : []
-
-  // The agents listed here: all of them under "All workspaces", otherwise those assigned to this workspace.
-  // Chat agents are the team; the ones built to work through a source (a mailbox, a collection) are task forces.
-  const here = (agentSettings?.agents ?? []).filter((a) => scope === 'all' || a.workspaces.includes(scope))
-  const teamAgents = here.filter((a) => a.kind !== 'workflow')
-  const taskForce = here.filter((a) => a.kind === 'workflow')
 
   // The S&B desk's own section: what its agents found in the mail and in the news. Not in the other workspaces.
   const monitoring: NavGroup[] =
@@ -222,20 +215,8 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
         { to: '/goals', label: 'Goals', icon: KIND_META.goal.icon },
       ].filter((i) => on(i.to.slice(1))),
     },
-    // Developer: building and tuning the agents (their settings, prompts, models, channels, history, usage). Talking to them is the Assistant.
-    {
-      label: 'Developer',
-      action: { to: '/agents/new', label: 'New agent', icon: Plus },
-      items: [
-        { to: '/agents', label: 'Agents', icon: LayoutGrid, end: true },
-        { to: '/agents/usage', label: 'Usage', icon: Coins },
-        { to: '/agents/settings', label: 'Settings', icon: SlidersHorizontal },
-      ],
-      folds: [
-        { key: 'team', label: 'Team', at: 1, empty: 'No agents yet', items: teamAgents.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: Bot })) },
-        { key: 'ttf', label: 'TTF', at: 1, empty: 'No task force yet', title: 'Temporary Task Force: agents built for one job, like clearing a mailbox', items: taskForce.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: Workflow })) },
-      ],
-    },
+    // Building and tuning the agents is a place of its own, with its own sidebar.
+    ...(backend === 'api' ? [{ label: 'Tools', items: [{ to: '/agents', label: 'Developer', icon: Code2 }] }] : []),
   ]
 
   const scopes: { id: WorkspaceScope; label: string }[] = [{ id: 'all', label: 'All workspaces' }, ...WORKSPACE_IDS.map((id) => ({ id, label: WORKSPACES[id].name }))]
