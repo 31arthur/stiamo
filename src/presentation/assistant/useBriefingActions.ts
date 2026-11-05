@@ -1,4 +1,6 @@
 import { useCallback } from 'react'
+import { format, parseISO } from 'date-fns'
+import { formatClock } from '@/domain/shared/time'
 import type { ISODate, Minutes } from '@/domain/shared/types'
 import { useServices } from '@/presentation/app/services'
 import { toast } from '@/presentation/notifications/toast'
@@ -54,7 +56,7 @@ export function useBriefingActions() {
           if (!m) throw new Error('That meeting is gone.')
           await services.agenda.schedule(userId, { kind: 'meeting', id }, date, { start: start ?? m.slot.start, duration: m.slot.duration })
         }
-        toast.success('Moved')
+        toast.success('Moved', { description: `${format(parseISO(date), 'EEE d MMM')}${start === undefined ? '' : ` at ${formatClock(start)}`}` })
       } catch (e) {
         toast.error('Couldn’t move it', { description: e instanceof Error ? e.message : undefined })
       }
@@ -62,5 +64,5 @@ export function useBriefingActions() {
     [services, userId, tasks, followUps, meetings],
   )
 
-  return { complete, reopen, move, tasks, followUps }
+  return { complete, reopen, move, tasks, followUps, meetings }
 }
