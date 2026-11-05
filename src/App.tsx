@@ -22,7 +22,8 @@ const CounselPage = lazy(() => import('@/presentation/pages/CounselPage').then((
 const CounselDetailPage = lazy(() => import('@/presentation/pages/CounselDetailPage').then((m) => ({ default: m.CounselDetailPage })))
 const CasesPage = lazy(() => import('@/presentation/pages/CasesPage').then((m) => ({ default: m.CasesPage })))
 const WorkspacePagesPage = lazy(() => import('@/presentation/pages/WorkspacePagesPage').then((m) => ({ default: m.WorkspacePagesPage })))
-const AssistantPage = lazy(() => import('@/presentation/assistant/AssistantPage').then((m) => ({ default: m.AssistantPage })))
+const AssistantHome = lazy(() => import('@/presentation/assistant/AssistantHome').then((m) => ({ default: m.AssistantHome })))
+const AssistantThread = lazy(() => import('@/presentation/assistant/AssistantThread').then((m) => ({ default: m.AssistantThread })))
 const NewsPage = lazy(() => import('@/presentation/agents/NewsPage').then((m) => ({ default: m.NewsPage })))
 const AttentionPage = lazy(() => import('@/presentation/agents/AttentionPage').then((m) => ({ default: m.AttentionPage })))
 const UsagePage = lazy(() => import('@/presentation/agents/UsagePage').then((m) => ({ default: m.UsagePage })))
@@ -92,8 +93,8 @@ export default function App({ container }: { container: Container }) {
                   <Route path="cases" element={<CasesPage />} />
                   <Route path="cases/:id" element={<CaseDetailPage />} />
                   <Route path="mail" element={<MailPage />} />
-                  <Route path="assistant" element={<AssistantPage />} />
-                  <Route path="assistant/:threadId" element={<AssistantPage />} />
+                  <Route path="assistant" element={<AssistantHome />} />
+                  <Route path="assistant/:threadId" element={<AssistantThread />} />
                   <Route path="attention" element={<AttentionPage />} />
                   <Route path="news" element={<NewsPage />} />
                   <Route path="pages" element={<WorkspacePagesPage />} />
