@@ -9,6 +9,7 @@ import { toast } from '@/presentation/notifications/toast'
 import { Link, useNavigate } from '@/presentation/routing'
 import { useAgentAvailable } from '@/presentation/agents/useAgent'
 import { Composer } from './Composer'
+import { QuickAdd } from './QuickAdd'
 import { holdFirstMessage } from './pendingMessage'
 import { lastAgent, rememberAgent, useChatAgents } from './useChatAgents'
 import { useConversationActions } from './useConversations'
@@ -88,24 +89,18 @@ export function AssistantHome() {
             busy={busy}
             autoFocus
             placeholder={`Message ${agent.name}…`}
-            footer={
-              <p className="truncate px-1.5 text-xs text-muted-foreground">
-                {agent.selection ? (
-                  <>
-                    {agent.name} · {agent.selection.modelId}
-                  </>
-                ) : (
-                  <>
-                    No model yet.{' '}
-                    <Link to={`/agents/${agent.id}/settings`} className="underline">
-                      Choose one
-                    </Link>
-                  </>
-                )}
-              </p>
-            }
+            footer={<QuickAdd />}
           />
-          <p className="text-center text-xs text-muted-foreground">{agent.description}</p>
+          <p className="text-center text-xs text-muted-foreground">
+            {agent.description}{' '}
+            {agent.selection ? (
+              <span className="whitespace-nowrap">· {agent.selection.modelId}</span>
+            ) : (
+              <Link to={`/agents/${agent.id}/settings`} className="underline">
+                Choose a model
+              </Link>
+            )}
+          </p>
         </div>
 
         {agent.suggestions.length > 0 && (

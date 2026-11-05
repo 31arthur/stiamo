@@ -22,7 +22,46 @@ export interface DocumentHit extends DriveFile {
 }
 
 /** What the agent found, in a form the page shows as a card. */
-export type Found = ({ kind: 'case' } & CaseHit) | ({ kind: 'document' } & DocumentHit) | ({ kind: 'schedule' } & ScheduleHit) | ({ kind: 'proposal' } & ProposalHit)
+export type Found = ({ kind: 'case' } & CaseHit) | ({ kind: 'document' } & DocumentHit) | ({ kind: 'schedule' } & ScheduleHit) | ({ kind: 'proposal' } & ProposalHit) | ({ kind: 'briefing' } & BriefingHit)
+
+/** One thing in a briefing, as the planner found it. Titles and times come from the records themselves. */
+export interface BriefingItem {
+  type: 'hearing' | 'meeting' | 'task' | 'followUp' | 'calendar' | 'note'
+  id?: string
+  title?: string
+  time?: string
+  /** Why it matters, or what to do. */
+  note?: string
+  priority?: string
+  minutes?: number
+  caseRef?: string
+  caseId?: string
+  place?: string
+  channel?: string
+  contact?: string
+  tries?: number
+  due?: string
+  link?: string
+}
+
+export type BriefingKind = 'fixed' | 'prepare' | 'calls' | 'work' | 'attention' | 'later'
+
+export interface BriefingSection {
+  kind: BriefingKind
+  title: string
+  items: BriefingItem[]
+}
+
+/** A day laid out by an agent: a headline, then sections of real items you can complete or move where they stand. */
+export interface BriefingHit {
+  id: string
+  date: string
+  headline: string
+  summary?: string
+  sections: BriefingSection[]
+  /** What is free that day, after everything fixed. */
+  free: { from: string; to: string; minutes: number }[]
+}
 
 /** Something an agent suggests adding or changing. Nothing is saved until it is approved. */
 export interface ProposalHit {
@@ -64,6 +103,8 @@ export interface ScheduleHit {
   id: string
   date: string
   blocks: DayPlanBlock[]
+  /** Approving this puts the times on the planner (in a chat). */
+  proposalId?: string
 }
 
 export interface DayPlanBlock {
@@ -84,6 +125,8 @@ export interface DayPlan {
   status: 'proposed' | 'applied' | 'dismissed'
   briefing: string
   blocks: DayPlanBlock[]
+  /** The day laid out as a card, when the planner did it that way. */
+  card?: BriefingHit | null
   trigger: string
   createdAt: string
   decidedAt: string | null
