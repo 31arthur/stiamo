@@ -9,7 +9,7 @@ import { useScope } from '@/presentation/app/workspaceFilter'
  * Links, redirects and navigation written the short way (`/cases/1`) that resolve to the real address under the
  * workspace you are in (`/sb/cases/1`). Use these instead of react-router's own inside the signed-in app.
  */
-function useResolve() {
+export function useResolve() {
   const scope = useScope()
   return useCallback((to: To): To => (typeof to === 'string' ? resolveLink(to, scope) : to.pathname ? { ...to, pathname: resolveLink(to.pathname, scope) } : to), [scope])
 }

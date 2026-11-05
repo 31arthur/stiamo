@@ -1,11 +1,13 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useLocation, useOutlet } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { ArrowLeft, Bot, Coins, LayoutGrid, Menu, Plus, SlidersHorizontal, Sparkles, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { PageLoader } from '@/presentation/components/loading'
+import { PopOut } from '@/presentation/components/PopOut'
 import { Logo } from '@/presentation/layout/Logo'
 import { Link, NavLink } from '@/presentation/routing'
 import { useAgentAvailable, useAgentSettings } from './useAgent'
@@ -39,9 +41,9 @@ export function DeveloperShell() {
           <span className="font-display text-lg">Developer</span>
         </div>
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 pb-16 sm:gap-6 sm:px-8 sm:py-8">
+          <motion.div key={here.split('/')[3] ?? 'home'} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }} className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 pb-16 sm:gap-6 sm:px-8 sm:py-8">
             <Suspense fallback={<PageLoader />}>{outlet}</Suspense>
-          </div>
+          </motion.div>
         </main>
       </div>
     </div>
@@ -97,9 +99,12 @@ function DeveloperSidebar() {
         <Button nativeButton={false} render={<Link to="/agents/new" />} variant="outline" className="w-full justify-start gap-2">
           <Plus /> New agent
         </Button>
-        <Link to="/assistant" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
-          <Sparkles className="size-4" /> Open the Assistant
-        </Link>
+        <div className="flex items-center rounded-lg pr-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+          <Link to="/assistant" className="flex flex-1 items-center gap-2 px-2.5 py-2 text-sm">
+            <Sparkles className="size-4" /> Open the Assistant
+          </Link>
+          <PopOut to="/assistant" label="the Assistant" />
+        </div>
       </div>
     </div>
   )
