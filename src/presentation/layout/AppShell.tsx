@@ -28,7 +28,7 @@ import { AccountCard, SyncBanner } from './AccountCard'
 import { CommandPalette } from './CommandPalette'
 import { MobileTabBar } from './MobileTabBar'
 import { SECTION_TITLES, useDocumentTitle } from './useDocumentTitle'
-import { PopOut } from '@/presentation/components/PopOut'
+import { OpenApp } from '@/presentation/components/OpenApp'
 import { Logo } from './Logo'
 
 interface NavItem {
@@ -39,8 +39,8 @@ interface NavItem {
   tone?: 'danger' | 'default'
   /** Active only on exactly this address, not on what is under it. */
   end?: boolean
-  /** Offers a button beside it that opens it in a new tab. */
-  popout?: boolean
+  /** An app of its own: it opens in a new tab on a computer, and in this tab on a phone. */
+  app?: boolean
 }
 
 interface NavGroup {
@@ -194,7 +194,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       label: 'Plan',
       items: [
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
-        ...(backend === 'api' ? [{ to: '/assistant', label: 'Assistant', icon: Sparkles, popout: true }] : []),
+        ...(backend === 'api' ? [{ to: '/assistant', label: 'Assistant', icon: Sparkles, app: true }] : []),
         { to: '/today', label: 'Today', icon: Sun },
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
         ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }] : []),
@@ -219,7 +219,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       ].filter((i) => on(i.to.slice(1))),
     },
     // Building and tuning the agents is a place of its own, with its own sidebar.
-    ...(backend === 'api' ? [{ label: 'Tools', items: [{ to: '/agents', label: 'Developer', icon: Code2, popout: true }] }] : []),
+    ...(backend === 'api' ? [{ label: 'Tools', items: [{ to: '/agents', label: 'Developer', icon: Code2, app: true }] }] : []),
   ]
 
   const scopes: { id: WorkspaceScope; label: string }[] = [{ id: 'all', label: 'All workspaces' }, ...WORKSPACE_IDS.map((id) => ({ id, label: WORKSPACES[id].name }))]
@@ -287,11 +287,10 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
 }
 
 function NavRow({ item, nested = false }: { item: NavItem; nested?: boolean }) {
-  return item.popout ? (
-    <div className="group/row relative">
-      <NavLinkRow item={item} nested={nested} />
-      <PopOut to={item.to} label={item.label} className="absolute top-1/2 right-1.5 -translate-y-1/2 opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100 max-lg:opacity-100" />
-    </div>
+  return item.app ? (
+    <OpenApp to={item.to} className="group relative">
+      <NavRowBody item={item} nested={nested} active={false} />
+    </OpenApp>
   ) : (
     <NavLinkRow item={item} nested={nested} />
   )
@@ -300,27 +299,25 @@ function NavRow({ item, nested = false }: { item: NavItem; nested?: boolean }) {
 function NavLinkRow({ item, nested }: { item: NavItem; nested: boolean }) {
   return (
     <NavLink to={item.to} end={item.end} className="group relative">
-      {({ isActive }) => (
-        <span className={cn('relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', nested && 'py-1', isActive ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
-          {isActive && <motion.span layoutId="sidebar-active" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-background shadow-float" />}
-          <item.icon className="relative size-4" />
-          <span className="relative min-w-0 flex-1 truncate">{item.label}</span>
-          <AnimatePresence>
-            {!!item.badge && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                transition={spring.snappy}
-                className={cn('relative min-w-5 rounded-full px-1.5 text-center text-[10px] leading-5 font-semibold tabular-nums', item.tone === 'danger' ? 'bg-destructive text-white' : 'bg-foreground text-background')}
-              >
-                {item.badge}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </span>
-      )}
+      {({ isActive }) => <NavRowBody item={item} nested={nested} active={isActive} />}
     </NavLink>
+  )
+}
+
+function NavRowBody({ item, nested, active }: { item: NavItem; nested: boolean; active: boolean }) {
+  return (
+    <span className={cn('relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', nested && 'py-1', active ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
+      {active && <motion.span layoutId="sidebar-active" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-background shadow-float" />}
+      <item.icon className="relative size-4" />
+      <span className="relative min-w-0 flex-1 truncate">{item.label}</span>
+      <AnimatePresence>
+        {!!item.badge && (
+          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className={cn('relative min-w-5 rounded-full px-1.5 text-center text-[10px] leading-5 font-semibold tabular-nums', item.tone === 'danger' ? 'bg-destructive text-white' : 'bg-foreground text-background')}>
+            {item.badge}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
   )
 }
 

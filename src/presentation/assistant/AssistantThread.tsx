@@ -17,7 +17,7 @@ import { Composer } from './Composer'
 import { Markdown } from './Markdown'
 import { QuickAdd } from './QuickAdd'
 import { takeFirstMessage } from './pendingMessage'
-import { useChatAgents } from './useChatAgents'
+import { ASSISTANT_ID, useChatAgents } from './useChatAgents'
 import { useConversation, useConversationActions } from './useConversations'
 
 /** One chat: what was said, and the box to say more. The conversation scrolls; the box and the title stay put. */
@@ -130,8 +130,8 @@ function Thread({ id }: { id: string }) {
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-3 py-5 sm:gap-8 sm:px-4 sm:py-6">
           {def && !def.selection && (
             <p className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-              {def.name} has no model yet.{' '}
-              <Link to={`/agents/${def.id}/settings`} className="font-medium underline">
+              {def.id === ASSISTANT_ID ? 'No agent has a model yet.' : `${def.name} has no model yet.`}{' '}
+              <Link to={def.id === ASSISTANT_ID ? '/agents' : `/agents/${def.id}/settings`} className="font-medium underline">
                 Choose one
               </Link>{' '}
               and it can answer.
@@ -214,6 +214,12 @@ function TurnView({ turn }: { turn: ConversationTurn }) {
       <div className="flex gap-3">
         <Avatar />
         <div className="grid min-w-0 flex-1 gap-3">
+          {turn.agentName && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground" title={turn.why ? `Chosen because: ${turn.why}` : undefined}>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">{turn.agentName}</span>
+              {turn.routedBy === 'jev' && <span>chosen by Jev</span>}
+            </p>
+          )}
           {turn.steps.length > 0 && <Steps steps={turn.steps} />}
           <Markdown>{turn.answer || 'I found nothing to say about that.'}</Markdown>
           {turn.found.length > 0 && <FoundCards found={turn.found} />}

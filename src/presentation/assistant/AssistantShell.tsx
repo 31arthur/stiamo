@@ -1,17 +1,15 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { useNavigate as useRouterNavigate, useOutlet, useParams } from 'react-router-dom'
+import { useOutlet, useParams } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowLeft, Code2, Menu, MessageSquarePlus, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Code2, Menu, MessageSquarePlus, Search, Smartphone, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
 import type { ConversationSummary } from '@/domain/ai/AgentApi'
-import { WORKSPACE_IDS, WORKSPACES } from '@/domain/shared/workspace'
-import type { WorkspaceId, WorkspaceScope } from '@/domain/shared/workspace'
+import type { WorkspaceId } from '@/domain/shared/workspace'
 import { cn } from '@/lib/utils'
-import { useScope } from '@/presentation/app/workspaceFilter'
 import { ConfirmDelete } from '@/presentation/components/confirm'
-import { PopOut } from '@/presentation/components/PopOut'
+import { OpenApp } from '@/presentation/components/OpenApp'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { Logo } from '@/presentation/layout/Logo'
@@ -20,6 +18,7 @@ import { Link, NavLink, useNavigate } from '@/presentation/routing'
 import { ago } from '@/presentation/agents/format'
 import { useAgentAvailable } from '@/presentation/agents/useAgent'
 import { groupChats } from './chatGroups'
+import { PhonePanel } from './PhonePanel'
 import { useChatAgents } from './useChatAgents'
 import { useConversationActions, useConversations } from './useConversations'
 
@@ -62,19 +61,17 @@ export function AssistantShell() {
 }
 
 function ChatSidebar() {
-  const scope = useScope()
   const { threadId } = useParams()
   const navigate = useNavigate()
-  const goTo = useRouterNavigate()
   const available = useAgentAvailable()
-  const list = useConversations(scope)
-  const agents = useChatAgents(scope)
+  const list = useConversations('all')
+  const agents = useChatAgents('all')
   const actions = useConversationActions()
   const [query, setQuery] = useState('')
+  const [phone, setPhone] = useState(false)
   const name = (id: string) => agents.find((a) => a.id === id)?.name ?? id
 
   const groups = useMemo(() => groupChats((list.data ?? []).filter((c) => c.title.toLowerCase().includes(query.trim().toLowerCase()))), [list.data, query])
-  const scopes: { id: WorkspaceScope; label: string }[] = [{ id: 'all', label: 'All workspaces' }, ...WORKSPACE_IDS.map((id) => ({ id, label: WORKSPACES[id].name }))]
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -84,18 +81,6 @@ function ChatSidebar() {
           <ArrowLeft /> Stiamo
         </Button>
       </div>
-
-      <label className="relative block">
-        <span className="sr-only">Workspace</span>
-        <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2">{scope === 'all' ? <span className="inline-block size-2 rounded-full bg-muted-foreground/50" /> : <WorkspaceDot ws={scope} />}</span>
-        <select value={scope} onChange={(e) => goTo(`/${e.target.value}/assistant`)} className="h-9 w-full appearance-none rounded-lg border border-input bg-transparent pr-2 pl-7 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30">
-          {scopes.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </label>
 
       <Button onClick={() => navigate('/assistant')} className="w-full justify-start gap-2">
         <MessageSquarePlus /> New chat
@@ -130,12 +115,13 @@ function ChatSidebar() {
         )}
       </nav>
 
-      <div className="flex items-center rounded-lg pr-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
-        <Link to="/agents" className="flex flex-1 items-center gap-2 px-2.5 py-2 text-sm">
-          <Code2 className="size-4" /> Developer
-        </Link>
-        <PopOut to="/agents" label="Developer" />
-      </div>
+      <button type="button" onClick={() => setPhone(true)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+        <Smartphone className="size-4" /> On your phone
+      </button>
+      <PhonePanel open={phone} onOpenChange={setPhone} />
+      <OpenApp to="/agents" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+        <Code2 className="size-4" /> Developer
+      </OpenApp>
     </div>
   )
 }

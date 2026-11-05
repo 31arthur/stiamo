@@ -94,6 +94,11 @@ export interface ConversationTurn {
   steps: AgentStep[]
   found: Found[]
   at: string
+  /** In a chat with the Assistant: the agent it chose for this message, and how. */
+  agentId?: string
+  agentName?: string
+  routedBy?: 'jev' | 'rules' | 'continuity' | 'only'
+  why?: string
 }
 
 export type Conversation = Omit<ConversationSummary, 'turns'> & { turns: ConversationTurn[] }
