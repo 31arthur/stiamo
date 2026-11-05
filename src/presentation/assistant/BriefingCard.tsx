@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { format, parseISO } from 'date-fns'
 import { motion } from 'motion/react'
-import { BellRing, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ExternalLink, Gavel, ListChecks, Phone, Plus, Users } from 'lucide-react'
+import { ArrowRight, BellRing, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ExternalLink, Gavel, ListChecks, Phone, Plus, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -15,6 +15,7 @@ import { DateInput, TimeInput } from '@/presentation/components/form'
 import { useToday } from '@/presentation/data/hooks'
 import { useIsCompact } from '@/presentation/layout/useMediaQuery'
 import { moveOptions } from './moveOptions'
+import { movedNote } from './liveItem'
 import { useBriefingActions } from './useBriefingActions'
 
 /** Each kind of section has its own colour: on its heading, and as the stripe down the side of its items. */
@@ -69,7 +70,7 @@ export function BriefingCard({ card, className }: { card: BriefingHit; className
               {rows.length > 0 && (
                 <ul className={cn('grid gap-2', rows.length > 1 && 'md:grid-cols-2')}>
                   {rows.map((item, i) => (
-                    <ItemTile key={`${item.type}-${item.id ?? i}`} item={item} stripe={style.stripe} actions={actions} onMove={() => setMoving(item)} onOpen={() => item.id && item.type !== 'calendar' && editor.openRef({ kind: item.type as 'task', id: item.id })} />
+                    <ItemTile key={`${item.type}-${item.id ?? i}`} item={item} day={card.date} stripe={style.stripe} actions={actions} onMove={() => setMoving(item)} onOpen={() => item.id && item.type !== 'calendar' && editor.openRef({ kind: item.type as 'task', id: item.id })} />
                   ))}
                 </ul>
               )}
@@ -109,20 +110,22 @@ function Pill({ children, className }: { children: ReactNode; className?: string
   return <span className={cn('inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] leading-4 font-medium text-muted-foreground', className)}>{children}</span>
 }
 
-function ItemTile({ item, stripe, actions, onMove, onOpen }: { item: BriefingItem; stripe: string; actions: Actions; onMove: () => void; onOpen: () => void }) {
-  const live = item.type === 'task' ? actions.tasks.find((t) => t.id === item.id) : item.type === 'followUp' ? actions.followUps.find((f) => f.id === item.id) : undefined
+function ItemTile({ item, day, stripe, actions, onMove, onOpen }: { item: BriefingItem; day: ISODate; stripe: string; actions: Actions; onMove: () => void; onOpen: () => void }) {
+  const live = item.type === 'task' ? actions.tasks.find((t) => t.id === item.id) : item.type === 'followUp' ? actions.followUps.find((f) => f.id === item.id) : item.type === 'meeting' ? actions.meetings.find((m) => m.id === item.id) : undefined
+  const where = movedNote(item, live, day)
   const done = !!live && live.outcome.status !== 'open'
+  const title = live?.title ?? item.title
   const doable = item.type === 'task' || item.type === 'followUp'
   const movable = doable || item.type === 'meeting'
   const Icon = TYPE_ICON[item.type]
   const urgent = item.priority === 'urgent' || item.priority === 'high'
 
   return (
-    <li className={cn('flex overflow-hidden rounded-xl border bg-background transition-all hover:border-foreground/25 hover:shadow-float', done && 'opacity-60')}>
+    <li className={cn('flex overflow-hidden rounded-xl border bg-background transition-all hover:border-foreground/25 hover:shadow-float', done && 'opacity-60', where.changed && !done && 'border-primary/40 bg-primary/[0.03]')}>
       <span aria-hidden className={cn('w-1 shrink-0', stripe)} />
       <div className="flex min-w-0 flex-1 items-start gap-1 p-1.5">
         {doable && item.id ? (
-          <button type="button" aria-label={done ? `Reopen ${item.title}` : `Mark ${item.title} done`} aria-pressed={done} onClick={() => void (done ? actions.reopen(item.type as 'task' | 'followUp', item.id!) : actions.complete(item.type as 'task' | 'followUp', item.id!))} className="flex size-10 shrink-0 items-center justify-center rounded-full">
+          <button type="button" aria-label={done ? `Reopen ${title}` : `Mark ${title} done`} aria-pressed={done} onClick={() => void (done ? actions.reopen(item.type as 'task' | 'followUp', item.id!) : actions.complete(item.type as 'task' | 'followUp', item.id!))} className="flex size-10 shrink-0 items-center justify-center rounded-full">
             <span className={cn('flex size-6 items-center justify-center rounded-full border-2 transition-colors', done ? 'border-success bg-success text-white' : 'border-muted-foreground/40 hover:border-foreground/60')}>{done && <Check className="size-3.5" strokeWidth={3} />}</span>
           </button>
         ) : (
@@ -132,9 +135,15 @@ function ItemTile({ item, stripe, actions, onMove, onOpen }: { item: BriefingIte
         )}
 
         <button type="button" onClick={onOpen} disabled={item.type === 'calendar'} className="grid min-w-0 flex-1 gap-1.5 py-1.5 text-left">
-          <span className={cn('text-[15px] leading-snug font-medium break-words', done && 'text-muted-foreground line-through')}>{item.title}</span>
+          <span className={cn('text-[15px] leading-snug font-medium break-words', done && 'text-muted-foreground line-through')}>{title}</span>
           <span className="flex flex-wrap items-center gap-1">
-            {item.time && <Pill className="bg-primary/10 text-primary tabular-nums">{item.time}</Pill>}
+            {where.movedTo ? (
+              <Pill className="bg-primary text-primary-foreground tabular-nums">
+                <ArrowRight className="mr-1 size-3" /> Moved to {where.movedTo}
+              </Pill>
+            ) : (
+              where.time && <Pill className={cn('tabular-nums', where.changed ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary')}>{where.changed && 'Now '}{where.time}</Pill>
+            )}
             {item.caseRef && <Pill className="bg-ws-sb-soft font-mono text-ws-sb">{item.caseRef}</Pill>}
             {urgent && <Pill className="bg-destructive/10 text-destructive capitalize">{item.priority}</Pill>}
             {item.type === 'followUp' && item.contact && <Pill>{item.contact}</Pill>}
@@ -146,9 +155,9 @@ function ItemTile({ item, stripe, actions, onMove, onOpen }: { item: BriefingIte
         </button>
 
         {movable && !done && (
-          <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 px-2.5 text-muted-foreground max-sm:size-9 max-sm:px-0" aria-label={`Move ${item.title}`} onClick={onMove}>
+          <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 px-2.5 text-muted-foreground max-sm:size-9 max-sm:px-0" aria-label={`Move ${title}`} onClick={onMove}>
             <CalendarClock />
-            <span className="max-sm:sr-only">Move</span>
+            <span className="max-sm:sr-only">{where.changed ? 'Move again' : 'Move'}</span>
           </Button>
         )}
         {item.type === 'calendar' && item.link && (
