@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { PageLoader } from '@/presentation/components/loading'
-import { PopOut } from '@/presentation/components/PopOut'
+import { OpenApp } from '@/presentation/components/OpenApp'
 import { Logo } from '@/presentation/layout/Logo'
 import { Link, NavLink } from '@/presentation/routing'
 import { useAgentAvailable, useAgentSettings } from './useAgent'
@@ -99,12 +99,9 @@ function DeveloperSidebar() {
         <Button nativeButton={false} render={<Link to="/agents/new" />} variant="outline" className="w-full justify-start gap-2">
           <Plus /> New agent
         </Button>
-        <div className="flex items-center rounded-lg pr-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
-          <Link to="/assistant" className="flex flex-1 items-center gap-2 px-2.5 py-2 text-sm">
-            <Sparkles className="size-4" /> Open the Assistant
-          </Link>
-          <PopOut to="/assistant" label="the Assistant" />
-        </div>
+        <OpenApp to="/assistant" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+          <Sparkles className="size-4" /> Open the Assistant
+        </OpenApp>
       </div>
     </div>
   )

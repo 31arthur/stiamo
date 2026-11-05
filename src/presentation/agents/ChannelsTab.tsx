@@ -60,7 +60,7 @@ function Problem({ message }: { message: string | null }) {
 
 // --- Telegram -----------------------------------------------------------------------------------------------
 
-function TelegramCard({ agentId, channel }: { agentId: string; channel?: Channel }) {
+export function TelegramCard({ agentId, channel }: { agentId: string; channel?: Channel }) {
   const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
   const connect = useAgentAction((a, t: string) => a.connectTelegram(t, agentId), { success: 'Telegram bot connected' })
@@ -160,7 +160,7 @@ function TelegramCard({ agentId, channel }: { agentId: string; channel?: Channel
 
 const splitNumbers = (text: string) => text.split(/[\n,;]+/).map((n) => n.trim()).filter(Boolean)
 
-function WhatsAppCard({ agentId, channel }: { agentId: string; channel?: Channel }) {
+export function WhatsAppCard({ agentId, channel }: { agentId: string; channel?: Channel }) {
   const [form, setForm] = useState({ accountSid: '', authToken: '', sender: '+14155238886', numbers: '' })
   const [numbers, setNumbers] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

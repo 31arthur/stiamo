@@ -11,7 +11,7 @@ import { useAgentAvailable } from '@/presentation/agents/useAgent'
 import { Composer } from './Composer'
 import { QuickAdd } from './QuickAdd'
 import { holdFirstMessage } from './pendingMessage'
-import { lastAgent, rememberAgent, useChatAgents } from './useChatAgents'
+import { ASSISTANT_ID, lastAgent, rememberAgent, useChatAgents } from './useChatAgents'
 import { useConversationActions } from './useConversations'
 
 const greeting = (hour: number) => (hour < 5 ? 'Still up' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening')
@@ -20,11 +20,11 @@ const greeting = (hour: number) => (hour < 5 ? 'Still up' : hour < 12 ? 'Good mo
 export function AssistantHome() {
   const scope = useScope()
   const available = useAgentAvailable()
-  const agents = useChatAgents(scope)
+  const agents = useChatAgents('all')
   const { user } = useAuth()
   const navigate = useNavigate()
   const actions = useConversationActions()
-  const [picked, setPicked] = useState<string | null>(lastAgent())
+  const [picked, setPicked] = useState<string>(lastAgent())
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const agent = agents.find((a) => a.id === picked) ?? agents[0]
@@ -38,7 +38,8 @@ export function AssistantHome() {
     if (!agent || !m || busy) return
     setBusy(true)
     try {
-      const c = await actions.start(agent.id, scope)
+      // The Assistant works across every workspace; an agent chosen by hand works in the one you are in.
+      const c = await actions.start(agent.id, agent.id === ASSISTANT_ID ? 'all' : scope)
       holdFirstMessage(c.id, m)
       navigate(`/assistant/${c.id}`)
     } catch (e) {
@@ -76,7 +77,7 @@ export function AssistantHome() {
         <div role="radiogroup" aria-label="Who to talk to" className="flex flex-wrap justify-center gap-1.5">
           {agents.map((a) => (
             <button key={a.id} type="button" role="radio" aria-checked={a.id === agent.id} onClick={() => setPicked(a.id)} className={cn('flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors', a.id === agent.id ? 'border-foreground/40 bg-background font-medium shadow-float' : 'text-muted-foreground hover:border-foreground/30 hover:text-foreground')}>
-              <Bot className="size-3.5" /> {a.name}
+              {a.id === ASSISTANT_ID ? <Sparkles className="size-3.5" /> : <Bot className="size-3.5" />} {a.name}
             </button>
           ))}
         </div>
