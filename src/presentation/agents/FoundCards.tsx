@@ -45,7 +45,7 @@ export function FoundCards({ found }: { found: Found[] }) {
         <section key={s.id} aria-label="Proposed schedule">
           <h3 className="mb-1.5 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">Proposed for {format(parseISO(s.date), 'EEE d MMM')}</h3>
           <ScheduleList blocks={s.blocks} />
-          {s.proposalId ? <ScheduleApprove proposalId={s.proposalId} /> : <p className="mt-1.5 text-xs text-muted-foreground">A proposal only: nothing is booked.</p>}
+          {s.proposalId ? <ScheduleApprove proposalId={s.proposalId} status={s.proposalStatus} /> : <p className="mt-1.5 text-xs text-muted-foreground">A proposal only: nothing is booked.</p>}
         </section>
       ))}
       {cases.length > 0 && (
@@ -130,9 +130,9 @@ export function FoundCards({ found }: { found: Found[] }) {
 }
 
 /** Put a proposed schedule on the planner: the times go onto each task and call. */
-function ScheduleApprove({ proposalId }: { proposalId: string }) {
+function ScheduleApprove({ proposalId, status }: { proposalId: string; status?: 'pending' | 'applied' | 'dropped' }) {
   const { agent } = useServices()
-  const [state, setState] = useState<'idle' | 'saving' | 'applied' | 'dropped'>('idle')
+  const [state, setState] = useState<'idle' | 'saving' | 'applied' | 'dropped'>(status === 'applied' || status === 'dropped' ? status : 'idle')
   async function decide(approve: boolean) {
     setState('saving')
     try {

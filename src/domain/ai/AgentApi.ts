@@ -105,6 +105,8 @@ export interface ScheduleHit {
   blocks: DayPlanBlock[]
   /** Approving this puts the times on the planner (in a chat). */
   proposalId?: string
+  /** Where that stands when a saved chat is reopened. */
+  proposalStatus?: 'pending' | 'applied' | 'dropped'
 }
 
 export interface DayPlanBlock {
