@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
 import { useUserId } from '@/presentation/data/hooks'
 import { toast } from '@/presentation/notifications/toast'
+import { BriefingCard } from '@/presentation/assistant/BriefingCard'
 import { ago } from './format'
 
 /** The blocks of a schedule, in time order: when, how long, and whether it is a call or a task. */
@@ -66,8 +67,9 @@ export function DayPlanCard({ plan }: { plan: DayPlan }) {
           <span className="font-medium">Plan for {day}</span>
           <span className="ml-auto text-muted-foreground">{ago(plan.createdAt)}</span>
         </header>
+        {plan.card && <BriefingCard card={plan.card} className="-mx-1" />}
         <div className="relative">
-          <p className={cn('text-sm break-words whitespace-pre-line', !all && 'line-clamp-6')}>{plan.briefing || 'The planner had nothing to say about this day.'}</p>
+          <p className={cn('text-sm break-words whitespace-pre-line', !all && 'line-clamp-6')}>{plan.briefing || (plan.card ? '' : 'The planner had nothing to say about this day.')}</p>
           {plan.briefing.length > 380 && (
             <button type="button" onClick={() => setAll(!all)} className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
               <ChevronDown className={cn('size-3.5 transition-transform', all && 'rotate-180')} /> {all ? 'Show less' : 'Read all'}

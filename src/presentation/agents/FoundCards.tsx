@@ -6,17 +6,22 @@ import { cn } from '@/lib/utils'
 import type { Found } from '@/domain/ai/AgentApi'
 import { driveFileAsAttachment, FILE_KIND_SHORT, fileKind } from '@/domain/drive/Drive'
 import { FilePreview } from '@/presentation/attachments/FilePreview'
+import { useServices } from '@/presentation/app/services'
 import { useUserId } from '@/presentation/data/hooks'
+import { toast } from '@/presentation/notifications/toast'
+import { Spinner } from '@/components/ui/spinner'
 import { FileTypeIcon } from '@/presentation/drive/FileTypeIcon'
 import { driveAgo } from '@/presentation/drive/format'
 import { Link } from '@/presentation/routing'
 import { ScheduleList } from './DayPlanCard'
 import { ProposalCards } from './ProposalCards'
+import { BriefingCard } from '@/presentation/assistant/BriefingCard'
 
 type CaseCard = Extract<Found, { kind: 'case' }>
 type DocCard = Extract<Found, { kind: 'document' }>
 type ScheduleCard = Extract<Found, { kind: 'schedule' }>
 type ProposalCard = Extract<Found, { kind: 'proposal' }>
+type BriefingCardHit = Extract<Found, { kind: 'briefing' }>
 
 /** What the agent found, as cards: the cases (each opens its page) and the documents (each opens in a reader). */
 export function FoundCards({ found }: { found: Found[] }) {
@@ -25,18 +30,22 @@ export function FoundCards({ found }: { found: Found[] }) {
   const docs = found.filter((f): f is DocCard => f.kind === 'document')
   const schedules = found.filter((f): f is ScheduleCard => f.kind === 'schedule')
   const proposals = found.filter((f): f is ProposalCard => f.kind === 'proposal')
+  const briefings = found.filter((f): f is BriefingCardHit => f.kind === 'briefing')
   const readable = useMemo(() => docs.flatMap((d) => driveFileAsAttachment(d, userId) ?? []), [docs, userId])
   const [open, setOpen] = useState<number | null>(null)
   if (found.length === 0) return null
 
   return (
     <div className="grid gap-4">
+      {briefings.map((b) => (
+        <BriefingCard key={b.id} card={b} />
+      ))}
       {proposals.length > 0 && <ProposalCards proposals={proposals} />}
       {schedules.map((s) => (
         <section key={s.id} aria-label="Proposed schedule">
           <h3 className="mb-1.5 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">Proposed for {format(parseISO(s.date), 'EEE d MMM')}</h3>
           <ScheduleList blocks={s.blocks} />
-          <p className="mt-1.5 text-xs text-muted-foreground">A proposal only: nothing is booked. The evening plan in Attention is the one you approve.</p>
+          {s.proposalId ? <ScheduleApprove proposalId={s.proposalId} /> : <p className="mt-1.5 text-xs text-muted-foreground">A proposal only: nothing is booked.</p>}
         </section>
       ))}
       {cases.length > 0 && (
@@ -116,6 +125,40 @@ export function FoundCards({ found }: { found: Found[] }) {
       )}
 
       <FilePreview files={readable} index={open} onIndexChange={setOpen} onClose={() => setOpen(null)} />
+    </div>
+  )
+}
+
+/** Put a proposed schedule on the planner: the times go onto each task and call. */
+function ScheduleApprove({ proposalId }: { proposalId: string }) {
+  const { agent } = useServices()
+  const [state, setState] = useState<'idle' | 'saving' | 'applied' | 'dropped'>('idle')
+  async function decide(approve: boolean) {
+    setState('saving')
+    try {
+      await (approve ? agent.approveProposal(proposalId) : agent.dropProposal(proposalId))
+      setState(approve ? 'applied' : 'dropped')
+    } catch (e) {
+      setState('idle')
+      toast.error(approve ? 'Couldn’t put it on the planner' : 'Couldn’t drop it', { description: e instanceof Error ? e.message : undefined })
+    }
+  }
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      {state === 'applied' ? (
+        <span className="text-sm font-medium text-success">On your planner</span>
+      ) : state === 'dropped' ? (
+        <span className="text-sm text-muted-foreground">Left off</span>
+      ) : (
+        <>
+          <Button size="sm" onClick={() => void decide(true)} disabled={state === 'saving'}>
+            {state === 'saving' ? <Spinner size="xs" tone="current" decorative /> : <Check />} Put it on my planner
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => void decide(false)} disabled={state === 'saving'}>
+            Not this
+          </Button>
+        </>
+      )}
     </div>
   )
 }

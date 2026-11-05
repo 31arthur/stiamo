@@ -15,6 +15,7 @@ import { Link, useNavigate } from '@/presentation/routing'
 import { FoundCards } from '@/presentation/agents/FoundCards'
 import { Composer } from './Composer'
 import { Markdown } from './Markdown'
+import { QuickAdd } from './QuickAdd'
 import { takeFirstMessage } from './pendingMessage'
 import { useChatAgents } from './useChatAgents'
 import { useConversation, useConversationActions } from './useConversations'
@@ -112,7 +113,7 @@ function Thread({ id }: { id: string }) {
         </div>
         <span className="flex shrink-0 items-center gap-1.5 rounded-full border bg-card/70 px-2.5 py-1 text-xs text-muted-foreground">
           {chat.workspace !== 'all' && <WorkspaceDot ws={chat.workspace as WorkspaceId} />}
-          <Bot className="size-3" /> {def?.name ?? chat.agentId}
+          <Bot className="size-3" /> <span className="max-sm:hidden">{def?.name ?? chat.agentId}</span>
         </span>
         <ConfirmDelete
           what={`“${chat.title}”`}
@@ -126,7 +127,7 @@ function Thread({ id }: { id: string }) {
       </header>
 
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-6">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-3 py-5 sm:gap-8 sm:px-4 sm:py-6">
           {def && !def.selection && (
             <p className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
               {def.name} has no model yet.{' '}
@@ -173,7 +174,7 @@ function Thread({ id }: { id: string }) {
 
       <div className="shrink-0 px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-3xl">
-          <Composer value={text} onChange={setText} onSend={() => void ask(text)} busy={!!waiting} placeholder={`Message ${def?.name ?? 'the agent'}…`} footer={<p className="truncate px-1.5 text-xs text-muted-foreground">Enter to send · Shift+Enter for a new line</p>} />
+          <Composer value={text} onChange={setText} onSend={() => void ask(text)} busy={!!waiting} placeholder={`Message ${def?.name ?? 'the agent'}…`} footer={<QuickAdd />} />
         </div>
       </div>
     </>
