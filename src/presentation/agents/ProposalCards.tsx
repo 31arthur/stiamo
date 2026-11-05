@@ -25,7 +25,7 @@ export function ProposalCards({ proposals }: { proposals: ProposalHit[] }) {
 
 function ProposalCard({ proposal: p }: { proposal: ProposalHit }) {
   const { agent } = useServices()
-  const [state, setState] = useState<State>('pending')
+  const [state, setState] = useState<State>(p.status ?? 'pending')
 
   async function decide(approve: boolean) {
     setState('saving')

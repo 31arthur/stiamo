@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, Bot, Newspaper, Check, Coins, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sun, Workflow } from 'lucide-react'
+import { BellRing, Bot, Newspaper, Check, Coins, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, LayoutGrid, Mail, Menu, NotebookPen, Plus, Search, SlidersHorizontal, Sparkles, Sun, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -198,6 +198,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       label: 'Plan',
       items: [
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
+        ...(backend === 'api' ? [{ to: '/assistant', label: 'Assistant', icon: Sparkles }] : []),
         { to: '/today', label: 'Today', icon: Sun },
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
         ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }] : []),
@@ -221,12 +222,12 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
         { to: '/goals', label: 'Goals', icon: KIND_META.goal.icon },
       ].filter((i) => on(i.to.slice(1))),
     },
-    // Agents: an overview, the team (each agent is its own page, folded away when you don't need it), and the settings they share.
+    // Developer: building and tuning the agents (their settings, prompts, models, channels, history, usage). Talking to them is the Assistant.
     {
-      label: 'Agents',
+      label: 'Developer',
       action: { to: '/agents/new', label: 'New agent', icon: Plus },
       items: [
-        { to: '/agents', label: 'Overview', icon: LayoutGrid, end: true },
+        { to: '/agents', label: 'Agents', icon: LayoutGrid, end: true },
         { to: '/agents/usage', label: 'Usage', icon: Coins },
         { to: '/agents/settings', label: 'Settings', icon: SlidersHorizontal },
       ],

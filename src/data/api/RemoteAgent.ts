@@ -1,4 +1,4 @@
-import type { AgentApi, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -129,6 +129,30 @@ export class RemoteAgent implements AgentApi {
 
   actOnAttention(a: { agentId: string; itemId: string; action: 'done' | 'dismiss' | 'approve_event' | 'skip_event'; event?: AttentionEvent }) {
     return this.http.post<{ status: string; meetingId?: string }>('/v1/agent/attention/act', a)
+  }
+
+  async conversations(workspace: string) {
+    return (await this.http.get<{ items: ConversationSummary[] }>('/v1/agent/conversations', { workspace })).items
+  }
+
+  conversation(id: string) {
+    return this.http.get<Conversation>(`/v1/agent/conversations/${encodeURIComponent(id)}`)
+  }
+
+  startConversation(agentId: string, workspace: string) {
+    return this.http.post<Conversation>('/v1/agent/conversations', { agentId, workspace })
+  }
+
+  say(id: string, message: string) {
+    return this.http.post<{ turn: ConversationTurn; conversation: ConversationSummary }>(`/v1/agent/conversations/${encodeURIComponent(id)}/messages`, { message })
+  }
+
+  renameConversation(id: string, title: string) {
+    return this.http.patch<ConversationSummary>(`/v1/agent/conversations/${encodeURIComponent(id)}`, { title })
+  }
+
+  async deleteConversation(id: string) {
+    await this.http.delete(`/v1/agent/conversations/${encodeURIComponent(id)}`)
   }
 
   approveProposal(id: string) {
