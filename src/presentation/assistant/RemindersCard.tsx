@@ -62,8 +62,8 @@ export function RemindersCard() {
           <label className="flex items-start gap-2.5 text-sm">
             <input type="checkbox" checked={data.voice} disabled={toggle.pending} onChange={(e) => void toggle.run({ ...current, voice: e.target.checked })} className="mt-0.5 size-4 accent-[var(--foreground)]" />
             <span>
-              Say it aloud on Telegram
-              <span className="block text-xs text-muted-foreground">A voice message arrives with the reminder. Telegram doesn’t let a bot ring your phone, so it’s a spoken message you’ll hear as a notification.</span>
+              Also send a voice message
+              <span className="block text-xs text-muted-foreground">Off by default: the Telegram notification is usually enough, and a call is for what’s urgent. A spoken message arrives with the reminder.</span>
             </span>
           </label>
 

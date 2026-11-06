@@ -346,6 +346,8 @@ export interface WorkflowConfig {
   refinements?: string[]
   /** Run by itself when new mail arrives (the mail service says so), not only when asked. */
   listen?: boolean
+  /** What the agent tells the phone about mail it queues: updates on its workspace's Telegram bot, and a call for priority mail. */
+  notify?: { telegram: boolean; call: boolean }
   /** Run by itself every this many minutes (for news feeds, which can't say when something is new). */
   scheduleMinutes?: number | null
   /** For news: how the relevant stories are graded, and so ranked. */
@@ -704,6 +706,8 @@ export interface Channel {
   kind: 'telegram' | 'whatsapp'
   /** The agent that answers on it. */
   agent: string
+  /** For a Telegram bot: the workspace whose email alerts it carries (personal, sb, fsa or media). Left out for the general bot. */
+  workspace?: string
   /** Where the channel's messages are delivered to (for WhatsApp this goes into the Twilio console). */
   webhookUrl?: string | null
   // Telegram
@@ -801,7 +805,7 @@ export interface AgentApi {
   addRefinement(id: string, add: { point?: string; protectDomain?: string }): Promise<Workflow>
   removeRefinement(id: string, index: number): Promise<Workflow>
   channels(): Promise<Channel[]>
-  connectTelegram(botToken: string, agent?: string): Promise<Channel>
+  connectTelegram(botToken: string, agent?: string, workspace?: string): Promise<Channel>
   connectWhatsApp(connection: WhatsAppConnection): Promise<Channel>
   setChannelAgent(channelId: string, agent: string): Promise<Channel>
   newPairingCode(channelId: string): Promise<Channel>
