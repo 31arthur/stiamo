@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { ReminderSettings, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -123,6 +123,14 @@ export function useDayPlans(enabled = true) {
   const userId = useUserId()
   const available = useAgentAvailable()
   return useQuery<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>({ queryKey: ['agent', 'dayPlans', userId], queryFn: () => agent.dayPlans(), enabled: available && enabled, refetchInterval: 60_000, staleTime: 15_000, retry: false })
+}
+
+/** Whether reminders about calls not marked done are on, and whether they are spoken. */
+export function useReminders() {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<ReminderSettings>({ queryKey: ['agent', 'reminders', userId], queryFn: () => agent.reminders(), enabled: available, staleTime: 30_000, retry: false })
 }
 
 /** The top stories. Looked at again every five minutes. */

@@ -149,6 +149,15 @@ export interface DayPlanSettings {
   channels: boolean
 }
 
+/** Reminders about calls that were not marked done: written on the phone, and spoken on Telegram when a Deepgram key is kept. */
+export interface ReminderSettings {
+  enabled: boolean
+  /** Also speak it, as a voice message on Telegram. */
+  voice: boolean
+  voiceKey: { connected: boolean; last4: string | null }
+  timezone: string
+}
+
 export interface DayPlanSchedule {
   scheduled: boolean
   at: string | null
@@ -725,6 +734,11 @@ export interface AgentApi {
   dayPlans(): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>
   setDayPlanSettings(settings: DayPlanSettings): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule }>
   generateDayPlan(day?: string, force?: boolean): Promise<DayPlan>
+  reminders(): Promise<ReminderSettings>
+  setReminders(enabled: boolean, voice: boolean): Promise<ReminderSettings>
+  setVoiceKey(apiKey: string): Promise<ReminderSettings>
+  removeVoiceKey(): Promise<ReminderSettings>
+  testReminder(): Promise<{ sent: number; spoken: boolean }>
   applyDayPlan(id: string): Promise<{ plan: DayPlan; booked: number; skipped: number }>
   dismissDayPlan(id: string): Promise<DayPlan>
   news(workspace: string | undefined, days: number, sort: NewsSort): Promise<{ items: NewsStory[]; total: number; sort: NewsSort; generatedAt: string }>
