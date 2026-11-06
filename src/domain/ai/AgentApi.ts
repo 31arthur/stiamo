@@ -758,6 +758,8 @@ export interface AgentApi {
   removeEnvironment(id: string): Promise<EnvVariable[]>
   testEnvironment(id: string): Promise<{ ok: boolean; message: string }>
   testReminder(): Promise<{ sent: number; spoken: boolean; rang: boolean }>
+  /** Rings now with a short test message; `callUser` tries a username or number before it is saved. Fails with the reason when the call can't be placed. */
+  testCall(callUser?: string): Promise<{ called: boolean; user: string }>
   applyDayPlan(id: string): Promise<{ plan: DayPlan; booked: number; skipped: number }>
   dismissDayPlan(id: string): Promise<DayPlan>
   news(workspace: string | undefined, days: number, sort: NewsSort): Promise<{ items: NewsStory[]; total: number; sort: NewsSort; generatedAt: string }>
