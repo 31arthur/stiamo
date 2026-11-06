@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Spinner } from '@/components/ui/spinner'
 import { TelegramCard, WhatsAppCard } from '@/presentation/agents/ChannelsTab'
 import { useChannels } from '@/presentation/agents/useAgent'
-import { EmailBots } from './EmailBots'
+import { WorkspaceAssistants } from './WorkspaceAssistants'
 import { RemindersCard } from './RemindersCard'
 import { ASSISTANT_ID } from './useChatAgents'
 
@@ -30,7 +30,7 @@ export function PhonePanel({ open, onOpenChange }: { open: boolean; onOpenChange
             <>
               <TelegramCard agentId={ASSISTANT_ID} channel={mine.find((c) => c.kind === 'telegram')} />
               <WhatsAppCard agentId={ASSISTANT_ID} channel={mine.find((c) => c.kind === 'whatsapp')} />
-              <EmailBots channels={channels} />
+              <WorkspaceAssistants channels={channels} />
               <RemindersCard />
             </>
           )}

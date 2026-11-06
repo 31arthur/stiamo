@@ -83,7 +83,7 @@ export function TelegramCard({ agentId, channel, workspace }: { agentId: string;
   }
 
   return (
-    <Section title={workspace ? `${WORKSPACES[workspace].short} email bot` : 'Telegram'} description={workspace ? `Email alerts about ${WORKSPACES[workspace].name}’s mailboxes arrive on this bot, and nothing else does.` : 'Message a bot to ask this agent.'} actions={channel ? <Connected>@{channel.username}</Connected> : undefined}>
+    <Section title={workspace ? `${WORKSPACES[workspace].short} assistant’s bot` : 'Telegram'} description={workspace ? `Message this bot to ask the ${WORKSPACES[workspace].short} assistant about ${WORKSPACES[workspace].short} only. ${WORKSPACES[workspace].short}’s email alerts arrive here too.` : 'Message a bot to ask this agent.'} actions={channel ? <Connected>@{channel.username}</Connected> : undefined}>
       {!channel ? (
         <form onSubmit={submit} className="grid gap-3">
           <Steps>
