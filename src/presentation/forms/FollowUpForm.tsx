@@ -7,6 +7,7 @@ import { DateInput, Field, Segmented, TimeInput } from '@/presentation/component
 import { WorkspacePicker } from '@/presentation/components/workspace'
 import { AttemptHistory } from '@/presentation/followups/chase'
 import { useSave, useToday } from '@/presentation/data/hooks'
+import { ContactField } from '@/presentation/contacts/ContactField'
 import { FormShell, usePatch } from './shared'
 
 export type FollowUpDraft = Omit<FollowUp, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
@@ -42,7 +43,7 @@ export function FollowUpForm({ initial, onDone }: { initial: FollowUp | FollowUp
           />
         </Field>
         <Field label="Contact" htmlFor="fu-contact">
-          <Input id="fu-contact" value={f.contact ?? ''} onChange={(e) => patch({ contact: e.target.value || undefined })} placeholder="Name, phone or email" />
+          <ContactField id="fu-contact" value={f.contact} onChange={(contact) => patch({ contact })} workspace={f.workspace} placeholder="Name, phone or email" />
         </Field>
       </div>
       <Field label="Workspace">

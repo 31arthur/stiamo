@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import { ATTEMPT_RESULTS, attemptLabel, bestMinute, chaseOf, RESULT_ORDER, suggestRetry } from '@/domain/followups/chase'
 import type { Chase } from '@/domain/followups/chase'
+import { phoneOf } from '@/domain/contacts/dial'
 import { CHANNEL_LABELS } from '@/domain/followups/FollowUp'
 import type { AttemptResult, FollowUp, FollowUpChannel } from '@/domain/followups/FollowUp'
 import type { AttemptInput } from '@/domain/followups/FollowUpUseCases'
@@ -26,9 +27,6 @@ const RESULT_ICON: Record<AttemptResult, LucideIcon> = {
   reached: PhoneCall,
   unreachable: PhoneOff,
 }
-
-/** The first thing in a contact that looks like a phone number, so it can be dialled with a tap. */
-const phoneOf = (contact?: string) => contact?.match(/\+?\d[\d\s().-]{6,}\d/)?.[0].replace(/[\s().-]/g, (c) => (c === '+' ? c : ''))
 
 /** Where a chase stands, as a small badge: waiting on them, promised for a day, stuck. */
 export function ChaseBadge({ chase, today }: { chase: Chase; today: ISODate }) {

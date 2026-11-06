@@ -29,6 +29,8 @@ export interface Task extends Entity {
   order?: number
   /** Where the task came from (a meeting, hearing, follow-up…). */
   related?: EntityRef
+  /** Who it is about or who to reach for it: a name and/or number. A tap on it dials. */
+  contact?: string
   outcome: Outcome
 }
 

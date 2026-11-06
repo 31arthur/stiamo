@@ -1,3 +1,4 @@
+import { CallLink } from '@/presentation/contacts/CallLink'
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Mail, MapPin, MessageSquare, Phone, Plus, ShieldCheck } from 'lucide-react'
@@ -133,7 +134,7 @@ export function FollowUpRow({ followUp: f, today }: { followUp: FollowUp; today:
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
           <WorkspaceBadge ws={f.workspace} />
           <span className={cn('tabular-nums', late && 'font-medium text-destructive')}>{f.due ? friendlyDateTime(f.due.date, f.due.time, today) : 'Anytime'}</span>
-          {f.contact && <span className="truncate">{f.contact}</span>}
+          {f.contact && <CallLink contact={f.contact} channel={closed ? undefined : f.channel} className={closed ? 'bg-transparent text-muted-foreground' : undefined} />}
           {f.trigger && (
             <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5">
               <ShieldCheck className="size-3" /> Confirmation · {CONFIRMATION_LABELS[f.trigger].toLowerCase()}

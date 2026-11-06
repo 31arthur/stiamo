@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, BookUser, Code2, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, Sun } from 'lucide-react'
+import { BellRing, BookUser, Code2, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -28,7 +28,7 @@ import { AccountCard, SyncBanner } from './AccountCard'
 import { CommandPalette } from './CommandPalette'
 import { MobileTabBar } from './MobileTabBar'
 import { SECTION_TITLES, useDocumentTitle } from './useDocumentTitle'
-import { OpenApp } from '@/presentation/components/OpenApp'
+import { OpenApp, useOpensInNewTab } from '@/presentation/components/OpenApp'
 import { Logo } from './Logo'
 
 interface NavItem {
@@ -41,6 +41,8 @@ interface NavItem {
   end?: boolean
   /** An app of its own: it opens in a new tab on a computer, and in this tab on a phone. */
   app?: boolean
+  /** The way into the main thing to do here: set in bold. */
+  emphasis?: boolean
 }
 
 interface NavGroup {
@@ -190,16 +192,22 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       : []
 
   const groups: NavGroup[] = [
+    // The Assistant is where most things start, so it stands apart and in bold, and opens as an app of its own.
+    ...(backend === 'api' ? [{ label: '', items: [{ to: '/assistant', label: 'Assistant', icon: Sparkles, app: true, emphasis: true }] }] : []),
     {
       label: 'Plan',
       items: [
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
-        ...(backend === 'api' ? [{ to: '/assistant', label: 'Assistant', icon: Sparkles, app: true }] : []),
         { to: '/today', label: 'Today', icon: Sun },
+      ].filter((i) => on(i.to.slice(1))),
+      action: scope === 'all' ? { to: '/pages', label: 'Choose each workspace’s pages', icon: SlidersHorizontal } : undefined,
+    },
+    {
+      label: 'Communicate',
+      items: [
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
         ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }, { to: '/contacts', label: 'Contacts', icon: BookUser }] : []),
       ].filter((i) => on(i.to.slice(1))),
-      action: scope === 'all' ? { to: '/pages', label: 'Choose each workspace’s pages', icon: SlidersHorizontal } : undefined,
     },
     ...workspaceGroups,
     ...monitoring,
@@ -257,9 +265,9 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       />
 
       <nav className="scrollbar-none -mx-1 flex flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-1">
-        {groups.map((g) => (
-          <div key={g.label}>
-            <div className="mb-1 flex items-center justify-between px-2.5">
+        {groups.filter((g) => g.items.length > 0 || g.action || g.folds).map((g) => (
+          <div key={g.label || 'apps'}>
+            {(g.label || g.action) && <div className="mb-1 flex items-center justify-between px-2.5">
               <span className="text-[10px] font-semibold tracking-widest text-muted-foreground/80 uppercase">{g.label}</span>
               {g.action && (
                 <Tooltip>
@@ -269,7 +277,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
                   <TooltipContent side="right">{g.action.label}</TooltipContent>
                 </Tooltip>
               )}
-            </div>
+            </div>}
             <div className="grid gap-0.5">
               {g.items.slice(0, g.folds?.[0].at ?? g.items.length).map((item) => (
                 <NavRow key={item.to} item={item} />
@@ -305,11 +313,14 @@ function NavLinkRow({ item, nested }: { item: NavItem; nested: boolean }) {
 }
 
 function NavRowBody({ item, nested, active }: { item: NavItem; nested: boolean; active: boolean }) {
+  // An app opens in a tab of its own on a computer, and says so; on a phone it opens in this tab.
+  const popsOut = useOpensInNewTab() && !!item.app
   return (
-    <span className={cn('relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', nested && 'py-1', active ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
+    <span className={cn('relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', nested && 'py-1', item.emphasis && 'py-2 font-semibold text-foreground hover:bg-muted/60', active ? 'font-medium text-foreground' : !item.emphasis && 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
       {active && <motion.span layoutId="sidebar-active" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-background shadow-float" />}
       <item.icon className="relative size-4" />
       <span className="relative min-w-0 flex-1 truncate">{item.label}</span>
+      {popsOut && <SquareArrowOutUpRight aria-label="Opens in a new tab" className="relative size-3.5 shrink-0 text-muted-foreground" />}
       <AnimatePresence>
         {!!item.badge && (
           <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className={cn('relative min-w-5 rounded-full px-1.5 text-center text-[10px] leading-5 font-semibold tabular-nums', item.tone === 'danger' ? 'bg-destructive text-white' : 'bg-foreground text-background')}>

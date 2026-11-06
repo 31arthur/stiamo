@@ -6,6 +6,7 @@ import type { ISODate } from '@/domain/shared/types'
 import { isOverdue } from '@/domain/tasks/Task'
 import type { Task } from '@/domain/tasks/Task'
 import { useEditor } from '@/presentation/app/create'
+import { CallLink } from '@/presentation/contacts/CallLink'
 import { friendlyDate } from '@/presentation/components/dates'
 import { ClickableRow } from '@/presentation/components/layout'
 import { OutcomeControl, OutcomeNote } from '@/presentation/components/outcome'
@@ -48,6 +49,7 @@ export function TaskRow({ task, today, showPlan = true }: { task: Task; today: I
             </span>
           )}
           <span className="tabular-nums">{formatDuration(task.estimate)}</span>
+          {task.contact && !closed && <CallLink contact={task.contact} />}
           <AttachmentBadge count={files.get(`task:${task.id}`)} />
           {showPlan && task.planId && <RefChip refTo={{ kind: 'plan', id: task.planId }} />}
           {task.related && task.related.kind !== 'plan' && <RefChip refTo={task.related} />}
