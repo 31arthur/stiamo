@@ -1,4 +1,4 @@
-import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, ReminderSettings, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -169,6 +169,26 @@ export class RemoteAgent implements AgentApi {
 
   setDayPlanSettings(settings: DayPlanSettings) {
     return this.http.put<{ settings: DayPlanSettings; schedule: DayPlanSchedule }>('/v1/agent/day-plans/settings', settings)
+  }
+
+  reminders() {
+    return this.http.get<ReminderSettings>('/v1/agent/reminders')
+  }
+
+  setReminders(enabled: boolean, voice: boolean) {
+    return this.http.put<ReminderSettings>('/v1/agent/reminders', { enabled, voice })
+  }
+
+  setVoiceKey(apiKey: string) {
+    return this.http.put<ReminderSettings>('/v1/agent/reminders/voice-key', { apiKey })
+  }
+
+  removeVoiceKey() {
+    return this.http.delete<ReminderSettings>('/v1/agent/reminders/voice-key')
+  }
+
+  testReminder() {
+    return this.http.post<{ sent: number; spoken: boolean }>('/v1/agent/reminders/test', {})
   }
 
   generateDayPlan(day?: string, force?: boolean) {
