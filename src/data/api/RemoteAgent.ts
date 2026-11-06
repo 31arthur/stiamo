@@ -175,8 +175,8 @@ export class RemoteAgent implements AgentApi {
     return this.http.get<ReminderSettings>('/v1/agent/reminders')
   }
 
-  setReminders(enabled: boolean, voice: boolean) {
-    return this.http.put<ReminderSettings>('/v1/agent/reminders', { enabled, voice })
+  setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }) {
+    return this.http.put<ReminderSettings>('/v1/agent/reminders', settings)
   }
 
   setVoiceKey(apiKey: string) {
@@ -188,7 +188,7 @@ export class RemoteAgent implements AgentApi {
   }
 
   testReminder() {
-    return this.http.post<{ sent: number; spoken: boolean }>('/v1/agent/reminders/test', {})
+    return this.http.post<{ sent: number; spoken: boolean; rang: boolean }>('/v1/agent/reminders/test', {})
   }
 
   generateDayPlan(day?: string, force?: boolean) {
