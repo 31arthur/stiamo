@@ -13,6 +13,7 @@ import { useServices } from '@/presentation/app/services'
 import { PageHeader } from '@/presentation/components/layout'
 import { Link } from '@/presentation/routing'
 import { ago, compact } from './format'
+import { MailWatchCard } from './MailWatchCard'
 import { useAgentStats, useScopedAgents } from './useAgent'
 
 /** The agents of the workspace you are in (all of them under "All workspaces"): what each is for, and how it has been doing. */
@@ -34,6 +35,7 @@ export function AgentsHome() {
           </Button>
         }
       />
+      <MailWatchCard />
       {loading ? (
         <Spinner label="Loading" />
       ) : (

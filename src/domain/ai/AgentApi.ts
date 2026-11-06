@@ -1,3 +1,4 @@
+import type { WorkspaceId } from '../shared/workspace'
 import type { DriveFile } from '../drive/Drive'
 import type { AiSelection, ModelInfo, ProviderId, ThinkingLevel } from './types'
 
@@ -168,6 +169,25 @@ export interface Theme {
   signoff: string
   signature: string
   letterhead: { title: string; tagline: string; footer: string }
+}
+
+/** A workspace's priority mail watch: the agent that is made for it and kept listening to its mailboxes. */
+export interface MailWatch {
+  workspace: WorkspaceId
+  name: string
+  /** The agent, once it exists. */
+  agentId: string | null
+  /** Switched on (a paused watch doesn't listen and isn't made again). */
+  enabled: boolean
+  mailboxes: string[]
+  listening: boolean
+  state: string
+  error: string | null
+  lastRunAt: string | null
+  /** Has a model to read mail with. */
+  model: boolean
+  /** Where its alerts would arrive: the workspace's own email bot, the general bot, or nowhere yet. */
+  phone: 'workspace' | 'general' | 'none'
 }
 
 /** An environment variable you can set. Its value is sealed on arrival and never sent back: you see only whether it is set. */
@@ -784,6 +804,8 @@ export interface AgentApi {
   previewTheme(theme: Theme): Promise<{ text: string; html: string }>
   /** Sends a made-up urgent email to the connected Telegram chats, to see the alert and try its buttons. */
   sendSampleAlert(): Promise<{ sent: number }>
+  mailWatch(): Promise<MailWatch[]>
+  setMailWatch(workspace: WorkspaceId, enabled: boolean): Promise<MailWatch[]>
   environment(): Promise<EnvVariable[]>
   setEnvironment(id: string, value: string): Promise<EnvVariable[]>
   removeEnvironment(id: string): Promise<EnvVariable[]>
