@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { EnvVariable, ReminderSettings, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { Theme, EnvVariable, ReminderSettings, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -131,6 +131,14 @@ export function useReminders() {
   const userId = useUserId()
   const available = useAgentAvailable()
   return useQuery<ReminderSettings>({ queryKey: ['agent', 'reminders', userId], queryFn: () => agent.reminders(), enabled: available, staleTime: 30_000, retry: false })
+}
+
+/** The organisation themes: how replies to each organisation sound and look. */
+export function useThemes() {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<Theme[]>({ queryKey: ['agent', 'themes', userId], queryFn: () => agent.themes(), enabled: available, staleTime: 30_000, retry: false })
 }
 
 /** The environment variables you can set, and which are set. Never their values. */

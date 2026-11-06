@@ -149,6 +149,27 @@ export interface DayPlanSettings {
   channels: boolean
 }
 
+/** How replies to one organisation sound and look. Used when an agent drafts a reply to an urgent email. */
+export interface Theme {
+  id: string
+  name: string
+  emoji: string
+  /** A hex colour, like #1f4e79. */
+  accent: string
+  /** Used when no other theme matches the sender. */
+  default: boolean
+  /** Who it is for: matched by address, then domain, then words in the mail. */
+  match: { domains: string[]; addresses: string[]; phrases: string[] }
+  /** How replies sound: told to the model that writes the draft. */
+  tone: string
+  language: string
+  /** `{name}` becomes the person's first name. */
+  greeting: string
+  signoff: string
+  signature: string
+  letterhead: { title: string; tagline: string; footer: string }
+}
+
 /** An environment variable you can set. Its value is sealed on arrival and never sent back: you see only whether it is set. */
 export interface EnvVariable {
   id: string
@@ -300,7 +321,7 @@ export interface WorkflowLabel {
   /** The confidence needed to propose it; under this the item goes to review. */
   threshold?: number | null
   /** What happens to an item with this label: kept, queued for your attention, or queued with a calendar event to approve. */
-  route?: 'none' | 'attention' | 'event' | 'publish'
+  route?: 'none' | 'attention' | 'event' | 'publish' | 'alert'
 }
 
 /** What a person configures for an agent that sorts a source's items. */
@@ -753,6 +774,12 @@ export interface AgentApi {
   generateDayPlan(day?: string, force?: boolean): Promise<DayPlan>
   reminders(): Promise<ReminderSettings>
   setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }): Promise<ReminderSettings>
+  themes(): Promise<Theme[]>
+  setThemes(themes: Theme[]): Promise<Theme[]>
+  /** A reply as it would be sent in this theme: the plain text and the page. */
+  previewTheme(theme: Theme): Promise<{ text: string; html: string }>
+  /** Sends a made-up urgent email to the connected Telegram chats, to see the alert and try its buttons. */
+  sendSampleAlert(): Promise<{ sent: number }>
   environment(): Promise<EnvVariable[]>
   setEnvironment(id: string, value: string): Promise<EnvVariable[]>
   removeEnvironment(id: string): Promise<EnvVariable[]>

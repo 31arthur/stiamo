@@ -1,4 +1,4 @@
-import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, EnvVariable, ReminderSettings, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, EnvVariable, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -177,6 +177,22 @@ export class RemoteAgent implements AgentApi {
 
   setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }) {
     return this.http.put<ReminderSettings>('/v1/agent/reminders', settings)
+  }
+
+  async themes() {
+    return (await this.http.get<{ themes: Theme[] }>('/v1/agent/themes')).themes
+  }
+
+  async setThemes(themes: Theme[]) {
+    return (await this.http.put<{ themes: Theme[] }>('/v1/agent/themes', { themes })).themes
+  }
+
+  previewTheme(theme: Theme) {
+    return this.http.post<{ text: string; html: string }>('/v1/agent/themes/preview', { theme })
+  }
+
+  sendSampleAlert() {
+    return this.http.post<{ sent: number }>('/v1/agent/alerts/test', {})
   }
 
   async environment() {

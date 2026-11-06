@@ -105,6 +105,29 @@ export const TEMPLATES: WorkflowTemplate[] = [
     },
   },
   {
+    id: 'urgent-mail',
+    name: 'Urgent mail watch',
+    description: 'Watches a mailbox live and pings your Telegram the moment something needs you at once, with a link to the email and replies ready to send.',
+    pitch: 'A loud Telegram alert, a link, and suggested replies in the organisation’s theme.',
+    config: {
+      ...base,
+      // Only the last day, so switching it on does not ping about old mail.
+      filters: { sinceDays: 1, newOnly: true, contains: null, limit: 50 },
+      source: { kind: 'mail', accountIds: [], folder: 'INBOX' },
+      listen: true,
+      defaultThreshold: 0.6,
+      rules: { protectedDomains: [], protectedPhrases: [], protectCorrespondents: false },
+      action: { trashLabel: null, auto: false },
+      prompt:
+        'You watch the inbox of S&B Consultants, a legal and advocacy practice, for mail that cannot wait. Something is urgent when someone needs the owner to share, send, register, confirm, pay, attend or answer by a deadline that is close, or when a client, court, government office or funder is waiting. When unsure whether it is urgent, choose the label that tells the owner.',
+      labels: [
+        { name: 'urgent', description: 'Asks the owner to share, send, register, confirm, pay, attend or reply by a close deadline, or a client, court, government office or funder is waiting on them.', route: 'alert' },
+        { name: 'important', description: 'Matters, but can wait a day or more: updates on cases, notices, invitations with time to spare.', route: 'attention' },
+        { name: 'routine', description: 'Newsletters, receipts, promotions, notifications and anything that needs nothing from the owner.', route: 'none' },
+      ],
+    },
+  },
+  {
     id: 'news',
     name: 'News monitor',
     description: 'Reads news feeds every half hour, keeps what matters to your work, and ranks the top stories.',
