@@ -1,3 +1,4 @@
+import { CallLink } from '@/presentation/contacts/CallLink'
 import type { ReactNode } from 'react'
 import { Clock, Flag, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -94,6 +95,7 @@ function TaskBody({ task: t, onEdit, onDeleted }: { task: Task; onEdit: () => vo
                       </span>
                     </Meta>
                     <Meta label="Due">{t.dueDate ? friendlyDate(t.dueDate, today) : '—'}</Meta>
+                    {t.contact && <Meta label="Contact"><CallLink contact={t.contact} /></Meta>}
                     <Meta label="Planned">{t.slot ? `${friendlyDate(t.slot.date, today)} ${formatClock(t.slot.start)}` : '—'}</Meta>
                     <Meta label="Estimate">
                       <span className="inline-flex items-center gap-1">
@@ -150,7 +152,7 @@ function FollowUpBody({ followUp: f, onEdit, onDeleted }: { followUp: FollowUp; 
                   <div className="grid grid-cols-2 gap-4 rounded-xl border p-3 sm:grid-cols-3">
                     <Meta label="Channel">{CHANNEL_LABELS[f.channel]}</Meta>
                     <Meta label="When">{f.due ? friendlyDateTime(f.due.date, f.due.time, today) : 'Anytime'}</Meta>
-                    <Meta label="Contact">{f.contact ?? '—'}</Meta>
+                    <Meta label="Contact">{f.contact ? <CallLink contact={f.contact} channel={f.channel} /> : '—'}</Meta>
                     {f.trigger && <Meta label="Confirmation">{CONFIRMATION_LABELS[f.trigger]}</Meta>}
                   </div>
                   {f.notes && <p className="text-sm whitespace-pre-line">{f.notes}</p>}

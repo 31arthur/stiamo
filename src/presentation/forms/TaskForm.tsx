@@ -7,6 +7,7 @@ import type { Task, TaskPriority } from '@/domain/tasks/Task'
 import { DateInput, DURATION_PRESETS, Field, NativeSelect, Segmented } from '@/presentation/components/form'
 import { WorkspacePicker } from '@/presentation/components/workspace'
 import { useEntities, useSave } from '@/presentation/data/hooks'
+import { ContactField } from '@/presentation/contacts/ContactField'
 import { ClientProjectField } from './ClientProjectField'
 import { FormShell, usePatch } from './shared'
 
@@ -50,6 +51,9 @@ export function TaskForm({ initial, onDone }: { initial: Task | TaskDraft; onDon
           <DateInput id="task-due" value={t.dueDate} onChange={(dueDate) => patch({ dueDate })} />
         </Field>
       </div>
+      <Field label="Contact" htmlFor="task-contact" hint="Who to call or reach for this: a tap on it dials them">
+        <ContactField id="task-contact" value={t.contact} onChange={(contact) => patch({ contact })} workspace={t.workspace} placeholder="Name, phone or email" />
+      </Field>
       <Field label="Estimate">
         <Segmented
           size="sm"

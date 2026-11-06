@@ -1,3 +1,4 @@
+import { CallLink } from '@/presentation/contacts/CallLink'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { addDays, format, isValid, parseISO } from 'date-fns'
@@ -425,8 +426,8 @@ function AttentionRail({ className }: { className?: string }) {
             <span className={cn('block text-xs', f.due && f.due.date < today ? 'text-destructive' : 'text-muted-foreground')}>
               {f.due ? friendlyDate(f.due.date, today) : 'Anytime'}
               {f.due?.time !== undefined && ` ${formatClock(f.due.time)}`}
-              {f.contact && ` · ${f.contact}`}
             </span>
+            {f.contact && <CallLink contact={f.contact} channel={f.channel} className="mt-1" />}
           </div>
         </div>
       ))}

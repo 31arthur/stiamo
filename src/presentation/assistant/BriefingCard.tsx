@@ -1,3 +1,4 @@
+import { CallLink } from '@/presentation/contacts/CallLink'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { format, parseISO } from 'date-fns'
@@ -146,7 +147,7 @@ function ItemTile({ item, day, stripe, actions, onMove, onOpen }: { item: Briefi
             )}
             {item.caseRef && <Pill className="bg-ws-sb-soft font-mono text-ws-sb">{item.caseRef}</Pill>}
             {urgent && <Pill className="bg-destructive/10 text-destructive capitalize">{item.priority}</Pill>}
-            {item.type === 'followUp' && item.contact && <Pill>{item.contact}</Pill>}
+            {item.type === 'followUp' && item.contact && <CallLink contact={item.contact} channel={(['call', 'message', 'email', 'visit'] as const).find((c) => c === item.channel) ?? 'call'} />}
             {item.place && <Pill>{item.place}</Pill>}
             {!!item.tries && <Pill className="bg-warning/15 text-warning">Tried {item.tries}×</Pill>}
             {!!item.minutes && <Pill>{item.minutes} min</Pill>}
