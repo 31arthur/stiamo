@@ -43,6 +43,7 @@ const HistoryTab = lazy(() => import('@/presentation/agents/HistoryTab').then((m
 const NewAgentPage = lazy(() => import('@/presentation/agents/NewAgentPage').then((m) => ({ default: m.NewAgentPage })))
 const WorkflowRunTab = lazy(() => import('@/presentation/agents/WorkflowRunTab').then((m) => ({ default: m.WorkflowRunTab })))
 const ReviewTab = lazy(() => import('@/presentation/agents/ReviewTab').then((m) => ({ default: m.ReviewTab })))
+const EnvironmentPage = lazy(() => import('@/presentation/agents/EnvironmentPage').then((m) => ({ default: m.EnvironmentPage })))
 const AgentsSettingsPage = lazy(() => import('@/presentation/agents/AgentsSettingsPage').then((m) => ({ default: m.AgentsSettingsPage })))
 const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
 const GoalDetailPage = lazy(() => import('@/presentation/pages/GoalDetailPage').then((m) => ({ default: m.GoalDetailPage })))
@@ -71,6 +72,7 @@ export default function App({ container }: { container: Container }) {
                     <Route index element={<AgentsHome />} />
                     <Route path="usage" element={<UsagePage />} />
                     <Route path="settings" element={<AgentsSettingsPage />} />
+                    <Route path="environment" element={<EnvironmentPage />} />
                     <Route path="new" element={<NewAgentPage />} />
                     <Route path=":agentId" element={<AgentLayout />}>
                       <Route index element={<OverviewTab />} />

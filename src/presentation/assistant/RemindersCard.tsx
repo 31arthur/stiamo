@@ -1,22 +1,18 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
-import { BellRing, Check, Mic, PhoneCall, Send, Trash2 } from 'lucide-react'
+import { BellRing, Check, PhoneCall, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { ReminderSettings } from '@/domain/ai/AgentApi'
+import { Link } from '@/presentation/routing'
 import { useAgentAction, useReminders } from '@/presentation/agents/useAgent'
 
 /** Reminders for calls you haven't marked done: written on the phone and, if you want, spoken as a Telegram voice message. */
 export function RemindersCard() {
   const { data } = useReminders()
-  const [key, setKey] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<string | null>(null)
   const [callError, setCallError] = useState<string | null>(null)
   const toggle = useAgentAction((a, v: Omit<ReminderSettings, 'voiceKey' | 'timezone'>) => a.setReminders(v))
-  const saveKey = useAgentAction((a, k: string) => a.setVoiceKey(k), { success: 'The voice is ready' })
-  const removeKey = useAgentAction((a) => a.removeVoiceKey(), { success: 'Voice key removed' })
   const test = useAgentAction((a) => a.testReminder(), { success: (r) => (r.rang ? 'Ringing you on Telegram now.' : r.sent ? (r.spoken ? 'Sent. Check Telegram for the voice message.' : 'Sent. It was written only: add a voice key or switch on the call to hear it.') : 'Nothing was sent: connect Telegram or WhatsApp first.') })
   if (!data) return null
 
@@ -29,17 +25,6 @@ export function RemindersCard() {
       setUser(null)
     } catch (err) {
       setCallError(err instanceof Error ? err.message : 'Couldn’t save that.')
-    }
-  }
-
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    try {
-      await saveKey.run(key)
-      setKey('')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Couldn’t keep that key.')
     }
   }
 
@@ -72,38 +57,26 @@ export function RemindersCard() {
             </span>
           </label>
 
-          {data.voice &&
-            (data.voiceKey.connected ? (
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="flex items-center gap-1 rounded-full bg-success/12 px-2 py-0.5 text-[11px] font-medium text-success">
-                  <Check className="size-3" /> Deepgram voice ···{data.voiceKey.last4}
+          {data.voice && (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              {data.voiceKey.connected ? (
+                <>
+                  <span className="flex items-center gap-1 rounded-full bg-success/12 px-2 py-0.5 text-[11px] font-medium text-success">
+                    <Check className="size-3" /> Voice ready
+                  </span>
+                  The Deepgram key is set.
+                </>
+              ) : (
+                <span>
+                  The voice needs a Deepgram key. Add <span className="font-mono">DEEPGRAM_API_KEY</span> in{' '}
+                  <Link to="/agents/environment" className="underline">
+                    Developer → Environment
+                  </Link>
+                  .
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => void removeKey.run(undefined)} disabled={removeKey.pending}>
-                  <Trash2 /> Remove key
-                </Button>
-              </div>
-            ) : (
-              <form onSubmit={submit} className="grid gap-2">
-                <p className="text-xs text-muted-foreground">
-                  The voice comes from Deepgram, which gives a new account free credit. Make a key at{' '}
-                  <a href="https://console.deepgram.com/" target="_blank" rel="noopener noreferrer" className="underline">
-                    console.deepgram.com
-                  </a>{' '}
-                  and paste it here.
-                </p>
-                <div className="flex gap-2">
-                  <Input type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Deepgram API key" autoComplete="off" spellCheck={false} aria-label="Deepgram API key" aria-invalid={!!error} className="font-mono" />
-                  <Button type="submit" size="sm" disabled={!key.trim() || saveKey.pending}>
-                    {saveKey.pending ? <Spinner size="xs" tone="current" decorative /> : <Mic />} Keep
-                  </Button>
-                </div>
-                {error && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {error}
-                  </p>
-                )}
-              </form>
-            ))}
+              )}
+            </p>
+          )}
 
           <label className="flex items-start gap-2.5 text-sm">
             <input

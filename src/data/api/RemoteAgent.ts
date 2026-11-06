@@ -1,4 +1,4 @@
-import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, ReminderSettings, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, EnvVariable, ReminderSettings, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
 
@@ -179,12 +179,20 @@ export class RemoteAgent implements AgentApi {
     return this.http.put<ReminderSettings>('/v1/agent/reminders', settings)
   }
 
-  setVoiceKey(apiKey: string) {
-    return this.http.put<ReminderSettings>('/v1/agent/reminders/voice-key', { apiKey })
+  async environment() {
+    return (await this.http.get<{ items: EnvVariable[] }>('/v1/agent/secrets')).items
   }
 
-  removeVoiceKey() {
-    return this.http.delete<ReminderSettings>('/v1/agent/reminders/voice-key')
+  async setEnvironment(id: string, value: string) {
+    return (await this.http.put<{ items: EnvVariable[] }>(`/v1/agent/secrets/${encodeURIComponent(id)}`, { value })).items
+  }
+
+  async removeEnvironment(id: string) {
+    return (await this.http.delete<{ items: EnvVariable[] }>(`/v1/agent/secrets/${encodeURIComponent(id)}`)).items
+  }
+
+  testEnvironment(id: string) {
+    return this.http.post<{ ok: boolean; message: string }>(`/v1/agent/secrets/${encodeURIComponent(id)}/test`, {})
   }
 
   testReminder() {
