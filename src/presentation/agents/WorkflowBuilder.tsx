@@ -122,8 +122,8 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                   <Input value={l.name} onChange={(e) => setLabel(i, { name: slug(e.target.value) })} placeholder="label_name" aria-label="Label name" className="h-8 font-mono text-xs" />
                   <Input value={l.description} onChange={(e) => setLabel(i, { description: e.target.value })} placeholder="What makes an item this label" aria-label="What the label means" className="h-8 text-sm" maxLength={300} />
                   <div className="flex items-center gap-1">
-                    {(cfg.source.kind === 'agent' || news) && (
-                      <select aria-label="What happens to it" value={l.route ?? 'none'} onChange={(e) => setLabel(i, { route: e.target.value as 'none' | 'attention' | 'event' | 'publish' })} className={SELECT} title="What happens to items with this label">
+                    {(cfg.source.kind === 'agent' || cfg.source.kind === 'mail' || news) && (
+                      <select aria-label="What happens to it" value={l.route ?? 'none'} onChange={(e) => setLabel(i, { route: e.target.value as 'none' | 'attention' | 'event' | 'publish' | 'alert' })} className={SELECT} title="What happens to items with this label">
                         <option value="none">Just keep</option>
                         {news ? (
                           <option value="publish">On the News page</option>
@@ -131,6 +131,7 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
                           <>
                             <option value="attention">Attention</option>
                             <option value="event">Attention + event</option>
+                            <option value="alert">Ping me on Telegram</option>
                           </>
                         )}
                       </select>
