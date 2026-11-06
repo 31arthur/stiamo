@@ -149,6 +149,17 @@ export interface DayPlanSettings {
   channels: boolean
 }
 
+/** An environment variable you can set. Its value is sealed on arrival and never sent back: you see only whether it is set. */
+export interface EnvVariable {
+  id: string
+  /** The name it is known by, like DEEPGRAM_API_KEY. */
+  name: string
+  label: string
+  description: string
+  helpUrl: string
+  set: boolean
+}
+
 /** Reminders about calls that were not marked done: written on the phone, and spoken on Telegram when a Deepgram key is kept. */
 export interface ReminderSettings {
   enabled: boolean
@@ -159,7 +170,8 @@ export interface ReminderSettings {
   /** Who to ring: your Telegram @username, or your number with its country code. */
   callUser: string
   callVoice: string
-  voiceKey: { connected: boolean; last4: string | null }
+  /** Whether the Deepgram key is set (in Developer → Environment). The key itself is never sent. */
+  voiceKey: { connected: boolean }
   timezone: string
 }
 
@@ -741,8 +753,10 @@ export interface AgentApi {
   generateDayPlan(day?: string, force?: boolean): Promise<DayPlan>
   reminders(): Promise<ReminderSettings>
   setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }): Promise<ReminderSettings>
-  setVoiceKey(apiKey: string): Promise<ReminderSettings>
-  removeVoiceKey(): Promise<ReminderSettings>
+  environment(): Promise<EnvVariable[]>
+  setEnvironment(id: string, value: string): Promise<EnvVariable[]>
+  removeEnvironment(id: string): Promise<EnvVariable[]>
+  testEnvironment(id: string): Promise<{ ok: boolean; message: string }>
   testReminder(): Promise<{ sent: number; spoken: boolean; rang: boolean }>
   applyDayPlan(id: string): Promise<{ plan: DayPlan; booked: number; skipped: number }>
   dismissDayPlan(id: string): Promise<DayPlan>
