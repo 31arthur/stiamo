@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { Channel } from '@/domain/ai/AgentApi'
+import { WORKSPACES } from '@/domain/shared/workspace'
+import type { WorkspaceId } from '@/domain/shared/workspace'
 import { Section } from '@/presentation/components/layout'
 import { useAgentAction, useAgentSummary, useChannels } from './useAgent'
 
@@ -60,10 +62,10 @@ function Problem({ message }: { message: string | null }) {
 
 // --- Telegram -----------------------------------------------------------------------------------------------
 
-export function TelegramCard({ agentId, channel }: { agentId: string; channel?: Channel }) {
+export function TelegramCard({ agentId, channel, workspace }: { agentId: string; channel?: Channel; /** Makes it that workspace's email bot. */ workspace?: WorkspaceId }) {
   const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const connect = useAgentAction((a, t: string) => a.connectTelegram(t, agentId), { success: 'Telegram bot connected' })
+  const connect = useAgentAction((a, t: string) => a.connectTelegram(t, agentId, workspace), { success: 'Telegram bot connected' })
   const newCode = useAgentAction((a, id: string) => a.newPairingCode(id))
   const unpair = useAgentAction((a, v: { id: string; chat: string }) => a.unpair(v.id, v.chat), { success: 'Chat unlinked' })
   const test = useAgentAction((a, id: string) => a.sendTest(id), { success: 'Sent. Check Telegram.' })
@@ -81,7 +83,7 @@ export function TelegramCard({ agentId, channel }: { agentId: string; channel?: 
   }
 
   return (
-    <Section title="Telegram" description="Message a bot to ask this agent." actions={channel ? <Connected>@{channel.username}</Connected> : undefined}>
+    <Section title={workspace ? `${WORKSPACES[workspace].short} email bot` : 'Telegram'} description={workspace ? `Email alerts about ${WORKSPACES[workspace].name}’s mailboxes arrive on this bot, and nothing else does.` : 'Message a bot to ask this agent.'} actions={channel ? <Connected>@{channel.username}</Connected> : undefined}>
       {!channel ? (
         <form onSubmit={submit} className="grid gap-3">
           <Steps>

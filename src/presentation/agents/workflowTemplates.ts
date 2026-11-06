@@ -115,6 +115,7 @@ export const TEMPLATES: WorkflowTemplate[] = [
       filters: { sinceDays: 1, newOnly: true, contains: null, limit: 50 },
       source: { kind: 'mail', accountIds: [], folder: 'INBOX' },
       listen: true,
+      notify: { telegram: true, call: false },
       defaultThreshold: 0.6,
       rules: { protectedDomains: [], protectedPhrases: [], protectCorrespondents: false },
       action: { trashLabel: null, auto: false },

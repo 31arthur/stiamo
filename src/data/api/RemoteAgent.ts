@@ -287,8 +287,8 @@ export class RemoteAgent implements AgentApi {
     return (await this.http.get<{ items: Channel[] }>('/v1/agent/channels')).items
   }
 
-  connectTelegram(botToken: string, agent?: string) {
-    return this.http.post<Channel>('/v1/agent/channels/telegram', { botToken, agent })
+  connectTelegram(botToken: string, agent?: string, workspace?: string) {
+    return this.http.post<Channel>('/v1/agent/channels/telegram', { botToken, agent, workspace })
   }
 
   setChannelAgent(channelId: string, agent: string) {

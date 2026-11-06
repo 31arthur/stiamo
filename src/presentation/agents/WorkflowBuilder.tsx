@@ -456,6 +456,31 @@ export function WorkflowBuilder({ initial, saveLabel, saving, onSave, extra, onD
           </Section>
         )}
 
+        {(mail || cfg.source.kind === 'agent') && (
+          <Section title="Email updates" description="Get what this agent finds on Telegram, on the email bot of the mailbox’s workspace.">
+            <div className="grid gap-4">
+              <div className="flex items-start gap-3">
+                <Switch checked={cfg.notify?.telegram ?? false} onChange={(on) => set({ notify: { telegram: on, call: on ? (cfg.notify?.call ?? false) : false } })} label="Send updates to Telegram" />
+                <div className="min-w-0 text-sm">
+                  Send updates to Telegram
+                  <p className="text-xs text-muted-foreground">
+                    What it queues for you arrives on the workspace’s email bot with a link to the email and replies to choose from. Mail it finds high priority, and any label set to “Ping me on Telegram”, comes as a loud alert; the rest as a quiet update. Connect the bot under Assistant → On your phone → Email bots.
+                  </p>
+                </div>
+              </div>
+              <div className={cn('flex items-start gap-3', !cfg.notify?.telegram && 'opacity-50')}>
+                <Switch checked={cfg.notify?.call ?? false} disabled={!cfg.notify?.telegram} onChange={(on) => set({ notify: { telegram: true, call: on } })} label="Call me for priority mail" />
+                <div className="min-w-0 text-sm">
+                  Call me for priority mail
+                  <p className="text-xs text-muted-foreground">
+                    A priority alert also rings you on Telegram, once for a burst, never about everything. It rings the username or number set under Call reminders.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Section>
+        )}
+
         {extra}
 
         <div className="flex flex-wrap items-center gap-2">
