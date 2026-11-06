@@ -154,6 +154,11 @@ export interface ReminderSettings {
   enabled: boolean
   /** Also speak it, as a voice message on Telegram. */
   voice: boolean
+  /** Also ring you on Telegram (through CallMeBot) and read it aloud. */
+  call: boolean
+  /** Who to ring: your Telegram @username, or your number with its country code. */
+  callUser: string
+  callVoice: string
   voiceKey: { connected: boolean; last4: string | null }
   timezone: string
 }
@@ -735,10 +740,10 @@ export interface AgentApi {
   setDayPlanSettings(settings: DayPlanSettings): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule }>
   generateDayPlan(day?: string, force?: boolean): Promise<DayPlan>
   reminders(): Promise<ReminderSettings>
-  setReminders(enabled: boolean, voice: boolean): Promise<ReminderSettings>
+  setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }): Promise<ReminderSettings>
   setVoiceKey(apiKey: string): Promise<ReminderSettings>
   removeVoiceKey(): Promise<ReminderSettings>
-  testReminder(): Promise<{ sent: number; spoken: boolean }>
+  testReminder(): Promise<{ sent: number; spoken: boolean; rang: boolean }>
   applyDayPlan(id: string): Promise<{ plan: DayPlan; booked: number; skipped: number }>
   dismissDayPlan(id: string): Promise<DayPlan>
   news(workspace: string | undefined, days: number, sort: NewsSort): Promise<{ items: NewsStory[]; total: number; sort: NewsSort; generatedAt: string }>
