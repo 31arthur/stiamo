@@ -14,9 +14,19 @@ export function RemindersCard() {
   const [callError, setCallError] = useState<string | null>(null)
   const toggle = useAgentAction((a, v: Omit<ReminderSettings, 'voiceKey' | 'timezone'>) => a.setReminders(v))
   const test = useAgentAction((a) => a.testReminder(), { success: (r) => (r.rang ? 'Ringing you on Telegram now.' : r.sent ? (r.spoken ? 'Sent. Check Telegram for the voice message.' : 'Sent. It was written only: add a voice key or switch on the call to hear it.') : 'Nothing was sent: connect Telegram or WhatsApp first.') })
+  const ring = useAgentAction((a, who: string) => a.testCall(who), { success: (r) => `Calling ${r.user} on Telegram now. Answer it there.` })
   if (!data) return null
 
   const current = { enabled: data.enabled, voice: data.voice, call: data.call, callUser: data.callUser, callVoice: data.callVoice }
+
+  async function testCall() {
+    setCallError(null)
+    try {
+      await ring.run(user ?? data!.callUser)
+    } catch (err) {
+      setCallError(err instanceof Error ? err.message : 'The call couldn’t be placed.')
+    }
+  }
 
   async function saveCall(call: boolean, callUser: string) {
     setCallError(null)
@@ -110,11 +120,14 @@ export function RemindersCard() {
                   e.preventDefault()
                   void saveCall(true, user ?? data.callUser)
                 }}
-                className="flex gap-2"
+                className="flex flex-wrap gap-2"
               >
-                <Input value={user ?? data.callUser} onChange={(e) => setUser(e.target.value)} placeholder="@yourname or +919876543210" autoComplete="off" spellCheck={false} aria-label="Telegram username or number to ring" aria-invalid={!!callError} className="font-mono" />
+                <Input value={user ?? data.callUser} onChange={(e) => setUser(e.target.value)} placeholder="@yourname or +919876543210" autoComplete="off" spellCheck={false} aria-label="Telegram username or number to ring" aria-invalid={!!callError} className="min-w-40 flex-1 font-mono" />
                 <Button type="submit" size="sm" disabled={toggle.pending || !(user ?? data.callUser).trim() || (data.call && user === data.callUser)}>
                   {toggle.pending ? <Spinner size="xs" tone="current" decorative /> : <PhoneCall />} {data.call ? 'Save' : 'Turn on'}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => void testCall()} disabled={ring.pending || !(user ?? data.callUser).trim()}>
+                  {ring.pending ? <Spinner size="xs" tone="current" decorative /> : <PhoneCall />} Test the call
                 </Button>
               </form>
               {callError && (

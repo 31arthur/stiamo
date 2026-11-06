@@ -195,6 +195,10 @@ export class RemoteAgent implements AgentApi {
     return this.http.post<{ ok: boolean; message: string }>(`/v1/agent/secrets/${encodeURIComponent(id)}/test`, {})
   }
 
+  testCall(callUser?: string) {
+    return this.http.post<{ called: boolean; user: string }>('/v1/agent/reminders/test-call', { callUser })
+  }
+
   testReminder() {
     return this.http.post<{ sent: number; spoken: boolean; rang: boolean }>('/v1/agent/reminders/test', {})
   }
