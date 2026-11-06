@@ -35,6 +35,8 @@ import { NO_AGENT } from '@/domain/ai/AgentApi'
 import type { AgentApi } from '@/domain/ai/AgentApi'
 import { NO_DRIVE } from '@/domain/drive/Drive'
 import { NO_CALENDAR } from '@/domain/calendar/GoogleCalendar'
+import { NO_CONTACTS } from '@/domain/contacts/Contacts'
+import type { ContactsApi } from '@/domain/contacts/Contacts'
 import type { CalendarApi } from '@/domain/calendar/GoogleCalendar'
 import { NO_MAIL } from '@/domain/mail/Mail'
 import type { MailApi } from '@/domain/mail/Mail'
@@ -88,6 +90,8 @@ export interface Container {
   mail: MailApi
   /** The workspaces' Google calendars, read into one calendar. Only available with the Stiamo backend. */
   calendar: CalendarApi
+  /** The workspaces' Google contacts. Only available with the Stiamo backend. */
+  contacts: ContactsApi
   /** Live views of each collection, updated on every change from any device. */
   live: {
     subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) => () => void
@@ -157,6 +161,7 @@ export function createContainer(backend: Backend): Container {
     agent: NO_AGENT,
     mail: NO_MAIL,
     calendar: NO_CALENDAR,
+    contacts: NO_CONTACTS,
     live: {
       subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) =>
         (backend.repos[kind].subscribe as (u: ID, l: (items: EntityMap[K][]) => void, e?: (e: Error) => void) => () => void)(userId, listener, onError),
