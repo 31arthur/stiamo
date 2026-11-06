@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { Theme, EnvVariable, ReminderSettings, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { MailWatch, Theme, EnvVariable, ReminderSettings, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -139,6 +139,14 @@ export function useThemes() {
   const userId = useUserId()
   const available = useAgentAvailable()
   return useQuery<Theme[]>({ queryKey: ['agent', 'themes', userId], queryFn: () => agent.themes(), enabled: available, staleTime: 30_000, retry: false })
+}
+
+/** The priority mail watch of each workspace with a mailbox. Asking for it also makes any that is missing, and its state is looked at every half minute. */
+export function useMailWatch() {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<MailWatch[]>({ queryKey: ['agent', 'mailWatch', userId], queryFn: () => agent.mailWatch(), enabled: available, staleTime: 15_000, refetchInterval: 30_000, retry: false })
 }
 
 /** The environment variables you can set, and which are set. Never their values. */
