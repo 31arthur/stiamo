@@ -52,7 +52,7 @@ export function DeveloperShell() {
 
 function Item({ to, label, icon: Icon, end }: { to: string; label: string; icon: LucideIcon; end?: boolean }) {
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => cn('flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', isActive ? 'bg-foreground/[0.07] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
+    <NavLink to={to} end={end} className={({ isActive }) => cn('flex min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors', isActive ? 'bg-foreground/[0.07] font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
       <Icon className="size-4 shrink-0" />
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </NavLink>
@@ -67,7 +67,7 @@ function DeveloperSidebar() {
   const force = agents.filter((a) => a.kind === 'workflow')
 
   return (
-    <div className="flex h-full flex-col gap-4 p-3">
+    <div className="flex h-full min-w-0 flex-col gap-4 overflow-x-hidden p-3">
       <div className="flex items-center justify-between px-1 pt-1">
         <Logo />
         <Button variant="ghost" size="xs" nativeButton={false} render={<Link to="/today" />} className="text-muted-foreground">
@@ -80,8 +80,8 @@ function DeveloperSidebar() {
         <p className="text-xs text-muted-foreground">Build and tune the agents.</p>
       </div>
 
-      <nav aria-label="Developer" className="scrollbar-none -mx-1 flex flex-1 flex-col gap-4 overflow-y-auto px-1">
-        <div className="grid gap-0.5">
+      <nav aria-label="Developer" className="scrollbar-none -mx-1 flex flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-1">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
           <Item to="/agents" label="All agents" icon={LayoutGrid} end />
           <Item to="/agents/usage" label="Usage and cost" icon={Coins} />
           <Item to="/agents/settings" label="Providers and models" icon={SlidersHorizontal} />
@@ -97,7 +97,7 @@ function DeveloperSidebar() {
         )}
       </nav>
 
-      <div className="grid gap-1">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-1">
         <Button nativeButton={false} render={<Link to="/agents/new" />} variant="outline" className="w-full justify-start gap-2">
           <Plus /> New agent
         </Button>
@@ -113,7 +113,7 @@ function Group({ label, items, empty }: { label: string; items: { to: string; la
   return (
     <section>
       <h2 className="mb-1 px-2.5 text-[10px] font-semibold tracking-widest text-muted-foreground/80 uppercase">{label}</h2>
-      <div className="grid gap-0.5">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
         {items.length === 0 ? <p className="px-2.5 py-1 text-xs text-muted-foreground">{empty}</p> : items.map((i) => <Item key={i.to} {...i} />)}
       </div>
     </section>
