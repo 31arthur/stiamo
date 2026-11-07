@@ -12,6 +12,7 @@ export const TOGGLEABLE_PAGES = [
   { id: 'meetings', label: 'Meetings', hint: '' },
   { id: 'plans', label: 'Action plans', hint: '' },
   { id: 'goals', label: 'Goals', hint: '' },
+  { id: 'insights', label: 'Insights', hint: 'Mail, news and work read together' },
 ] as const
 
 export type PageId = (typeof TOGGLEABLE_PAGES)[number]['id']

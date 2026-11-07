@@ -1,4 +1,4 @@
-import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, EnvVariable, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, EnvVariable, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -194,6 +194,14 @@ export class RemoteAgent implements AgentApi {
 
   sendSampleAlert() {
     return this.http.post<{ sent: number }>('/v1/agent/alerts/test', {})
+  }
+
+  insights(workspace: string, days: number) {
+    return this.http.get<Insights>('/v1/agent/insights', { workspace, days })
+  }
+
+  insightsDigest(workspace: string, days: number, force?: boolean) {
+    return this.http.post<InsightDigest>('/v1/agent/insights/digest', { workspace, days, force: !!force })
   }
 
   async mailWatch() {
