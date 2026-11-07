@@ -3,11 +3,15 @@ import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CalendarClock, CalendarPlus, Check, Gavel, ListChecks, Mail, Sparkles, Sun, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import type { AttentionEvent, AttentionItem } from '@/domain/ai/AgentApi'
 import { formatClock } from '@/domain/shared/time'
 import { WORKSPACES } from '@/domain/shared/workspace'
 import { cn } from '@/lib/utils'
+import { AttentionSheet } from '@/presentation/agents/AttentionSheet'
+import { cardKey, nextCard } from '@/presentation/agents/attentionCards'
 import { mailRef } from '@/presentation/agents/executions'
 import { useAttentionActions } from '@/presentation/agents/useAttentionActions'
+import type { AttentionAction } from '@/presentation/agents/useAttentionActions'
 import { useEditor } from '@/presentation/app/create'
 import { useServices } from '@/presentation/app/services'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
@@ -35,7 +39,23 @@ const META: Record<NeedSection, { title: string; hint: string; tone: string }> =
 export function NeedsPage() {
   const { scope } = useWorkspaceFilter()
   const { needs, total, count } = useNeeds()
+  const act = useAttentionActions()
   const sections = SECTIONS.filter((s) => count(s) > 0)
+
+  // A mail row opens the same sheet the Attention page uses (the email, an event you can edit, every decision), and deciding moves to the next.
+  const mail = needs.flatMap((n) => (n.kind === 'mail' ? [n.item] : []))
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const open = mail.find((i) => cardKey(i) === openKey) ?? null
+  const at = open ? mail.findIndex((i) => cardKey(i) === openKey) : -1
+  const decide = (item: AttentionItem, action: AttentionAction, event?: AttentionEvent) => {
+    if (openKey === cardKey(item)) {
+      const next = nextCard(mail, item)
+      setOpenKey(next ? cardKey(next) : null)
+    }
+    void act(item, action, event)
+  }
+  const step = (by: 1 | -1) => mail.length > 0 && setOpenKey(cardKey(mail[(Math.max(at, 0) + by + mail.length) % mail.length]!))
+
   return (
     <>
       <PageHeader
@@ -65,7 +85,7 @@ export function NeedsPage() {
                   .filter((n) => n.section === s)
                   .map((n) => (
                     <li key={n.key}>
-                      <Row need={n} />
+                      <Row need={n} onReview={(i) => setOpenKey(cardKey(i))} />
                     </li>
                   ))}
               </ul>
@@ -73,6 +93,20 @@ export function NeedsPage() {
           ))}
         </div>
       )}
+      <nav aria-label="Full lists" className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-4 text-xs text-muted-foreground">
+        <span>Everything, not just what needs you:</span>
+        {[
+          ['/tasks', 'Tasks'],
+          ['/follow-ups', 'Follow-ups'],
+          ['/meetings', 'Meetings'],
+          ...(scope === 'sb' || scope === 'all' ? [['/attention', 'All flagged mail']] : []),
+        ].map(([to, label]) => (
+          <Link key={to} to={to!} className="font-medium text-foreground underline-offset-2 hover:underline">
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <AttentionSheet item={open} position={at + 1} total={mail.length} onClose={() => setOpenKey(null)} onStep={step} onDecide={decide} />
     </>
   )
 }
@@ -85,10 +119,10 @@ function Tile({ icon: Icon, tone }: { icon: typeof Mail; tone: string }) {
   )
 }
 
-function Row({ need: n }: { need: Need }) {
+function Row({ need: n, onReview }: { need: Need; onReview: (item: AttentionItem) => void }) {
   return (
     <div className="flex flex-wrap items-start gap-x-3 gap-y-2 px-3.5 py-3 sm:flex-nowrap">
-      {n.kind === 'mail' && <MailRow n={n} />}
+      {n.kind === 'mail' && <MailRow n={n} onReview={onReview} />}
       {n.kind === 'followUp' && <WorkRow kind="followUp" n={n} />}
       {n.kind === 'task' && <WorkRow kind="task" n={n} />}
       {n.kind === 'meeting' && <RecordRow n={n} />}
@@ -101,7 +135,7 @@ function Row({ need: n }: { need: Need }) {
 
 // --- mail -------------------------------------------------------------------------------------------------------
 
-function MailRow({ n }: { n: Extract<Need, { kind: 'mail' }> }) {
+function MailRow({ n, onReview }: { n: Extract<Need, { kind: 'mail' }>; onReview: (item: AttentionItem) => void }) {
   const act = useAttentionActions()
   const i = n.item
   const ref = mailRef(i.itemId)
@@ -110,15 +144,15 @@ function MailRow({ n }: { n: Extract<Need, { kind: 'mail' }> }) {
   return (
     <>
       <Tile icon={event ? CalendarPlus : urgent ? AlertTriangle : Mail} tone={urgent ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{i.title}</p>
-        <p className="line-clamp-2 text-xs text-muted-foreground">{i.summary}</p>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+      <button type="button" onClick={() => onReview(i)} aria-label={`Review: ${i.title}`} className="min-w-0 flex-1 rounded-md text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+        <span className="block truncate text-sm font-medium hover:underline">{i.title}</span>
+        <span className="line-clamp-2 block text-xs text-muted-foreground">{i.summary}</span>
+        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
           {i.action && <span className="font-medium text-foreground">{i.action}</span>}
           {i.due && <span className="tabular-nums">by {i.due}</span>}
           <span>{i.agentName}</span>
-        </p>
-      </div>
+        </span>
+      </button>
       <div className="flex shrink-0 flex-wrap items-center gap-1">
         {ref && (
           <Button variant="outline" size="xs" nativeButton={false} render={<Link to={`/mail?a=${encodeURIComponent(ref.accountId)}&f=${encodeURIComponent(i.folder || 'INBOX')}&m=${ref.uid}`} />}>

@@ -12,7 +12,7 @@ import { PageHeader, Section } from '@/presentation/components/layout'
 import { useUserId } from '@/presentation/data/hooks'
 import { Link } from '@/presentation/routing'
 
-const GROUPS = ['AI', 'Phone', 'Mail', 'Delivery', 'Server']
+const GROUPS = ['AI', 'Phone', 'Mail', 'Google', 'Delivery', 'Server']
 const ICON = { ok: CheckCircle2, warn: AlertTriangle, error: XCircle, off: Minus } as const
 const TONE = { ok: 'text-success', warn: 'text-warning', error: 'text-destructive', off: 'text-muted-foreground/60' } as const
 
