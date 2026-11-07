@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, BookUser, Code2, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
+import { BellRing, BookUser, ChartNoAxesColumn, Code2, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -199,6 +199,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       items: [
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
         { to: '/today', label: 'Today', icon: Sun },
+        ...(backend === 'api' ? [{ to: '/insights', label: 'Insights', icon: ChartNoAxesColumn }] : []),
       ].filter((i) => on(i.to.slice(1))),
       action: scope === 'all' ? { to: '/pages', label: 'Choose each workspace’s pages', icon: SlidersHorizontal } : undefined,
     },

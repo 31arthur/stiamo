@@ -171,6 +171,51 @@ export interface Theme {
   letterhead: { title: string; tagline: string; footer: string }
 }
 
+/** What a workspace's (or everything's) mail, news and work add up to over a period, counted from what the agents keep and the practice's records. */
+export interface Insights {
+  workspace: string
+  days: number
+  today: string
+  generatedAt: string
+  mail: {
+    total: number
+    needsYou: number
+    urgent: number
+    cleared: number
+    events: number
+    perDay: { date: string; urgent: number; attention: number; other: number }[]
+    topSenders: { name: string; address: string; count: number; urgent: number }[]
+    topDomains: { domain: string; count: number }[]
+    dueSoon: { title: string; due: string; priority: string; summary: string; action: string | null; agentId: string; itemId: string }[]
+  }
+  news: {
+    total: number
+    perDay: { date: string; count: number }[]
+    byImportance: { level: string; count: number }[]
+    topSources: { source: string; count: number }[]
+    topics: { term: string; count: number }[]
+    top: { title: string; source: string | null; link: string | null; importance: string | null; publishedAt: string | null }[]
+  }
+  work: {
+    tasks: { open: number; overdue: number; dueThisWeek: number; done: number; doneRate: number | null; overdueList: { id: string; title: string; dueDate?: string }[] }
+    followUps: { open: number; overdue: number; tries: number; reached: number; reachRate: number | null; stuck: { id: string; title: string; tries: number }[] }
+    meetings: { upcoming: number }
+    hearings: { upcoming: number; next: { id: string; date: string; caseId?: string; purpose?: string }[] }
+    load: { date: string; minutes: number }[]
+  }
+  connections: { kind: 'mail-case' | 'news-party'; text: string; ref: string; caseId: string; link?: string | null; hearing?: string | null }[]
+}
+
+/** A short written reading of the insights by the person's own model. */
+export interface InsightDigest {
+  summary: string
+  highlights: string[]
+  suggestions: string[]
+  generatedAt: string
+  /** Kept from earlier today rather than written now. */
+  cached: boolean
+}
+
 /** A workspace's priority mail watch: the agent that is made for it and kept listening to its mailboxes. */
 export interface MailWatch {
   workspace: WorkspaceId
@@ -805,6 +850,8 @@ export interface AgentApi {
   /** Sends a made-up urgent email to the connected Telegram chats, to see the alert and try its buttons. */
   sendSampleAlert(): Promise<{ sent: number }>
   mailWatch(): Promise<MailWatch[]>
+  insights(workspace: string, days: number): Promise<Insights>
+  insightsDigest(workspace: string, days: number, force?: boolean): Promise<InsightDigest>
   setMailWatch(workspace: WorkspaceId, enabled: boolean): Promise<MailWatch[]>
   environment(): Promise<EnvVariable[]>
   setEnvironment(id: string, value: string): Promise<EnvVariable[]>

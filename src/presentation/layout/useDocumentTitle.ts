@@ -20,6 +20,7 @@ export const SECTION_TITLES: Record<string, string> = {
   cases: 'Cases',
   mail: 'Mail',
   contacts: 'Contacts',
+  insights: 'Insights',
   attention: 'Attention',
   news: 'News',
   pages: 'Workspace pages',
