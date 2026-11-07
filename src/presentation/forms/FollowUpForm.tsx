@@ -43,7 +43,7 @@ export function FollowUpForm({ initial, onDone }: { initial: FollowUp | FollowUp
           />
         </Field>
         <Field label="Contact" htmlFor="fu-contact">
-          <ContactField id="fu-contact" value={f.contact} onChange={(contact) => patch({ contact })} workspace={f.workspace} placeholder="Name, phone or email" />
+          <ContactField id="fu-contact" value={f.contact} onChange={(contact, contactId) => patch({ contact, contactId })} workspace={f.workspace} placeholder="Name, phone or email" />
         </Field>
       </div>
       <Field label="Workspace">

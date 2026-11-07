@@ -216,6 +216,51 @@ export interface InsightDigest {
   cached: boolean
 }
 
+/** Something an agent proposed that is still waiting for you to approve or drop. */
+export interface WaitingProposal {
+  id: string
+  action: string
+  title: string
+  lines: string[]
+  status: string
+  agentId: string
+  createdAt: string
+}
+
+/** One thing the app depends on, and whether it works. */
+export interface HealthCheck {
+  id: string
+  group: 'AI' | 'Phone' | 'Mail' | 'Delivery' | 'Server' | string
+  label: string
+  /** ok: working. warn: works but something is missing. error: will not work. off: not set up, and fine without. */
+  state: 'ok' | 'warn' | 'error' | 'off'
+  detail: string
+  /** Where to fix it: a page ("/agents/settings"), "phone" (the On your phone panel) or "log" (the delivery log on this page). */
+  fix: string | null
+  /** What can be tried now. */
+  test: { kind: 'channel' | 'secret' | 'call' | 'mailbox' | 'alert'; id: string } | null
+}
+
+export interface Health {
+  items: HealthCheck[]
+  problems: number
+  errors: number
+  checkedAt: string
+}
+
+/** One thing sent to your phone, and whether it got there. */
+export interface Delivery {
+  id: string
+  kind: string
+  channel: 'telegram' | 'whatsapp' | 'call' | string
+  target: string
+  ok: boolean
+  error: string
+  summary: string
+  workspace: string | null
+  at: string
+}
+
 /** A workspace's priority mail watch: the agent that is made for it and kept listening to its mailboxes. */
 export interface MailWatch {
   workspace: WorkspaceId
@@ -850,6 +895,10 @@ export interface AgentApi {
   /** Sends a made-up urgent email to the connected Telegram chats, to see the alert and try its buttons. */
   sendSampleAlert(): Promise<{ sent: number }>
   mailWatch(): Promise<MailWatch[]>
+  waitingProposals(): Promise<WaitingProposal[]>
+  health(): Promise<Health>
+  testMailbox(accountId: string): Promise<{ ok: boolean; message: string }>
+  deliveries(limit: number, failedOnly: boolean): Promise<{ items: Delivery[]; last24h: { sent: number; failed: number } }>
   insights(workspace: string, days: number): Promise<Insights>
   insightsDigest(workspace: string, days: number, force?: boolean): Promise<InsightDigest>
   setMailWatch(workspace: WorkspaceId, enabled: boolean): Promise<MailWatch[]>

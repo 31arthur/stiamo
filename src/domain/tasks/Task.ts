@@ -31,6 +31,7 @@ export interface Task extends Entity {
   related?: EntityRef
   /** Who it is about or who to reach for it: a name and/or number. A tap on it dials. */
   contact?: string
+  contactId?: string
   outcome: Outcome
 }
 

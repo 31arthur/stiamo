@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { useOutlet, useParams } from 'react-router-dom'
+import { useOutlet, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { ArrowLeft, Code2, Menu, MessageSquarePlus, Search, Smartphone, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -68,7 +68,15 @@ function ChatSidebar() {
   const agents = useChatAgents('all')
   const actions = useConversationActions()
   const [query, setQuery] = useState('')
+  const [params, setParams] = useSearchParams()
   const [phone, setPhone] = useState(false)
+  // A link from Setup (?phone=1) opens the panel straight away.
+  useEffect(() => {
+    if (params.get('phone')) {
+      setPhone(true)
+      setParams((p) => (p.delete('phone'), p), { replace: true })
+    }
+  }, [params, setParams])
   const name = (id: string) => agents.find((a) => a.id === id)?.name ?? id
 
   const groups = useMemo(() => groupChats((list.data ?? []).filter((c) => c.title.toLowerCase().includes(query.trim().toLowerCase()))), [list.data, query])

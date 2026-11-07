@@ -11,6 +11,8 @@ import { LoginPage } from '@/presentation/pages/LoginPage'
 import { HomeRedirect, WorkspaceShell } from '@/presentation/routing/WorkspaceShell'
 
 // Each section is its own chunk; the shell and login load first.
+const NeedsPage = lazy(() => import('@/presentation/needs/NeedsPage').then((m) => ({ default: m.NeedsPage })))
+const SetupPage = lazy(() => import('@/presentation/setup/SetupPage').then((m) => ({ default: m.SetupPage })))
 const InsightsPage = lazy(() => import('@/presentation/insights/InsightsPage').then((m) => ({ default: m.InsightsPage })))
 const ContactsPage = lazy(() => import('@/presentation/contacts/ContactsPage').then((m) => ({ default: m.ContactsPage })))
 const CalendarPage = lazy(() => import('@/presentation/pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
@@ -101,6 +103,8 @@ export default function App({ container }: { container: Container }) {
                   <Route path="mail" element={<MailPage />} />
                   <Route path="contacts" element={<ContactsPage />} />
                   <Route path="insights" element={<InsightsPage />} />
+                  <Route path="needs" element={<NeedsPage />} />
+                  <Route path="setup" element={<SetupPage />} />
                   <Route path="assistant" element={<AssistantHome />} />
                   <Route path="assistant/:threadId" element={<AssistantThread />} />
                   <Route path="attention" element={<AttentionPage />} />

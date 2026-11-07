@@ -24,9 +24,9 @@ describe('addresses carry the workspace', () => {
   })
   it('sends the unknown to the landing page', () => {
     expect(canonicalPath('/', 'all')).toBe('/all/overview')
-    expect(canonicalPath('/sb', 'all')).toBe('/sb/today')
-    expect(canonicalPath('/sb/nope', 'all')).toBe('/sb/today')
-    expect(canonicalPath('/whatever', 'media')).toBe('/media/today')
+    expect(canonicalPath('/sb', 'all')).toBe('/sb/needs')
+    expect(canonicalPath('/sb/nope', 'all')).toBe('/sb/needs')
+    expect(canonicalPath('/whatever', 'media')).toBe('/media/needs')
   })
 })
 
@@ -37,9 +37,9 @@ describe('switching workspace', () => {
     expect(switchWorkspace('/sb/plans/xyz', 'fsa')).toBe('/fsa/plans')
   })
   it('goes to the landing page when the section does not exist there', () => {
-    expect(switchWorkspace('/sb/cases/1', 'fsa')).toBe('/fsa/today')
+    expect(switchWorkspace('/sb/cases/1', 'fsa')).toBe('/fsa/needs')
     expect(switchWorkspace('/sb/cases', 'all')).toBe('/all/overview')
-    expect(switchWorkspace('/all/overview', 'sb')).toBe('/sb/today')
+    expect(switchWorkspace('/all/overview', 'sb')).toBe('/sb/needs')
   })
 })
 
@@ -64,7 +64,7 @@ describe('links written the short way', () => {
   it('keeps Attention and News under S&B', () => {
     expect(canonicalPath('/personal/news', 'personal')).toBe('/sb/news')
     expect(canonicalPath('/fsa/attention', 'fsa')).toBe('/sb/attention')
-    expect(switchWorkspace('/sb/news', 'personal')).toBe('/personal/today')
+    expect(switchWorkspace('/sb/news', 'personal')).toBe('/personal/needs')
     expect(switchWorkspace('/personal/today', 'sb')).toBe('/sb/today')
   })
 })

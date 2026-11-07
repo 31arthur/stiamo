@@ -52,7 +52,7 @@ export function TaskForm({ initial, onDone }: { initial: Task | TaskDraft; onDon
         </Field>
       </div>
       <Field label="Contact" htmlFor="task-contact" hint="Who to call or reach for this: a tap on it dials them">
-        <ContactField id="task-contact" value={t.contact} onChange={(contact) => patch({ contact })} workspace={t.workspace} placeholder="Name, phone or email" />
+        <ContactField id="task-contact" value={t.contact} onChange={(contact, contactId) => patch({ contact, contactId })} workspace={t.workspace} placeholder="Name, phone or email" />
       </Field>
       <Field label="Estimate">
         <Segmented

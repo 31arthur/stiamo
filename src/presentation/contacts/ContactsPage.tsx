@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookUser, Mail, Phone, Search, Users } from 'lucide-react'
+import { BookUser, History, Mail, Phone, Search, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { activityOf } from '@/domain/contacts/activity'
 import { initials } from '@/domain/contacts/Contacts'
 import type { Contact } from '@/domain/contacts/Contacts'
 import { WORKSPACES } from '@/domain/shared/workspace'
@@ -11,7 +12,10 @@ import { PageHeader } from '@/presentation/components/layout'
 import { WorkspaceDot } from '@/presentation/components/workspace'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { toast } from '@/presentation/notifications/toast'
+import { useEntities, useToday } from '@/presentation/data/hooks'
+import { friendlyDate } from '@/presentation/components/dates'
 import { ContactAccountsSheet } from './ContactAccountsSheet'
+import { ContactHistory } from './ContactHistory'
 import { useContactList, useContactsAvailable, useContactsStatus } from './useContacts'
 
 const PAGE = 60
@@ -25,6 +29,10 @@ export function ContactsPage() {
   const [typed, setTyped] = useState('')
   const [q, setQ] = useState('')
   const [limit, setLimit] = useState(PAGE)
+  const [history, setHistory] = useState<Contact | null>(null)
+  const today = useToday()
+  const { data: followUps } = useEntities('followUp')
+  const { data: tasks } = useEntities('task')
   useEffect(() => {
     const id = setTimeout(() => (setQ(typed.trim()), setLimit(PAGE)), 300)
     return () => clearTimeout(id)
@@ -105,7 +113,7 @@ export function ContactsPage() {
               <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {items.map((c) => (
                   <li key={c.id}>
-                    <ContactCard contact={c} showWorkspaces={scope === 'all'} showAccount={linked.length > 1 && scope !== 'all'} />
+                    <ContactCard contact={c} showWorkspaces={scope === 'all'} showAccount={linked.length > 1 && scope !== 'all'} activity={activityOf(c, followUps, tasks)} today={today} onHistory={() => setHistory(c)} />
                   </li>
                 ))}
               </ul>
@@ -120,11 +128,12 @@ export function ContactsPage() {
       )}
 
       {available && <ContactAccountsSheet open={open} onOpenChange={setOpen} scope={scope} />}
+      <ContactHistory contact={history} onClose={() => setHistory(null)} />
     </>
   )
 }
 
-function ContactCard({ contact: c, showWorkspaces, showAccount }: { contact: Contact; showWorkspaces: boolean; showAccount: boolean }) {
+function ContactCard({ contact: c, showWorkspaces, showAccount, activity, today, onHistory }: { contact: Contact; showWorkspaces: boolean; showAccount: boolean; activity: ReturnType<typeof activityOf>; today: string; onHistory: () => void }) {
   return (
     <article className="grid h-full content-start gap-2.5 rounded-2xl border bg-card/80 p-4">
       <header className="flex items-center gap-3">
@@ -156,6 +165,14 @@ function ContactCard({ contact: c, showWorkspaces, showAccount }: { contact: Con
         </ul>
       )}
       {c.notes && <p className="line-clamp-2 text-xs text-muted-foreground">{c.notes}</p>}
+      <button type="button" onClick={onHistory} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <History className="size-3.5 shrink-0" />
+        <span className="min-w-0 flex-1 truncate">
+          {activity.tries || activity.openFollowUps || activity.openTasks
+            ? `${activity.lastReached ? `Last spoke ${friendlyDate(activity.lastReached, today)} · ` : ''}${activity.tries} ${activity.tries === 1 ? 'try' : 'tries'}${activity.openFollowUps ? ` · ${activity.openFollowUps} open` : ''}`
+            : 'No calls yet'}
+        </span>
+      </button>
       {(showWorkspaces || showAccount) && (
         <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[11px] text-muted-foreground">
           {showWorkspaces &&

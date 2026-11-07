@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/presentation/notifications/toast'
-import type { MailWatch, Theme, EnvVariable, ReminderSettings, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
+import type { Delivery, Health, MailWatch, WaitingProposal, Theme, EnvVariable, ReminderSettings, DayPlan, DayPlanSchedule, DayPlanSettings, NewsSort, NewsStory, ListenStatus, AttentionItem, Sweep, UsagePage, UsageSummary, AgentApi, Execution, ExecutionDetail, AgentDetail, AgentSettings, AgentStats, AgentSummary, Channel, ReviewItem, Workflow } from '@/domain/ai/AgentApi'
 import { PROVIDER_IDS } from '@/domain/ai/types'
 import type { ModelInfo, ProviderId } from '@/domain/ai/types'
 import { useServices } from '@/presentation/app/services'
@@ -139,6 +139,30 @@ export function useThemes() {
   const userId = useUserId()
   const available = useAgentAvailable()
   return useQuery<Theme[]>({ queryKey: ['agent', 'themes', userId], queryFn: () => agent.themes(), enabled: available, staleTime: 30_000, retry: false })
+}
+
+/** What agents proposed that is still waiting for you. Looked at every minute. */
+export function useWaitingProposals() {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<WaitingProposal[]>({ queryKey: ['agent', 'proposals', userId], queryFn: () => agent.waitingProposals(), enabled: available, staleTime: 15_000, refetchInterval: 60_000, retry: false })
+}
+
+/** Every connection the app depends on, and whether it works. Looked at again every five minutes (and when asked). */
+export function useHealth() {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<Health>({ queryKey: ['agent', 'health', userId], queryFn: () => agent.health(), enabled: available, staleTime: 60_000, refetchInterval: 5 * 60_000, retry: false })
+}
+
+/** What was sent to your phone and whether it arrived. */
+export function useDeliveries(failedOnly: boolean) {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const available = useAgentAvailable()
+  return useQuery<{ items: Delivery[]; last24h: { sent: number; failed: number } }>({ queryKey: ['agent', 'deliveries', userId, failedOnly], queryFn: () => agent.deliveries(50, failedOnly), enabled: available, staleTime: 15_000, refetchInterval: 60_000, retry: false })
 }
 
 /** The priority mail watch of each workspace with a mailbox. Asking for it also makes any that is missing, and its state is looked at every half minute. */
