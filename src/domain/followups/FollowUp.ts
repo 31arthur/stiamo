@@ -36,6 +36,8 @@ export interface FollowUp extends Entity {
   workspace: WorkspaceId
   /** Name and/or number of who to reach. */
   contact?: string
+  /** The Google contact it points at, so a person's calls are found together. */
+  contactId?: string
   /** Optional: a follow-up can simply be pending, or due on a day, or at a specific time. */
   due?: { date: ISODate; time?: Minutes }
   /** Time to block when placed on the planner. */

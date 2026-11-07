@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, BookUser, ChartNoAxesColumn, Code2, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
+import { BellRing, BookUser, ChartNoAxesColumn, Code2, HeartPulse, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -17,6 +17,8 @@ import { usePages } from '@/presentation/app/pages'
 import { useServices } from '@/presentation/app/services'
 import { useAgentAttention } from '@/presentation/agents/useAgent'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
+import { useHealth } from '@/presentation/agents/useAgent'
+import { useNeeds } from '@/presentation/needs/useNeeds'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { KIND_META } from '@/presentation/components/kinds'
@@ -152,6 +154,8 @@ export function AppShell() {
 
 function Sidebar({ onNotes }: { onNotes: () => void }) {
   const attention = useAttention()
+  const needs = useNeeds()
+  const health = useHealth().data
   const { scope, setScope } = useWorkspaceFilter()
   const { backend } = useServices()
   const { enabled } = usePages()
@@ -195,9 +199,10 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
     // The Assistant is where most things start, so it stands apart and in bold, and opens as an app of its own.
     ...(backend === 'api' ? [{ label: '', items: [{ to: '/assistant', label: 'Assistant', icon: Sparkles, app: true, emphasis: true }] }] : []),
     {
-      label: 'Plan',
+      label: 'Now',
       items: [
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
+        { to: '/needs', label: 'Needs me', icon: NeedsIcon, badge: needs.total, tone: needs.urgent ? ('danger' as const) : ('default' as const) },
         { to: '/today', label: 'Today', icon: Sun },
         ...(backend === 'api' ? [{ to: '/insights', label: 'Insights', icon: ChartNoAxesColumn }] : []),
       ].filter((i) => on(i.to.slice(1))),
@@ -228,7 +233,9 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       ].filter((i) => on(i.to.slice(1))),
     },
     // Building and tuning the agents is a place of its own, with its own sidebar.
-    ...(backend === 'api' ? [{ label: 'Tools', items: [{ to: '/agents', label: 'Developer', icon: Code2, app: true }] }] : []),
+    ...(backend === 'api'
+      ? [{ label: 'Tools', items: [{ to: '/agents', label: 'Developer', icon: Code2, app: true }, { to: '/setup', label: 'Setup and health', icon: HeartPulse, badge: health?.problems ?? 0, tone: health?.errors ? ('danger' as const) : ('default' as const) }] }]
+      : []),
   ]
 
   const scopes: { id: WorkspaceScope; label: string }[] = [{ id: 'all', label: 'All workspaces' }, ...WORKSPACE_IDS.map((id) => ({ id, label: WORKSPACES[id].name }))]

@@ -19,12 +19,12 @@ const HOME: Record<string, WorkspaceScope> = {
   news: 'sb',
   pages: 'all',
 }
-const SHARED = ['today', 'insights', 'calendar', 'mail', 'contacts', 'assistant', 'tasks', 'follow-ups', 'meetings', 'plans', 'goals', 'agents']
+const SHARED = ['needs', 'today', 'insights', 'setup', 'calendar', 'mail', 'contacts', 'assistant', 'tasks', 'follow-ups', 'meetings', 'plans', 'goals', 'agents']
 
 export const SECTIONS = [...Object.keys(HOME), ...SHARED]
 
 /** Where a workspace opens: the overview for "all", otherwise the day. */
-export const landingOf = (scope: WorkspaceScope) => (scope === 'all' ? 'overview' : 'today')
+export const landingOf = (scope: WorkspaceScope) => (scope === 'all' ? 'overview' : 'needs')
 
 const split = (pathname: string) => {
   const segs = pathname.split('/').filter(Boolean)

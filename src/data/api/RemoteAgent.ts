@@ -1,4 +1,4 @@
-import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, EnvVariable, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -202,6 +202,22 @@ export class RemoteAgent implements AgentApi {
 
   insightsDigest(workspace: string, days: number, force?: boolean) {
     return this.http.post<InsightDigest>('/v1/agent/insights/digest', { workspace, days, force: !!force })
+  }
+
+  async waitingProposals() {
+    return (await this.http.get<{ items: WaitingProposal[] }>('/v1/agent/proposals')).items
+  }
+
+  health() {
+    return this.http.get<Health>('/v1/agent/health')
+  }
+
+  testMailbox(accountId: string) {
+    return this.http.post<{ ok: boolean; message: string }>(`/v1/agent/health/mailbox/${encodeURIComponent(accountId)}/test`, {})
+  }
+
+  deliveries(limit: number, failedOnly: boolean) {
+    return this.http.get<{ items: Delivery[]; last24h: { sent: number; failed: number } }>('/v1/agent/deliveries', { limit, failed: failedOnly ? true : undefined })
   }
 
   async mailWatch() {
