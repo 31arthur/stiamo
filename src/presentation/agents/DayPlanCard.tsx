@@ -11,6 +11,9 @@ import { useServices } from '@/presentation/app/services'
 import { useUserId } from '@/presentation/data/hooks'
 import { toast } from '@/presentation/notifications/toast'
 import { BriefingCard } from '@/presentation/assistant/BriefingCard'
+import { WorkspaceBadge } from '@/presentation/components/workspace'
+import { WORKSPACES } from '@/domain/shared/workspace'
+import type { WorkspaceId } from '@/domain/shared/workspace'
 import { ago } from './format'
 
 /** The blocks of a schedule, in time order: when, how long, and whether it is a call or a task. */
@@ -44,7 +47,8 @@ export function DayPlanCard({ plan }: { plan: DayPlan }) {
     try {
       if (kind === 'apply') {
         const done = await agent.applyDayPlan(plan.id)
-        toast.success(`Planned ${format(parseISO(plan.day), 'EEE d MMM')}`, { description: `${done.booked} ${done.booked === 1 ? 'item' : 'items'} put on your planner.` })
+        const toGoogle = (done.calendar?.sent?.added ?? 0) + (done.calendar?.sent?.changed ?? 0) > 0
+        toast.success(`Planned ${format(parseISO(plan.day), 'EEE d MMM')}`, { description: `${done.booked} ${done.booked === 1 ? 'item' : 'items'} put on your planner${toGoogle ? ' and added to your Google calendar' : ''}.` })
       } else {
         await agent.dismissDayPlan(plan.id)
       }
@@ -64,6 +68,7 @@ export function DayPlanCard({ plan }: { plan: DayPlan }) {
           <span className="flex size-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <CalendarClock className="size-3.5" />
           </span>
+          {plan.workspace && plan.workspace in WORKSPACES && <WorkspaceBadge ws={plan.workspace as WorkspaceId} />}
           <span className="font-medium">Plan for {day}</span>
           <span className="ml-auto text-muted-foreground">{ago(plan.createdAt)}</span>
         </header>

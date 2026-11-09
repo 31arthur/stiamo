@@ -252,12 +252,12 @@ export class RemoteAgent implements AgentApi {
     return this.http.post<{ sent: number; spoken: boolean; rang: boolean }>('/v1/agent/reminders/test', {})
   }
 
-  generateDayPlan(day?: string, force?: boolean) {
-    return this.http.post<DayPlan>('/v1/agent/day-plans/generate', { day, force })
+  generateDayPlan(day?: string, force?: boolean, workspace?: string) {
+    return this.http.post<DayPlan>('/v1/agent/day-plans/generate', { day, force, workspace: workspace ?? '' })
   }
 
   applyDayPlan(id: string) {
-    return this.http.post<{ plan: DayPlan; booked: number; skipped: number }>(`/v1/agent/day-plans/${encodeURIComponent(id)}/apply`, {})
+    return this.http.post<Awaited<ReturnType<AgentApi['applyDayPlan']>>>(`/v1/agent/day-plans/${encodeURIComponent(id)}/apply`, {})
   }
 
   dismissDayPlan(id: string) {

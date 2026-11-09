@@ -4,6 +4,7 @@ import type { AttentionItem, DayPlan, WaitingProposal } from '@/domain/ai/AgentA
 import type { Hearing } from '@/domain/cases/LegalCase'
 import type { FollowUp } from '@/domain/followups/FollowUp'
 import type { Meeting } from '@/domain/meetings/Meeting'
+import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { Task } from '@/domain/tasks/Task'
 import { useAgentAvailable, useAgentAttention, useDayPlans, useWaitingProposals } from '@/presentation/agents/useAgent'
 import { useAttention } from '@/presentation/app/attention'
@@ -55,7 +56,7 @@ export function useNeeds() {
     for (const m of attention.meetingsToRecord) needs.push({ key: `meeting:${m.id}`, section: 'record', kind: 'meeting', item: m })
     for (const h of attention.hearingsToRecord) needs.push({ key: `hearing:${h.id}`, section: 'record', kind: 'hearing', item: h })
     for (const p of proposals ?? []) needs.push({ key: `proposal:${p.id}`, section: 'approve', kind: 'proposal', item: p })
-    for (const p of (plans ?? []).filter((x) => x.status === 'proposed')) needs.push({ key: `plan:${p.id}`, section: 'approve', kind: 'plan', item: p })
+    for (const p of (plans ?? []).filter((x) => x.status === 'proposed' && (!x.workspace || matches(x.workspace as WorkspaceId)))) needs.push({ key: `plan:${p.id}`, section: 'approve', kind: 'plan', item: p })
 
     const when = (n: Need): { date: string; time: number } => {
       if (n.kind === 'followUp') return { date: n.item.due?.date ?? today, time: n.item.due?.time ?? 24 * 60 }

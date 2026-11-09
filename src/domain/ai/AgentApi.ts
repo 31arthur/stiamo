@@ -135,6 +135,8 @@ export interface DayPlan {
   blocks: DayPlanBlock[]
   /** The day laid out as a card, when the planner did it that way. */
   card?: BriefingHit | null
+  /** Which workspace's day this is; empty for one plan across all of them. */
+  workspace?: string
   trigger: string
   createdAt: string
   decidedAt: string | null
@@ -148,6 +150,8 @@ export interface DayPlanSettings {
   timezone: string
   /** Also send it to the connected Telegram and WhatsApp. */
   channels: boolean
+  /** Which workspaces plan their own day each evening, each to its own bot. Empty: one plan across everything. */
+  workspaces: string[]
 }
 
 /** How replies to one organisation sound and look. Used when an agent drafts a reply to an urgent email. */
@@ -885,7 +889,7 @@ export interface AgentApi {
   dropProposal(id: string): Promise<{ id: string; status: string }>
   dayPlans(): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>
   setDayPlanSettings(settings: DayPlanSettings): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule }>
-  generateDayPlan(day?: string, force?: boolean): Promise<DayPlan>
+  generateDayPlan(day?: string, force?: boolean, workspace?: string): Promise<DayPlan>
   reminders(): Promise<ReminderSettings>
   setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }): Promise<ReminderSettings>
   themes(): Promise<Theme[]>
@@ -909,7 +913,7 @@ export interface AgentApi {
   testReminder(): Promise<{ sent: number; spoken: boolean; rang: boolean }>
   /** Rings now with a short test message; `callUser` tries a username or number before it is saved. Fails with the reason when the call can't be placed. */
   testCall(callUser?: string): Promise<{ called: boolean; user: string }>
-  applyDayPlan(id: string): Promise<{ plan: DayPlan; booked: number; skipped: number }>
+  applyDayPlan(id: string): Promise<{ plan: DayPlan; booked: number; skipped: number; calendar?: { sent?: { added: number; changed: number; removed: number } } | null }>
   dismissDayPlan(id: string): Promise<DayPlan>
   news(workspace: string | undefined, days: number, sort: NewsSort): Promise<{ items: NewsStory[]; total: number; sort: NewsSort; generatedAt: string }>
   hideNews(agentId: string, itemId: string): Promise<void>
