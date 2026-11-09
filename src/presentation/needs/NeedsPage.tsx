@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/spinner'
 import type { AttentionEvent, AttentionItem } from '@/domain/ai/AgentApi'
 import { formatClock } from '@/domain/shared/time'
 import { WORKSPACES } from '@/domain/shared/workspace'
+import type { WorkspaceId } from '@/domain/shared/workspace'
 import { cn } from '@/lib/utils'
 import { AttentionSheet } from '@/presentation/agents/AttentionSheet'
 import { cardKey, nextCard } from '@/presentation/agents/attentionCards'
@@ -291,7 +292,10 @@ function PlanRow({ n }: { n: Extract<Need, { kind: 'plan' }> }) {
     <>
       <Tile icon={Sun} tone="bg-primary/10 text-primary" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">Plan for {p.day}</p>
+        <p className="flex items-center gap-2 truncate text-sm font-medium">
+          {p.workspace && p.workspace in WORKSPACES && <WorkspaceBadge ws={p.workspace as WorkspaceId} />}
+          Plan for {p.day}
+        </p>
         <p className="line-clamp-2 text-xs text-muted-foreground">{p.card?.headline || p.briefing || `${p.blocks.length} items to put on your planner`}</p>
       </div>
       <div className="flex shrink-0 gap-1">
