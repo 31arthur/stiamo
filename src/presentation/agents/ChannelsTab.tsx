@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
-import { Check, Copy, ExternalLink, Link2Off, MessageCircle, RefreshCw, Send, Trash2 } from 'lucide-react'
+import { Check, Copy, ExternalLink, Eye, Link2Off, MessageCircle, RefreshCw, Send, ShieldCheck, Trash2 } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { Channel } from '@/domain/ai/AgentApi'
-import { WORKSPACES } from '@/domain/shared/workspace'
+import type { Channel, ChannelRole } from '@/domain/ai/AgentApi'
+import { WORKSPACE_IDS, WORKSPACES } from '@/domain/shared/workspace'
 import type { WorkspaceId } from '@/domain/shared/workspace'
+import { cn } from '@/lib/utils'
 import { Section } from '@/presentation/components/layout'
 import { useAgentAction, useAgentSummary, useChannels } from './useAgent'
 
@@ -62,10 +63,66 @@ function Problem({ message }: { message: string | null }) {
 
 // --- Telegram -----------------------------------------------------------------------------------------------
 
-export function TelegramCard({ agentId, channel, workspace }: { agentId: string; channel?: Channel; /** Makes it that workspace's email bot. */ workspace?: WorkspaceId }) {
+const ROLE_LABEL: Record<ChannelRole, string> = { assistant: 'Everything', mail: 'Mail alerts', planner: 'Daily plan' }
+const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
+
+/** What a bot can see, in words, and a way to change it. A bot belongs to one workspace, or is the general bot that sees all of them. */
+function ScopeLine({ channel }: { channel: Channel }) {
+  const change = useAgentAction((a, v: { workspace: string | null; role: ChannelRole }) => a.setChannelScope(channel.id, v.workspace, v.role), { success: 'Saved. The chat starts afresh under the new limit.' })
+  const ws = channel.workspace && channel.workspace in WORKSPACES ? (channel.workspace as WorkspaceId) : null
+  const role = channel.role ?? 'assistant'
+  return (
+    <div className={cn('grid gap-2 rounded-xl border p-3', ws ? 'bg-muted/30' : 'border-warning/40 bg-warning/10')}>
+      <p className="flex items-center gap-2 text-sm">
+        {ws ? <ShieldCheck className="size-4 shrink-0 text-success" /> : <Eye className="size-4 shrink-0 text-warning" />}
+        <span>
+          {ws ? (
+            <>
+              Sees <b>{WORKSPACES[ws].short} only</b>. {role === 'assistant' ? 'Gets its alerts and plans.' : `Gets ${ROLE_LABEL[role].toLowerCase()} for ${WORKSPACES[ws].short}.`}
+            </>
+          ) : (
+            <>
+              Sees <b>every workspace</b>: all tasks, plans and reminders. If this bot is for one workspace, limit it.
+            </>
+          )}
+        </span>
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Limit to
+          <select aria-label="Workspace" className={SELECT} value={ws ?? 'all'} disabled={change.pending} onChange={(e) => void change.run({ workspace: e.target.value === 'all' ? null : e.target.value, role: e.target.value === 'all' ? 'assistant' : role })}>
+            <option value="all">All workspaces</option>
+            {WORKSPACE_IDS.map((id) => (
+              <option key={id} value={id}>
+                {WORKSPACES[id].name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {ws && (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            For
+            <select aria-label="What it is for" className={SELECT} value={role} disabled={change.pending} onChange={(e) => void change.run({ workspace: ws, role: e.target.value as ChannelRole })}>
+              {(Object.keys(ROLE_LABEL) as ChannelRole[]).map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function TelegramCard({ agentId, channel, workspace, role: fixedRole }: { agentId: string; channel?: Channel; /** A new bot here belongs to that workspace alone. */ workspace?: WorkspaceId; /** And is for this. */ role?: ChannelRole }) {
   const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const connect = useAgentAction((a, t: string) => a.connectTelegram(t, agentId, workspace), { success: 'Telegram bot connected' })
+  // Where a new bot is for: fixed by the page it is added from, or chosen here (a bot made without choosing would see everything).
+  const [scope, setScope] = useState<WorkspaceId | 'all'>(workspace ?? 'all')
+  const [role, setRole] = useState<ChannelRole>(fixedRole ?? 'assistant')
+  const connect = useAgentAction((a, t: string) => a.connectTelegram(t, agentId, scope === 'all' ? undefined : scope, scope === 'all' ? 'assistant' : role), { success: 'Telegram bot connected' })
   const newCode = useAgentAction((a, id: string) => a.newPairingCode(id))
   const unpair = useAgentAction((a, v: { id: string; chat: string }) => a.unpair(v.id, v.chat), { success: 'Chat unlinked' })
   const test = useAgentAction((a, id: string) => a.sendTest(id), { success: 'Sent. Check Telegram.' })
@@ -82,8 +139,13 @@ export function TelegramCard({ agentId, channel, workspace }: { agentId: string;
     }
   }
 
+  const shown = channel?.workspace && channel.workspace in WORKSPACES ? (channel.workspace as WorkspaceId) : workspace
+  const purpose = channel ? (channel.role ?? 'assistant') : role
+  const title = shown ? `${WORKSPACES[shown].short} · ${purpose === 'assistant' ? 'assistant' : ROLE_LABEL[purpose].toLowerCase()} bot` : 'Telegram'
+  const description = shown ? `Message this bot to work with ${WORKSPACES[shown].short} only: ask what’s pending, plan the day, add tasks. It never sees or says anything about another workspace.` : 'Message a bot to ask this agent. This one is the general bot: it sees every workspace.'
+
   return (
-    <Section title={workspace ? `${WORKSPACES[workspace].short} assistant’s bot` : 'Telegram'} description={workspace ? `Message this bot to ask the ${WORKSPACES[workspace].short} assistant about ${WORKSPACES[workspace].short} only. ${WORKSPACES[workspace].short}’s email alerts arrive here too.` : 'Message a bot to ask this agent.'} actions={channel ? <Connected>@{channel.username}</Connected> : undefined}>
+    <Section title={title} description={description} actions={channel ? <Connected>@{channel.username}</Connected> : undefined}>
       {!channel ? (
         <form onSubmit={submit} className="grid gap-3">
           <Steps>
@@ -93,6 +155,31 @@ export function TelegramCard({ agentId, channel, workspace }: { agentId: string;
             <li>Copy the token it gives you and paste it here.</li>
             <li>Stiamo sets the bot up and gives you a code to link your chat.</li>
           </Steps>
+          {!workspace && (
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Which workspace is this bot for?
+              <select aria-label="Workspace for this bot" className={cn(SELECT, 'w-fit')} value={scope} onChange={(e) => setScope(e.target.value as WorkspaceId | 'all')}>
+                <option value="all">All of them (it sees everything)</option>
+                {WORKSPACE_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {WORKSPACES[id].name} only
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {scope !== 'all' && !fixedRole && (
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              What is it for?
+              <select aria-label="What the bot is for" className={cn(SELECT, 'w-fit')} value={role} onChange={(e) => setRole(e.target.value as ChannelRole)}>
+                {(Object.keys(ROLE_LABEL) as ChannelRole[]).map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="123456:ABC-DEF…" autoComplete="off" spellCheck={false} aria-label="Bot token" aria-invalid={!!error} className="font-mono" />
           <Problem message={error} />
           <Button type="submit" className="w-fit" disabled={!token.trim() || connect.pending}>
@@ -101,6 +188,7 @@ export function TelegramCard({ agentId, channel, workspace }: { agentId: string;
         </form>
       ) : (
         <div className="grid gap-4">
+          <ScopeLine channel={channel} />
           {channel.pairingCode ? (
             <div className="grid gap-2 rounded-xl bg-muted/50 p-3">
               <p className="text-sm">

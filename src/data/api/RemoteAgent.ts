@@ -1,4 +1,4 @@
-import type { AgentApi, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -320,8 +320,12 @@ export class RemoteAgent implements AgentApi {
     return (await this.http.get<{ items: Channel[] }>('/v1/agent/channels')).items
   }
 
-  connectTelegram(botToken: string, agent?: string, workspace?: string) {
-    return this.http.post<Channel>('/v1/agent/channels/telegram', { botToken, agent, workspace })
+  setChannelScope(id: string, workspace: string | null, role: ChannelRole = 'assistant') {
+    return this.http.put<Channel>(`/v1/agent/channels/${encodeURIComponent(id)}/scope`, { workspace, role })
+  }
+
+  connectTelegram(botToken: string, agent?: string, workspace?: string, role: ChannelRole = 'assistant') {
+    return this.http.post<Channel>('/v1/agent/channels/telegram', { botToken, agent, workspace, role })
   }
 
   setChannelAgent(channelId: string, agent: string) {
