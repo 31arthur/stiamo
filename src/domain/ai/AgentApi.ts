@@ -815,13 +815,19 @@ export interface ChannelPairing {
   name: string
 }
 
+export type ChannelRole = 'assistant' | 'mail' | 'planner'
+
 export interface Channel {
   id: string
   kind: 'telegram' | 'whatsapp'
   /** The agent that answers on it. */
   agent: string
-  /** For a Telegram bot: the workspace whose email alerts it carries (personal, sb, fsa or media). Left out for the general bot. */
+  /** For a Telegram bot: the one workspace it belongs to (personal, sb, fsa or media): it sees, says and carries only that workspace's things. Left out for the general bot, which sees every workspace. */
   workspace?: string
+  /** What the bot is for inside its workspace: everything, the mail alerts, or the daily plan. */
+  role?: ChannelRole
+  /** What it can see: a workspace, or 'all'. */
+  scope?: string
   /** Where the channel's messages are delivered to (for WhatsApp this goes into the Twilio console). */
   webhookUrl?: string | null
   // Telegram
@@ -927,7 +933,9 @@ export interface AgentApi {
   addRefinement(id: string, add: { point?: string; protectDomain?: string }): Promise<Workflow>
   removeRefinement(id: string, index: number): Promise<Workflow>
   channels(): Promise<Channel[]>
-  connectTelegram(botToken: string, agent?: string, workspace?: string): Promise<Channel>
+  connectTelegram(botToken: string, agent?: string, workspace?: string, role?: ChannelRole): Promise<Channel>
+  /** Limit a bot to one workspace (and a purpose in it), or make it the general bot again (workspace null). */
+  setChannelScope(id: string, workspace: string | null, role?: ChannelRole): Promise<Channel>
   connectWhatsApp(connection: WhatsAppConnection): Promise<Channel>
   setChannelAgent(channelId: string, agent: string): Promise<Channel>
   newPairingCode(channelId: string): Promise<Channel>
