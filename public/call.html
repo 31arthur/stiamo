@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Call</title>
+    <style>
+      :root { --bg: #f7f7f5; --fg: #17171a; --muted: #6b6b73; --card: #fff; --line: #e4e4df; --accent: #17171a; --on-accent: #fff; }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #111114; --fg: #f1f1ee; --muted: #9a9aa3; --card: #1b1b20; --line: #2c2c33; --accent: #f1f1ee; --on-accent: #111114; }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 16px; background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { width: min(100%, 22rem); text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px 20px; }
+      .icon { font-size: 40px; }
+      h1 { margin: 8px 0 2px; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
+      .num { margin: 0 0 20px; color: var(--muted); font-size: 18px; letter-spacing: 0.02em; overflow-wrap: anywhere; }
+      a.call, button { display: block; width: 100%; padding: 14px 16px; border-radius: 14px; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+      a.call { background: var(--accent); color: var(--on-accent); border: 0; }
+      button { margin-top: 10px; background: transparent; color: var(--fg); border: 1px solid var(--line); font-weight: 500; }
+      .hint { margin: 16px 0 0; font-size: 13px; color: var(--muted); }
+      [hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="icon" aria-hidden="true">📞</div>
+      <section id="ok" hidden>
+        <h1 id="name"></h1>
+        <p class="num" id="num"></p>
+        <a class="call" id="dial" href="#">Call now</a>
+        <button type="button" id="copy">Copy the number</button>
+        <p class="hint">Your phone’s dialer opens with the number filled in. You can close this page afterwards.</p>
+      </section>
+      <section id="bad" hidden>
+        <h1>No number to call</h1>
+        <p class="hint">This link doesn’t have a usable phone number. Open the contact in Stiamo instead.</p>
+      </section>
+    </main>
+    <script>
+      ;(function () {
+        var params = new URLSearchParams(location.hash.replace(/^#/, ''))
+        var number = (params.get('n') || '').replace(/\s+/g, '')
+        var name = params.get('name') || ''
+        // Only digits and a leading + go to the dialer: nothing else can be smuggled into the link.
+        var valid = /^\+?\d{5,16}$/.test(number)
+        document.getElementById(valid ? 'ok' : 'bad').hidden = false
+        if (!valid) return
+        document.getElementById('name').textContent = name || 'Call'
+        document.getElementById('num').textContent = number
+        var link = document.getElementById('dial')
+        link.href = 'tel:' + number
+        document.getElementById('copy').addEventListener('click', function (e) {
+          var done = function () { e.target.textContent = 'Copied ✓' }
+          if (navigator.clipboard) navigator.clipboard.writeText(number).then(done, function () {})
+        })
+        // Most phones open the dialer straight away; where a tap is needed, the big button is there.
+        setTimeout(function () { location.href = 'tel:' + number }, 250)
+      })()
+    </script>
+  </body>
+</html>
