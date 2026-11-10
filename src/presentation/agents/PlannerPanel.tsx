@@ -15,7 +15,7 @@ import { useUserId } from '@/presentation/data/hooks'
 import { toast } from '@/presentation/notifications/toast'
 import { Link } from '@/presentation/routing'
 import { ago } from './format'
-import { useDayPlans } from './useAgent'
+import { useAgentAction, useAvailabilityRules, useDayPlans } from './useAgent'
 
 const ZONES = ['Asia/Kolkata', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Singapore', 'Europe/London', 'America/New_York', 'UTC']
 /** The workspaces that plan their own day. */
@@ -136,6 +136,7 @@ export function PlannerPanel() {
             </span>
           </span>
         </label>
+        <Remembered />
         <div className="flex flex-wrap items-center gap-3">
           <Button size="sm" onClick={() => void save()} disabled={!dirty || saving}>
             {saving ? <Spinner size="xs" tone="current" decorative /> : <Send />} Save
@@ -154,5 +155,31 @@ export function PlannerPanel() {
         </div>
       </div>
     </Section>
+  )
+}
+
+const MODE_TEXT = { calls: '📞 calls are fine', free: '💻 free for anything', busy: '🙅 busy' } as const
+
+/** What was answered when the planner asked about time inside an event (a hospital visit, a journey), kept by event title. */
+function Remembered() {
+  const { data } = useAvailabilityRules()
+  const forget = useAgentAction((a, title: string) => a.forgetAvailability(title), { success: 'Forgotten. It will be asked about again.' })
+  if (!data || data.length === 0) return null
+  return (
+    <div className="grid gap-1.5">
+      <h3 className="text-xs font-medium text-muted-foreground">Remembered answers</h3>
+      <ul className="grid gap-1.5">
+        {data.map((r) => (
+          <li key={r.title} className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm">
+            <span className="min-w-0 flex-1 truncate capitalize">{r.title}</span>
+            <span className="text-xs text-muted-foreground">{MODE_TEXT[r.mode]}</span>
+            <Button variant="ghost" size="xs" disabled={forget.pending} onClick={() => void forget.run(r.title)}>
+              Forget
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted-foreground">When an event like these comes up on a day, the planner uses the answer instead of asking again.</p>
+    </div>
   )
 }

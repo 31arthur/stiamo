@@ -142,6 +142,12 @@ export interface DayPlan {
   decidedAt: string | null
 }
 
+/** What was said about time inside an event with this title: calls are fine, free for anything, or busy. */
+export interface AvailabilityRule {
+  title: string
+  mode: 'calls' | 'free' | 'busy'
+}
+
 /** Whether the planner runs by itself in the evening, and when. */
 export interface DayPlanSettings {
   enabled: boolean
@@ -896,6 +902,10 @@ export interface AgentApi {
   dayPlans(): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule; plans: DayPlan[] }>
   setDayPlanSettings(settings: DayPlanSettings): Promise<{ settings: DayPlanSettings; schedule: DayPlanSchedule }>
   generateDayPlan(day?: string, force?: boolean, workspace?: string): Promise<DayPlan>
+  /** The answers the planner remembers about time inside events (asked on Telegram), by event title. */
+  availabilityRules(): Promise<AvailabilityRule[]>
+  /** Forget one: the next event with that title is asked about again. */
+  forgetAvailability(title: string): Promise<void>
   reminders(): Promise<ReminderSettings>
   setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }): Promise<ReminderSettings>
   themes(): Promise<Theme[]>
