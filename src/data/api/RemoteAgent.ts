@@ -1,4 +1,4 @@
-import type { AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowProgress, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -268,8 +268,12 @@ export class RemoteAgent implements AgentApi {
     return this.http.delete<AgentFlow>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow`)
   }
 
-  runAgentFlow(agentId: string, message: string, scheduled: boolean) {
-    return this.http.post<{ answer: string; runId: string | null }>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow/run`, { message, scheduled })
+  runAgentFlow(agentId: string, message: string, scheduled: boolean, progressId?: string) {
+    return this.http.post<{ answer: string; runId: string | null }>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow/run`, { message, scheduled, progressId })
+  }
+
+  flowProgress(agentId: string, progressId: string) {
+    return this.http.get<FlowProgress>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow/progress/${encodeURIComponent(progressId)}`)
   }
 
   runFlowNode(agentId: string, nodeId: string, items?: Record<string, unknown>[], confirm = false) {

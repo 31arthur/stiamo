@@ -9,7 +9,7 @@ import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { FlowCatalogNode, FlowNode } from '@/domain/ai/AgentApi'
+import type { FlowCatalogNode, FlowNode, FlowProgress } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
@@ -25,7 +25,7 @@ import { NodeDetails } from './NodeDetails'
 import type { Tried } from './NodeDetails'
 import { NodePicker } from './NodePicker'
 import { CANVAS_BUTTON, StudioCanvas, canvasOf, docOf, edgeId, openLanes, round } from './StudioCanvas'
-import type { CanvasNode } from './StudioCanvas'
+import type { CanvasNode, Ran } from './StudioCanvas'
 
 const TABS = [
   { id: 'editor', label: 'Editor' },
@@ -190,38 +190,20 @@ function Studio() {
     place(dragged.map((d) => ({ ...d.data.node, position: [d.position.x, d.position.y] as [number, number] })), [], 0, 0, false)
   }
 
-  // --- the run, drawn as it goes: the server answers when it is done, so this walks the picture along the joins meanwhile ------------
-  const [step, setStep] = useState(0)
-  const depth = useMemo(() => {
-    const d: Record<string, number> = {}
-    let frontier = nodes.filter((n) => !edges.some((e) => e.target === n.id)).map((n) => n.id)
-    for (let i = 0; frontier.length && i < 50; i++) {
-      const next: string[] = []
-      for (const id of frontier) {
-        if (d[id] !== undefined) continue
-        d[id] = i
-        for (const e of edges) if (e.source === id) next.push(e.target)
-      }
-      frontier = next
-    }
-    return d
-  }, [nodes, edges])
+  // --- the run, drawn as it goes: the server says which node it is on, and this asks every moment while the run lasts ---------------
+  const [progress, setProgress] = useState<FlowProgress | null>(null)
   const running = busy === 'run'
-  const lastDepth = Math.max(0, ...Object.values(depth))
-  useEffect(() => {
-    if (!running) return
-    const t = setInterval(() => setStep((s) => (s >= lastDepth ? 0 : s + 1)), 450)
-    return () => {
-      clearInterval(t)
-      setStep(0)
-    }
-  }, [running, lastDepth])
-  const lit = (id: string) => running && depth[id] === step
+  const lit = (id: string) => running && progress?.nodes[id]?.state === 'running'
+  const reached = (id: string): Ran | undefined => {
+    const p = running ? progress?.nodes[id] : undefined
+    const node = nodes.find((n) => n.id === id)?.data.node
+    return p && p.state !== 'running' && node ? { node: id, name: node.name, type: node.type, state: p.state, ms: p.ms ?? 0, itemsIn: 0, outputs: p.outputs, runs: p.runs } : undefined
+  }
   const ran = useMemo(() => traceByNode(run.data?.trace as unknown[] | undefined), [run.data])
   const open = useMemo(() => openLanes(nodes, edges), [nodes, edges])
   const onAdd = useCallback((id: string, lane: number) => setPicker({ after: { id, lane } }), [])
-  const shown = useMemo(() => nodes.map((n) => ({ ...n, data: { ...n.data, ran: viewedRun && !running ? ran[n.id] : undefined, running: lit(n.id), open: tab === 'editor' ? (open[n.id] ?? []) : [], onAdd } })), [nodes, ran, viewedRun, open, tab, onAdd, running, step, depth]) // eslint-disable-line react-hooks/exhaustive-deps
-  const drawn = useMemo(() => (running ? edges.map((e) => ({ ...e, animated: (depth[e.source] ?? 0) <= step })) : edges), [edges, running, depth, step])
+  const shown = useMemo(() => nodes.map((n) => ({ ...n, data: { ...n.data, ran: running ? reached(n.id) : viewedRun ? ran[n.id] : undefined, running: lit(n.id), open: tab === 'editor' ? (open[n.id] ?? []) : [], onAdd } })), [nodes, ran, viewedRun, open, tab, onAdd, running, progress]) // eslint-disable-line react-hooks/exhaustive-deps
+  const drawn = useMemo(() => (running ? edges.map((e) => ({ ...e, animated: progress?.nodes[e.target]?.state === 'running' })) : edges), [edges, running, progress])
   const current = nodes.find((n) => n.id === opened)?.data.node
   const feeding = current ? edges.filter((e) => e.target === current.id).map((e) => nodes.find((n) => n.id === e.source)?.data.node).filter((n): n is FlowNode => !!n) : []
 
@@ -324,8 +306,14 @@ function Studio() {
   }
   async function execute(scheduled: boolean) {
     setBusy('run')
+    setProgress(null)
+    const pid = crypto.randomUUID().replaceAll('-', '')
+    // While the run is on, ask how far it has got and light up the node it is on (a failed ask is skipped: the run itself is what matters).
+    const timer = setInterval(() => {
+      agent.flowProgress(agentId!, pid).then(setProgress).catch(() => undefined)
+    }, 400)
     try {
-      const r = await agent.runAgentFlow(agentId!, message, scheduled)
+      const r = await agent.runAgentFlow(agentId!, message, scheduled, pid)
       await client.invalidateQueries({ queryKey: ['agent', 'runs'] })
       if (r.runId) setLiveRun(r.runId)
       toast.success('Workflow executed', { description: r.answer ? r.answer.slice(0, 140) : 'No answer was given: it ended without an Answer node.' })
@@ -333,6 +321,8 @@ function Studio() {
       toast.error('The execution failed', { description: e instanceof Error ? e.message : undefined })
       await client.invalidateQueries({ queryKey: ['agent', 'runs'] })
     } finally {
+      clearInterval(timer)
+      setProgress(null)
       setBusy(null)
     }
   }
