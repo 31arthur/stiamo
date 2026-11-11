@@ -808,6 +808,12 @@ export interface FlowTrace {
   error?: string
 }
 
+/** How far a run has got: each node it has reached, and whether the run is over. */
+export interface FlowProgress {
+  nodes: Record<string, { state: 'running' | 'ok' | 'error'; runs: number; ms?: number; outputs?: number[] }>
+  done: boolean
+}
+
 /** One run in full: what the model was given, each step, and the answer. */
 export interface RunDetail extends RunSummary {
   /** The workspace the run was limited to; empty when it saw every workspace. */
@@ -955,7 +961,9 @@ export interface AgentApi {
   saveAgentFlow(agentId: string, flow: { nodes: FlowNode[]; connections: FlowConnections }): Promise<AgentFlow>
   checkAgentFlow(agentId: string, flow: { nodes: FlowNode[]; connections: FlowConnections }): Promise<string[]>
   resetAgentFlow(agentId: string): Promise<AgentFlow>
-  runAgentFlow(agentId: string, message: string, scheduled: boolean): Promise<{ answer: string; runId: string | null }>
+  /** `progressId` is made up by the caller so `flowProgress` can be asked how far the run has got while it is still going. */
+  runAgentFlow(agentId: string, message: string, scheduled: boolean, progressId?: string): Promise<{ answer: string; runId: string | null }>
+  flowProgress(agentId: string, progressId: string): Promise<FlowProgress>
   /** Runs one node of the saved workflow alone, with the items given (or those pinned on the nodes leading into it). */
   runFlowNode(agentId: string, nodeId: string, items?: Record<string, unknown>[], confirm?: boolean): Promise<{ outputs: Record<string, unknown>[][]; itemsIn: number; ms: number; error?: string }>
   flowCatalog(): Promise<{ nodes: FlowCatalogNode[]; templates: FlowTemplate[] }>
