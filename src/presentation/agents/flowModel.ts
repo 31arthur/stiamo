@@ -94,6 +94,8 @@ export function newNode(type: string, label: string, taken: string[], position: 
       'ai.read': { prompt: 'Mail that needs my attention.', route: 'attention' },
       'msg.trash': { folder: 'INBOX', auto: false, tell: true },
       'msg.alert': { call: false },
+      'msg.attention': {},
+      'core.only_new': {},
       'msg.event': { tell: true },
       'msg.mail': { to: '{{ $json.email }}', subject: '', text: '', tell: true },
       'msg.ask': { text: 'Shall I go ahead?', options: ['Yes', 'No'] },

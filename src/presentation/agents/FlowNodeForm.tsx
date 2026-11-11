@@ -350,6 +350,10 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
           <Check label="Tell me on my phone when there is something to approve" on={p.tell !== false} onChange={(v) => set({ tell: v })} />
         </div>
       )
+    case 'core.only_new':
+      return <p className="text-sm text-muted-foreground">Lets through only the emails this agent has not handled in an earlier run, so each is judged once. It remembers them when the whole run has gone well, so a run that fails leaves them to try again. <b>Run by hand</b>, everything goes through and nothing is remembered: trying a workflow never uses mail up. Put it right after <b>Mail</b>.</p>
+    case 'msg.attention':
+      return <p className="text-sm text-muted-foreground">Puts each email in your <b>Attention</b> queue with its summary, priority and what to do (an email that names an event shows it, to approve). One already there, or already dealt with, is left alone. It needs the output of <b>Read and summarise</b>.</p>
     case 'msg.alert':
       return (
         <div className="grid gap-3">
