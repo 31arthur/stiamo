@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Panel, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow } from '@xyflow/react'
 import type { Connection, Edge, EdgeChange, NodeChange } from '@xyflow/react'
-import { AlertTriangle, ArrowLeft, Clock, Copy, EllipsisVertical, FlaskConical, Plus, Redo2, RotateCcw, Save, StickyNote, Trash2, Undo2, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ClipboardPaste, Clock, Copy, EllipsisVertical, FlaskConical, Plus, Redo2, RotateCcw, Save, StickyNote, Trash2, Undo2, X } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { Section } from '@/presentation/components/layout'
 import { useUserId } from '@/presentation/data/hooks'
 import { useNavigate } from '@/presentation/routing'
-import { handleIn, handleOut, newNode, outputsOf, traceByNode } from '../flowModel'
+import { handleIn, handleOut, newNode, outputsOf, readWorkflowJson, toEdges, traceByNode, workflowJson } from '../flowModel'
 import { ago, formatMs, triggerLabel } from '../format'
 import { ModelSection, WorkspacesSection } from '../SettingsTab'
 import { TryTab } from '../TryTab'
@@ -86,6 +86,8 @@ function Studio() {
   const [busy, setBusy] = useState<'save' | 'run' | 'node' | null>(null)
   const [tried, setTried] = useState<TriedMap>({})
   const [confirmSend, setConfirmSend] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [pasted, setPasted] = useState('')
   const viewedRun = tab === 'executions' ? pickedRun : liveRun
   const run = useQuery({ queryKey: ['agent', 'run', userId, viewedRun], queryFn: () => agent.run(viewedRun!), enabled: !!viewedRun, retry: false })
 
@@ -157,8 +159,30 @@ function Studio() {
   // --- copy, paste and duplicate ----------------------------------------------------------------------------------------------------
   const clip = useRef<{ nodes: FlowNode[]; edges: Edge[]; pastes: number } | null>(null)
   const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id)
+  const toClipboard = (list: CanvasNode[]) => {
+    const json = workflowJson(list.map((n) => ({ ...n.data.node, position: [round(n.position.x), round(n.position.y)] as [number, number] })), edges.map((e) => ({ source: e.source, sourceHandle: e.sourceHandle ?? handleOut(0), target: e.target, targetHandle: e.targetHandle ?? handleIn(0) })))
+    navigator.clipboard?.writeText(json).then(
+      () => toast.success(`${list.length} node${list.length === 1 ? '' : 's'} copied as JSON`, { description: 'Paste them here, into another workflow, or into a note.' }),
+      () => toast.error('Couldn’t reach the clipboard. Use Copy workflow JSON in the menu, then select and copy by hand.'),
+    )
+  }
+  /** Brings in pasted workflow JSON: its nodes land on the canvas, joined as they were, with new ids if theirs are taken. Says why when it can't. */
+  const importJson = (text: string, quiet = false): boolean => {
+    const r = readWorkflowJson(text, f?.catalog.map((c) => c.type) ?? [])
+    if (!r.ok) {
+      if (!quiet) toast.error('Couldn’t paste that', { description: r.reason })
+      return false
+    }
+    const xs = r.nodes.map((n) => n.position[0]), ys = r.nodes.map((n) => n.position[1])
+    const b = box.current?.getBoundingClientRect()
+    const centre = b ? rf.screenToFlowPosition({ x: b.x + b.width / 2, y: b.y + b.height / 2 }) : { x: 0, y: 0 }
+    place(r.nodes, toEdges(r.connections) as Edge[], centre.x - (Math.min(...xs) + Math.max(...xs)) / 2, centre.y - (Math.min(...ys) + Math.max(...ys)) / 2)
+    toast.success(`${r.nodes.length} node${r.nodes.length === 1 ? '' : 's'} pasted`)
+    return true
+  }
   const copy = () => {
     if (selectedIds.length === 0) return false
+    toClipboard(nodes.filter((n) => n.selected))
     clip.current = { nodes: nodes.filter((n) => n.selected).map((n) => ({ ...n.data.node, position: [n.position.x, n.position.y] as [number, number] })), edges: edges.filter((e) => selectedIds.includes(e.source) && selectedIds.includes(e.target)), pastes: 0 }
     return true
   }
@@ -272,9 +296,9 @@ function Studio() {
           e.preventDefault()
           redo()
         } else if (k === 'c') copy()
-        else if (k === 'v') {
+        else if (k === 'a') {
           e.preventDefault()
-          paste()
+          setNodes((ns) => ns.map((n) => ({ ...n, selected: true })))
         } else if (k === 'd') {
           e.preventDefault()
           duplicate()
@@ -288,6 +312,20 @@ function Studio() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }) // (the handler reads the latest state, so it is re-bound on every render)
+
+  // Pasting: whatever is on the system clipboard (workflow JSON copied here or elsewhere); failing that, what was last copied in this editor.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const t = e.target
+      if (tab !== 'editor' || opened || (t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable))) return
+      e.preventDefault()
+      const text = e.clipboardData?.getData('text') ?? ''
+      if (text.trim() && importJson(text, !!clip.current)) return
+      paste()
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  })
 
   async function save() {
     setBusy('save')
@@ -415,6 +453,8 @@ function Studio() {
             items={[
               ...(f.custom ? [{ key: 'reset', label: 'Back to default workflow', icon: <RotateCcw className="size-4" />, onSelect: () => void reset() }] : []),
               ...(f.created ? [{ key: 'delete', label: 'Delete agent', icon: <Trash2 className="size-4" />, onSelect: () => void deleteAgent() }] : []),
+              { key: 'copy', label: 'Copy workflow JSON', icon: <Copy className="size-4" />, onSelect: () => toClipboard(nodes) },
+              { key: 'import', label: 'Paste workflow JSON…', icon: <ClipboardPaste className="size-4" />, onSelect: () => setImporting(true) },
               { key: 'leave', label: 'Back to the agent', icon: <ArrowLeft className="size-4" />, onSelect: leave },
             ]}
           />
@@ -526,6 +566,25 @@ function Studio() {
           </div>
         )}
 
+        {importing && (
+          <div role="dialog" aria-modal="true" aria-label="Paste workflow JSON" className="absolute inset-0 z-30 grid place-items-center bg-background/80 p-4 backdrop-blur-sm">
+            <div className="grid w-full max-w-2xl gap-3 rounded-2xl border bg-background p-4 shadow-2xl">
+              <div>
+                <h2 className="text-base font-semibold">Paste workflow JSON</h2>
+                <p className="text-xs text-muted-foreground">Nodes and their joins, as copied from a workflow here. They are added to the canvas; nothing is saved until you press Save.</p>
+              </div>
+              <textarea aria-label="Workflow JSON" autoFocus rows={12} value={pasted} onChange={(e) => setPasted(e.target.value)} spellCheck={false} placeholder='{ "nodes": [ … ], "connections": { … } }' className="w-full resize-y rounded-lg border border-input bg-transparent p-3 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setImporting(false)}>
+                  Cancel
+                </Button>
+                <Button disabled={!pasted.trim()} onClick={() => { if (importJson(pasted)) { setImporting(false); setPasted('') } }}>
+                  <ClipboardPaste /> Add to the canvas
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         {picker && tab === 'editor' && <NodePicker catalog={f.catalog} hasTrigger={hasTrigger} after={picker.after ? nodes.find((n) => n.id === picker.after!.id)?.data.node.name : undefined} onPick={(c) => addNode(c)} onClose={() => setPicker(null)} />}
 
         {current && tab !== 'settings' && tab !== 'try' && (

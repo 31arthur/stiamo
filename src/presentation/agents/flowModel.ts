@@ -102,3 +102,41 @@ export function traceByNode(trace: unknown[] | undefined): Record<string, FlowTr
   }
   return out
 }
+
+/** What goes on the clipboard when nodes are copied: the nodes and the joins among them, as JSON (the same shape a workflow is saved in). */
+export function workflowJson(nodes: FlowNode[], edges: Pick<CanvasEdge, 'source' | 'sourceHandle' | 'target' | 'targetHandle'>[]): string {
+  const ids = new Set(nodes.map((n) => n.id))
+  const inside = edges.filter((e) => ids.has(e.source) && ids.has(e.target))
+  return JSON.stringify({ nodes, connections: fromEdges(nodes, inside) }, null, 2)
+}
+
+/**
+ * Reads pasted text as a workflow: `{ nodes, connections }`. Returns what it is, or why it isn't one: text that isn't JSON, JSON that isn't a
+ * workflow, or nodes of a kind this app doesn't have (a workflow copied out of another tool names its own kinds).
+ */
+export function readWorkflowJson(text: string, known: string[]): { ok: true; nodes: FlowNode[]; connections: FlowConnections } | { ok: false; reason: string } {
+  let v: unknown
+  try {
+    v = JSON.parse(text)
+  } catch {
+    return { ok: false, reason: 'That isn’t JSON.' }
+  }
+  const o = v as { nodes?: unknown; connections?: unknown } | null
+  if (!o || typeof o !== 'object' || !Array.isArray(o.nodes) || o.nodes.length === 0 || o.nodes.length > 60) return { ok: false, reason: 'That JSON isn’t a workflow: it needs a list of nodes (up to 60).' }
+  const seen = new Set<string>()
+  const out: FlowNode[] = []
+  for (const raw of o.nodes as Record<string, unknown>[]) {
+    if (!raw || typeof raw.id !== 'string' || typeof raw.type !== 'string' || !raw.id || seen.has(raw.id)) return { ok: false, reason: 'Every node needs its own id and a type.' }
+    seen.add(raw.id)
+    const pos = Array.isArray(raw.position) && raw.position.length === 2 && raw.position.every((x) => typeof x === 'number') ? (raw.position as [number, number]) : ([0, 0] as [number, number])
+    out.push({ id: raw.id, type: raw.type, name: typeof raw.name === 'string' && raw.name ? raw.name : raw.type, position: pos, parameters: raw.parameters && typeof raw.parameters === 'object' && !Array.isArray(raw.parameters) ? (raw.parameters as Record<string, unknown>) : {}, ...(raw.disabled ? { disabled: true } : {}), ...(Array.isArray(raw.pinData) ? { pinData: raw.pinData as Record<string, unknown>[] } : {}) })
+  }
+  const unknown = [...new Set(out.map((n) => n.type).filter((t) => !known.includes(t)))]
+  if (unknown.length) return { ok: false, reason: `This app has no node of the kind ${unknown.slice(0, 3).join(', ')}.` }
+  const connections: FlowConnections = {}
+  for (const [src, v2] of Object.entries((o.connections && typeof o.connections === 'object' ? o.connections : {}) as FlowConnections)) {
+    if (!seen.has(src) || !v2 || !Array.isArray(v2.main)) continue
+    connections[src] = { main: v2.main.map((lane) => (Array.isArray(lane) ? lane.filter((t) => t && seen.has(t.node) && typeof t.index === 'number') : [])) }
+  }
+  return { ok: true, nodes: out, connections }
+}
