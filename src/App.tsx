@@ -42,7 +42,7 @@ const AgentLayout = lazy(() => import('@/presentation/agents/AgentLayout').then(
 const OverviewTab = lazy(() => import('@/presentation/agents/OverviewTab').then((m) => ({ default: m.OverviewTab })))
 const TryTab = lazy(() => import('@/presentation/agents/TryTab').then((m) => ({ default: m.TryTab })))
 const SettingsTab = lazy(() => import('@/presentation/agents/SettingsTab').then((m) => ({ default: m.SettingsTab })))
-const WorkflowTab = lazy(() => import('@/presentation/agents/WorkflowTab').then((m) => ({ default: m.WorkflowTab })))
+const WorkflowTab = lazy(() => import('@/presentation/agents/studio/WorkflowStudio').then((m) => ({ default: m.WorkflowStudio })))
 const ChannelsTab = lazy(() => import('@/presentation/agents/ChannelsTab').then((m) => ({ default: m.ChannelsTab })))
 const HistoryTab = lazy(() => import('@/presentation/agents/HistoryTab').then((m) => ({ default: m.HistoryTab })))
 const NewAgentPage = lazy(() => import('@/presentation/agents/NewAgentPage').then((m) => ({ default: m.NewAgentPage })))

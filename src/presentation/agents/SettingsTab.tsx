@@ -28,7 +28,7 @@ export function SettingsTab() {
   )
 }
 
-function ModelSection({ id, note }: { id: string; note?: string }) {
+export function ModelSection({ id, note }: { id: string; note?: string }) {
   const def = useAgentSummary(id)!
   return (
     <Section
@@ -46,7 +46,7 @@ function ModelSection({ id, note }: { id: string; note?: string }) {
 }
 
 /** Where an agent is listed. It can work in several workspaces, so these are toggles. */
-function WorkspacesSection({ id }: { id: string }) {
+export function WorkspacesSection({ id }: { id: string }) {
   const def = useAgentSummary(id)!
   const set = useAgentAction((a, w: string[]) => a.setWorkspaces(id, w))
   return (
