@@ -16,7 +16,7 @@ export function PhonePanel({ open, onOpenChange }: { open: boolean; onOpenChange
       <SheetContent side="right" className="gap-0 p-0 data-[side=right]:w-[min(96vw,34rem)] data-[side=right]:sm:max-w-none">
         <SheetHeader className="border-b px-5 py-4 pr-12">
           <SheetTitle className="font-display text-2xl font-normal">On your phone</SheetTitle>
-          <SheetDescription className="text-xs">Message the Assistant on Telegram or WhatsApp. It picks the right agent for each message and remembers the conversation. Send YES to save what it proposes, NO to drop it, and /new to start afresh.</SheetDescription>
+          <SheetDescription className="text-xs">One bot for everything: the master assistant. Message it on Telegram or WhatsApp and it works out which workspace the message is about, hands it to the right agent, and remembers the conversation per workspace. Send YES to save what it proposes, NO to drop it, and /new to start afresh.</SheetDescription>
         </SheetHeader>
         <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 py-4">
           {error && (

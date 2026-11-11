@@ -736,8 +736,28 @@ export interface RunStep {
   error?: string
 }
 
+/** One node of an agent's workflow: a trigger, the workspace scope, the prompt, the model, a tool, or the answer. */
+export interface GraphNode {
+  id: string
+  type: 'trigger' | 'scope' | 'prompt' | 'model' | 'tool' | 'output'
+  label: string
+  /** For a tool: the pack it comes from. */
+  pack?: string
+  config: Record<string, unknown>
+}
+
+/** An agent as nodes and the connections between them. It is the agent's real configuration: editing a node edits how the agent runs. */
+export interface AgentGraph {
+  agentId: string
+  name: string
+  nodes: GraphNode[]
+  edges: { from: string; to: string }[]
+}
+
 /** One run in full: what the model was given, each step, and the answer. */
 export interface RunDetail extends RunSummary {
+  /** The workspace the run was limited to; empty when it saw every workspace. */
+  workspace?: string
   thinking: string
   /** The message as the model got it, after the agent's template. */
   userMessage: string
@@ -875,6 +895,7 @@ export interface AgentApi {
   usageTransactions(opts: { days: number | null; agent?: string; before?: string }): Promise<UsagePage>
   runs(agentId: string, before?: string): Promise<RunPage>
   run(runId: string): Promise<RunDetail>
+  agentGraph(agentId: string): Promise<AgentGraph>
   clearRuns(agentId: string): Promise<void>
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string): Promise<DecisionResult>
   workflow(id: string): Promise<Workflow>
