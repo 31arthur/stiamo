@@ -1,4 +1,4 @@
-import type { AgentApi, AgentGraph, GraphEdge, GraphNode, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, AgentFlow, AgentSummary, AgentGraph, FlowCatalogNode, FlowConnections, FlowNode, FlowTemplate, GraphEdge, GraphNode, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -250,6 +250,38 @@ export class RemoteAgent implements AgentApi {
 
   testReminder() {
     return this.http.post<{ sent: number; spoken: boolean; rang: boolean }>('/v1/agent/reminders/test', {})
+  }
+
+  agentFlow(agentId: string) {
+    return this.http.get<AgentFlow>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow`)
+  }
+
+  saveAgentFlow(agentId: string, flow: { nodes: FlowNode[]; connections: FlowConnections }) {
+    return this.http.put<AgentFlow>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow`, flow)
+  }
+
+  async checkAgentFlow(agentId: string, flow: { nodes: FlowNode[]; connections: FlowConnections }) {
+    return (await this.http.post<{ problems: string[] }>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow/check`, flow)).problems
+  }
+
+  resetAgentFlow(agentId: string) {
+    return this.http.delete<AgentFlow>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow`)
+  }
+
+  runAgentFlow(agentId: string, message: string, scheduled: boolean) {
+    return this.http.post<{ answer: string; runId: string | null }>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow/run`, { message, scheduled })
+  }
+
+  flowCatalog() {
+    return this.http.get<{ nodes: FlowCatalogNode[]; templates: FlowTemplate[] }>('/v1/agent/flow/catalog')
+  }
+
+  createAgent(a: { name: string; description?: string; templateId?: string }) {
+    return this.http.post<AgentSummary>('/v1/agent/agents', a)
+  }
+
+  async deleteAgent(agentId: string) {
+    await this.http.delete(`/v1/agent/agents/${encodeURIComponent(agentId)}`)
   }
 
   agentGraph(agentId: string) {

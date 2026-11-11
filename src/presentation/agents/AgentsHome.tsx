@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Bot, ChevronRight, Plus, Workflow } from 'lucide-react'
+import { Bot, ChevronRight, Network, Plus, Workflow } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -15,6 +15,7 @@ import { Link } from '@/presentation/routing'
 import { ago, compact } from './format'
 import { MailWatchCard } from './MailWatchCard'
 import { MasterFlow } from './MasterFlow'
+import { NewFromWorkflow } from './NewFromWorkflow'
 import { useAgentStats, useScopedAgents } from './useAgent'
 
 /** The agents of the workspace you are in (all of them under "All workspaces"): what each is for, and how it has been doing. */
@@ -23,6 +24,7 @@ export function AgentsHome() {
   const here = scope === 'all' ? null : WORKSPACES[scope]
   const elsewhere = here ? all.filter((a) => !a.workspaces.includes(scope)) : []
   const [adding, setAdding] = useState(false)
+  const [fromFlow, setFromFlow] = useState(false)
 
   return (
     <>
@@ -31,11 +33,17 @@ export function AgentsHome() {
         title="Agents"
         description={here ? `The agents that work in ${here.short}. Add one you already have, or build a new one for it.` : 'Every agent you have. Each has its own model, prompt, channels and history; open one to see how it has been doing.'}
         actions={
-          <Button nativeButton={false} render={<Link to="/agents/new" />}>
-            <Plus /> New agent
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setFromFlow(true)}>
+              <Network /> From a workflow
+            </Button>
+            <Button nativeButton={false} render={<Link to="/agents/new" />}>
+              <Plus /> New agent
+            </Button>
+          </div>
         }
       />
+      <NewFromWorkflow open={fromFlow} onOpenChange={setFromFlow} />
       {!here && <MasterFlow />}
       <MailWatchCard />
       {loading ? (

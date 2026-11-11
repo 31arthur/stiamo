@@ -736,6 +736,69 @@ export interface RunStep {
   error?: string
 }
 
+/** One node of a workflow in the item-passing form: a trigger, flow control, this app's data, a message, the AI agent or the answer. */
+export interface FlowNode {
+  id: string
+  /** e.g. `core.if`, `data.tasks`, `ai.agent`, `respond`. */
+  type: string
+  name: string
+  position: [number, number]
+  parameters: Record<string, unknown>
+  disabled?: boolean
+}
+
+/** node id → one list per output of `{ node, index }` targets. */
+export type FlowConnections = Record<string, { main: { node: string; index: number }[][] }>
+
+export interface FlowCatalogNode {
+  type: string
+  group: string
+  label: string
+  description: string
+}
+
+/** A starting point for a new agent. */
+export interface FlowTemplate {
+  id: string
+  name: string
+  description: string
+  packs: string[]
+  flow: { nodes: FlowNode[]; connections: FlowConnections }
+}
+
+/** A workflow with what an editor needs to change it. */
+export interface AgentFlow {
+  agentId: string
+  name: string
+  description: string
+  nodes: FlowNode[]
+  connections: FlowConnections
+  /** Changed from the default. */
+  custom: boolean
+  /** Created from a workflow (can be deleted). */
+  created: boolean
+  engine: string
+  problems: string[]
+  tools: GraphTool[]
+  variables: Record<string, string>
+  defaults: { system: string; inputTemplate: string }
+  catalog: FlowCatalogNode[]
+}
+
+/** What one node did in one run: how long, how many items went in and out of each output, and a sample of them. */
+export interface FlowTrace {
+  node: string
+  name: string
+  type: string
+  state: 'ok' | 'error'
+  ms: number
+  itemsIn: number
+  outputs?: number[]
+  in?: unknown
+  out?: unknown
+  error?: string
+}
+
 /** The kinds of node a workflow is made of. */
 export type NodeType = 'trigger' | 'scope' | 'prompt' | 'agent' | 'branch' | 'set' | 'loop' | 'output'
 
@@ -798,7 +861,7 @@ export interface RunDetail extends RunSummary {
   /** The workspace the run was limited to; empty when it saw every workspace. */
   workspace?: string
   /** What each node of the workflow did, in the order they ran. Empty for runs from before workflows. */
-  trace?: TraceEntry[]
+  trace?: (TraceEntry | FlowTrace)[]
   thinking: string
   /** The message as the model got it, after the agent's template. */
   userMessage: string
@@ -936,6 +999,14 @@ export interface AgentApi {
   usageTransactions(opts: { days: number | null; agent?: string; before?: string }): Promise<UsagePage>
   runs(agentId: string, before?: string): Promise<RunPage>
   run(runId: string): Promise<RunDetail>
+  agentFlow(agentId: string): Promise<AgentFlow>
+  saveAgentFlow(agentId: string, flow: { nodes: FlowNode[]; connections: FlowConnections }): Promise<AgentFlow>
+  checkAgentFlow(agentId: string, flow: { nodes: FlowNode[]; connections: FlowConnections }): Promise<string[]>
+  resetAgentFlow(agentId: string): Promise<AgentFlow>
+  runAgentFlow(agentId: string, message: string, scheduled: boolean): Promise<{ answer: string; runId: string | null }>
+  flowCatalog(): Promise<{ nodes: FlowCatalogNode[]; templates: FlowTemplate[] }>
+  createAgent(a: { name: string; description?: string; templateId?: string }): Promise<AgentSummary>
+  deleteAgent(agentId: string): Promise<void>
   agentGraph(agentId: string): Promise<AgentGraph>
   saveAgentGraph(agentId: string, graph: { nodes: GraphNode[]; edges: GraphEdge[] }): Promise<AgentGraph>
   checkAgentGraph(agentId: string, graph: { nodes: GraphNode[]; edges: GraphEdge[] }): Promise<string[]>
