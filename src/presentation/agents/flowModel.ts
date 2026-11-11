@@ -18,6 +18,8 @@ export function outputsOf(node: Pick<FlowNode, 'type' | 'parameters'>): string[]
       return ['true', 'false']
     case 'core.loop':
       return ['loop', 'done']
+    case 'msg.ask':
+      return Array.from({ length: Math.max(2, ((node.parameters.options as unknown[] | undefined) ?? []).length) }, (_, i) => String(((node.parameters.options as string[] | undefined) ?? [])[i] ?? `answer ${i + 1}`))
     case 'core.switch':
       return [...((node.parameters.rules as unknown[] | undefined) ?? []).map((_, i) => `rule ${i + 1}`), 'fallback']
     case 'respond':
@@ -81,6 +83,7 @@ export function newNode(type: string, label: string, taken: string[], position: 
       'data.calendar': { limit: 50 },
       'data.drive': { query: '{{ $json.message }}', limit: 10 },
       'msg.send': { text: '{{ $json.text }}', once: true },
+      'msg.ask': { text: 'Shall I go ahead?', options: ['Yes', 'No'] },
       'ai.agent': { prompt: '{{ $json.text }}', history: false },
       respond: { text: '{{ $json.text }}' },
       'core.note': { text: 'A note' },
