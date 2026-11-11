@@ -147,7 +147,7 @@ export function StudioCanvas({ nodes, edges, readOnly, onNodesChange, onEdgesCha
       defaultEdgeOptions={{ style: { strokeWidth: 1.6 } }}
       colorMode="system"
       proOptions={{ hideAttribution: true }}
-      className="!bg-muted/30"
+      className="!bg-muted/30 [&_.react-flow\_\_pane]:!cursor-default [&_.react-flow\_\_pane.dragging]:!cursor-grabbing [&_.react-flow\_\_node]:!cursor-pointer"
     >
       <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
       <MiniMap pannable zoomable className="!hidden md:!block" />
