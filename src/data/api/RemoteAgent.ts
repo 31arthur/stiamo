@@ -1,4 +1,4 @@
-import type { AgentApi, AgentFlow, AgentSummary, AgentGraph, FlowCatalogNode, FlowConnections, FlowNode, FlowTemplate, GraphEdge, GraphNode, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -282,22 +282,6 @@ export class RemoteAgent implements AgentApi {
 
   async deleteAgent(agentId: string) {
     await this.http.delete(`/v1/agent/agents/${encodeURIComponent(agentId)}`)
-  }
-
-  agentGraph(agentId: string) {
-    return this.http.get<AgentGraph>(`/v1/agent/agents/${encodeURIComponent(agentId)}/graph`)
-  }
-
-  saveAgentGraph(agentId: string, graph: { nodes: GraphNode[]; edges: GraphEdge[] }) {
-    return this.http.put<AgentGraph>(`/v1/agent/agents/${encodeURIComponent(agentId)}/graph`, graph)
-  }
-
-  async checkAgentGraph(agentId: string, graph: { nodes: GraphNode[]; edges: GraphEdge[] }) {
-    return (await this.http.post<{ problems: string[] }>(`/v1/agent/agents/${encodeURIComponent(agentId)}/graph/check`, graph)).problems
-  }
-
-  resetAgentGraph(agentId: string) {
-    return this.http.delete<AgentGraph>(`/v1/agent/agents/${encodeURIComponent(agentId)}/graph`)
   }
 
   async availabilityRules() {
