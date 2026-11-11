@@ -87,6 +87,7 @@ function Studio() {
   const [tried, setTried] = useState<TriedMap>({})
   const [confirmSend, setConfirmSend] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [manual, setManual] = useState<string | null>(null)
   const [pasted, setPasted] = useState('')
   const viewedRun = tab === 'executions' ? pickedRun : liveRun
   const run = useQuery({ queryKey: ['agent', 'run', userId, viewedRun], queryFn: () => agent.run(viewedRun!), enabled: !!viewedRun, retry: false })
@@ -163,7 +164,7 @@ function Studio() {
     const json = workflowJson(list.map((n) => ({ ...n.data.node, position: [round(n.position.x), round(n.position.y)] as [number, number] })), edges.map((e) => ({ source: e.source, sourceHandle: e.sourceHandle ?? handleOut(0), target: e.target, targetHandle: e.targetHandle ?? handleIn(0) })))
     navigator.clipboard?.writeText(json).then(
       () => toast.success(`${list.length} node${list.length === 1 ? '' : 's'} copied as JSON`, { description: 'Paste them here, into another workflow, or into a note.' }),
-      () => toast.error('Couldn’t reach the clipboard. Use Copy workflow JSON in the menu, then select and copy by hand.'),
+      () => setManual(json), // the browser wouldn't let the page write to the clipboard: the JSON is shown to copy by hand
     )
   }
   /** Brings in pasted workflow JSON: its nodes land on the canvas, joined as they were, with new ids if theirs are taken. Says why when it can't. */
@@ -177,7 +178,7 @@ function Studio() {
     const b = box.current?.getBoundingClientRect()
     const centre = b ? rf.screenToFlowPosition({ x: b.x + b.width / 2, y: b.y + b.height / 2 }) : { x: 0, y: 0 }
     place(r.nodes, toEdges(r.connections) as Edge[], centre.x - (Math.min(...xs) + Math.max(...xs)) / 2, centre.y - (Math.min(...ys) + Math.max(...ys)) / 2)
-    toast.success(`${r.nodes.length} node${r.nodes.length === 1 ? '' : 's'} pasted`)
+    toast.success(`${r.nodes.length} node${r.nodes.length === 1 ? '' : 's'} pasted`, r.warnings.length ? { description: r.warnings.join(' '), duration: 12000 } : undefined)
     return true
   }
   const copy = () => {
@@ -566,12 +567,37 @@ function Studio() {
           </div>
         )}
 
+        {manual !== null && (
+          <div role="dialog" aria-modal="true" aria-label="Copy workflow JSON" className="absolute inset-0 z-30 grid place-items-center bg-background/80 p-4 backdrop-blur-sm">
+            <div className="grid w-full max-w-2xl gap-3 rounded-2xl border bg-background p-4 shadow-2xl">
+              <div>
+                <h2 className="text-base font-semibold">Copy the workflow JSON</h2>
+                <p className="text-xs text-muted-foreground">Your browser didn’t let the page use the clipboard, so here it is: select it all and copy.</p>
+              </div>
+              <textarea aria-label="Workflow JSON to copy" readOnly autoFocus rows={12} value={manual} onFocus={(e) => e.currentTarget.select()} className="w-full resize-y rounded-lg border border-input bg-transparent p-3 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const el = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Workflow JSON to copy"]')
+                    el?.select()
+                    const ok = document.execCommand('copy')
+                    toast[ok ? 'success' : 'error'](ok ? 'Copied' : 'Still blocked: press Ctrl+C on the selected text')
+                  }}
+                >
+                  <Copy /> Copy
+                </Button>
+                <Button onClick={() => setManual(null)}>Done</Button>
+              </div>
+            </div>
+          </div>
+        )}
         {importing && (
           <div role="dialog" aria-modal="true" aria-label="Paste workflow JSON" className="absolute inset-0 z-30 grid place-items-center bg-background/80 p-4 backdrop-blur-sm">
             <div className="grid w-full max-w-2xl gap-3 rounded-2xl border bg-background p-4 shadow-2xl">
               <div>
                 <h2 className="text-base font-semibold">Paste workflow JSON</h2>
-                <p className="text-xs text-muted-foreground">Nodes and their joins, as copied from a workflow here. They are added to the canvas; nothing is saved until you press Save.</p>
+                <p className="text-xs text-muted-foreground">Nodes and their joins, as copied from a workflow here or from n8n (the kinds this app has are converted; the rest are kept as notes). They are added to the canvas; nothing is saved until you press Save.</p>
               </div>
               <textarea aria-label="Workflow JSON" autoFocus rows={12} value={pasted} onChange={(e) => setPasted(e.target.value)} spellCheck={false} placeholder='{ "nodes": [ … ], "connections": { … } }' className="w-full resize-y rounded-lg border border-input bg-transparent p-3 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
               <div className="flex justify-end gap-2">

@@ -25,6 +25,7 @@ export function NewFromWorkflow({ open, onOpenChange }: { open: boolean; onOpenC
   const template = catalog.data?.templates.find((t) => t.id === picked)
 
   async function create() {
+    let warnings: string[] = []
     let flow: { nodes: FlowNode[]; connections: FlowConnections } | undefined
     if (json.trim()) {
       const r = readWorkflowJson(json, catalog.data?.nodes.map((c) => c.type) ?? [])
@@ -33,12 +34,13 @@ export function NewFromWorkflow({ open, onOpenChange }: { open: boolean; onOpenC
         return
       }
       flow = { nodes: r.nodes, connections: r.connections }
+      warnings = r.warnings
     }
     setBusy(true)
     try {
       const made = await agent.createAgent(flow ? { name: name.trim() || 'Pasted workflow', flow } : { name: name.trim() || template?.name || 'New agent', templateId: picked })
       await client.invalidateQueries({ queryKey: ['agent'] })
-      toast.success(`“${made.name}” created`, { description: 'It uses the model you chose last, until you give it its own.' })
+      toast.success(`“${made.name}” created`, { description: warnings.length ? warnings.join(' ') : 'It uses the model you chose last, until you give it its own.', duration: warnings.length ? 12000 : undefined })
       onOpenChange(false)
       setName('')
       navigate(`/agents/${made.id}/workflow`)
@@ -74,7 +76,7 @@ export function NewFromWorkflow({ open, onOpenChange }: { open: boolean; onOpenC
               ))}
             </ul>
             <details className="rounded-xl border px-3 py-2 text-sm" open={!!json}>
-              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Or paste a workflow’s JSON{json ? ' (it is used instead of the template)' : ''}</summary>
+              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Or paste a workflow’s JSON (from here or n8n){json ? ' (it is used instead of the template)' : ''}</summary>
               <textarea aria-label="Workflow JSON" rows={6} value={json} onChange={(e) => setJson(e.target.value)} spellCheck={false} placeholder='{ "nodes": [ … ], "connections": { … } }' className="mt-2 w-full resize-y rounded-lg border border-input bg-transparent p-2 font-mono text-[11px] outline-none focus-visible:border-ring" />
             </details>
             <label className="grid gap-1 text-xs font-medium text-muted-foreground">

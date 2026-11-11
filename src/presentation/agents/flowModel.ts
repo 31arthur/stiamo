@@ -1,4 +1,5 @@
 import type { FlowConnections, FlowNode, FlowTrace } from '@/domain/ai/AgentApi'
+import { fromN8n, isN8n } from './n8nImport'
 
 /** A connection as the canvas draws it: from an output handle of one node to an input handle of another. */
 export interface CanvasEdge {
@@ -114,12 +115,18 @@ export function workflowJson(nodes: FlowNode[], edges: Pick<CanvasEdge, 'source'
  * Reads pasted text as a workflow: `{ nodes, connections }`. Returns what it is, or why it isn't one: text that isn't JSON, JSON that isn't a
  * workflow, or nodes of a kind this app doesn't have (a workflow copied out of another tool names its own kinds).
  */
-export function readWorkflowJson(text: string, known: string[]): { ok: true; nodes: FlowNode[]; connections: FlowConnections } | { ok: false; reason: string } {
+export function readWorkflowJson(text: string, known: string[]): { ok: true; nodes: FlowNode[]; connections: FlowConnections; warnings: string[] } | { ok: false; reason: string } {
   let v: unknown
   try {
     v = JSON.parse(text)
   } catch {
     return { ok: false, reason: 'That isn’t JSON.' }
+  }
+  const warnings: string[] = []
+  if (isN8n(v)) {
+    const c = fromN8n(v)
+    warnings.push('Read as an n8n workflow.', ...c.warnings)
+    v = { nodes: c.nodes, connections: c.connections }
   }
   const o = v as { nodes?: unknown; connections?: unknown } | null
   if (!o || typeof o !== 'object' || !Array.isArray(o.nodes) || o.nodes.length === 0 || o.nodes.length > 60) return { ok: false, reason: 'That JSON isn’t a workflow: it needs a list of nodes (up to 60).' }
@@ -138,5 +145,5 @@ export function readWorkflowJson(text: string, known: string[]): { ok: true; nod
     if (!seen.has(src) || !v2 || !Array.isArray(v2.main)) continue
     connections[src] = { main: v2.main.map((lane) => (Array.isArray(lane) ? lane.filter((t) => t && seen.has(t.node) && typeof t.index === 'number') : [])) }
   }
-  return { ok: true, nodes: out, connections }
+  return { ok: true, nodes: out, connections, warnings }
 }
