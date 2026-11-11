@@ -8,6 +8,7 @@ import { useServices } from '@/presentation/app/services'
 import { Section } from '@/presentation/components/layout'
 import { Link, useNavigate } from '@/presentation/routing'
 import { ModelPicker } from './ModelPicker'
+import { ChannelsTab } from './ChannelsTab'
 import { PromptEditor } from './PromptEditor'
 import { useAgentAction, useAgentSummary, useWorkflow } from './useAgent'
 import { WorkspaceChips } from './WorkspaceChips'
@@ -24,6 +25,13 @@ export function SettingsTab() {
       <ModelSection id={def.id} />
       <WorkspacesSection id={def.id} />
       <PromptEditor agentId={def.id} />
+      <section className="grid gap-3" aria-label="Where it answers">
+        <div>
+          <h2 className="text-sm font-semibold">Where it answers</h2>
+          <p className="text-xs text-muted-foreground">Connect a Telegram bot or a WhatsApp number to talk to this agent from your phone.</p>
+        </div>
+        <ChannelsTab />
+      </section>
     </div>
   )
 }

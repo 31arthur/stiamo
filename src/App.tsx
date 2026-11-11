@@ -2,6 +2,7 @@ import { PagesProvider } from '@/presentation/app/pages'
 import { lazy } from 'react'
 import { MotionConfig } from 'motion/react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { Navigate } from '@/presentation/routing'
 import { Toaster } from 'sonner'
 import type { Container } from '@/di/container'
 import { ServicesProvider } from '@/presentation/app/services'
@@ -36,22 +37,20 @@ const ExecutionPage = lazy(() => import('@/presentation/agents/ExecutionPage').t
 const MailPage = lazy(() => import('@/presentation/mail/MailPage').then((m) => ({ default: m.MailPage })))
 const LettersPage = lazy(() => import('@/presentation/pages/LettersPage').then((m) => ({ default: m.LettersPage })))
 const OverviewPage = lazy(() => import('@/presentation/pages/OverviewPage').then((m) => ({ default: m.OverviewPage })))
-const CredentialsPage = lazy(() => import('@/presentation/agents/CredentialsPage').then((m) => ({ default: m.CredentialsPage })))
+const ConnectionsPage = lazy(() => import('@/presentation/agents/ConnectionsPage').then((m) => ({ default: m.ConnectionsPage })))
+const AgentRedirect = lazy(() => import('@/presentation/agents/AgentRedirect').then((m) => ({ default: m.AgentRedirect })))
 const AgentsLayout = lazy(() => import('@/presentation/agents/AgentsLayout').then((m) => ({ default: m.AgentsLayout })))
 const AgentsHome = lazy(() => import('@/presentation/agents/AgentsHome').then((m) => ({ default: m.AgentsHome })))
 const AgentLayout = lazy(() => import('@/presentation/agents/AgentLayout').then((m) => ({ default: m.AgentLayout })))
 const OverviewTab = lazy(() => import('@/presentation/agents/OverviewTab').then((m) => ({ default: m.OverviewTab })))
-const TryTab = lazy(() => import('@/presentation/agents/TryTab').then((m) => ({ default: m.TryTab })))
 const SettingsTab = lazy(() => import('@/presentation/agents/SettingsTab').then((m) => ({ default: m.SettingsTab })))
 const WorkflowTab = lazy(() => import('@/presentation/agents/studio/WorkflowStudio').then((m) => ({ default: m.WorkflowStudio })))
-const ChannelsTab = lazy(() => import('@/presentation/agents/ChannelsTab').then((m) => ({ default: m.ChannelsTab })))
 const HistoryTab = lazy(() => import('@/presentation/agents/HistoryTab').then((m) => ({ default: m.HistoryTab })))
 const NewAgentPage = lazy(() => import('@/presentation/agents/NewAgentPage').then((m) => ({ default: m.NewAgentPage })))
 const WorkflowRunTab = lazy(() => import('@/presentation/agents/WorkflowRunTab').then((m) => ({ default: m.WorkflowRunTab })))
 const ReviewTab = lazy(() => import('@/presentation/agents/ReviewTab').then((m) => ({ default: m.ReviewTab })))
 const DesignPage = lazy(() => import('@/presentation/agents/DesignPage').then((m) => ({ default: m.DesignPage })))
 const EnvironmentPage = lazy(() => import('@/presentation/agents/EnvironmentPage').then((m) => ({ default: m.EnvironmentPage })))
-const AgentsSettingsPage = lazy(() => import('@/presentation/agents/AgentsSettingsPage').then((m) => ({ default: m.AgentsSettingsPage })))
 const FollowUpsPage = lazy(() => import('@/presentation/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })))
 const GoalDetailPage = lazy(() => import('@/presentation/pages/GoalDetailPage').then((m) => ({ default: m.GoalDetailPage })))
 const GoalsPage = lazy(() => import('@/presentation/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
@@ -78,21 +77,22 @@ export default function App({ container }: { container: Container }) {
                   <Route path="agents" element={<AgentsLayout />}>
                     <Route index element={<AgentsHome />} />
                     <Route path="usage" element={<UsagePage />} />
-                    <Route path="settings" element={<AgentsSettingsPage />} />
-                    <Route path="credentials" element={<CredentialsPage />} />
+                    <Route path="connections" element={<ConnectionsPage />} />
+                    <Route path="settings" element={<Navigate to="/agents/connections" replace />} />
+                    <Route path="credentials" element={<Navigate to="/agents/connections" replace />} />
                     <Route path="environment" element={<EnvironmentPage />} />
                     <Route path="design" element={<DesignPage />} />
                     <Route path="new" element={<NewAgentPage />} />
                     <Route path=":agentId" element={<AgentLayout />}>
                       <Route index element={<OverviewTab />} />
                       <Route path="workflow" element={<WorkflowTab />} />
-                      <Route path="try" element={<TryTab />} />
+                      <Route path="try" element={<AgentRedirect to="" />} />
                       <Route path="run" element={<WorkflowRunTab />} />
                       <Route path="executions" element={<ExecutionsTab />} />
                       <Route path="executions/:runId" element={<ExecutionPage />} />
                       <Route path="review" element={<ReviewTab />} />
                       <Route path="settings" element={<SettingsTab />} />
-                      <Route path="channels" element={<ChannelsTab />} />
+                      <Route path="channels" element={<AgentRedirect to="/settings" />} />
                       <Route path="history" element={<HistoryTab />} />
                     </Route>
                   </Route>

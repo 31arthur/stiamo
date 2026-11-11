@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useLocation, useOutlet } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowLeft, Bot, Coins, KeyRound, Plug, LayoutGrid, Palette, Menu, Plus, SlidersHorizontal, Sparkles, Workflow } from 'lucide-react'
+import { ArrowLeft, Bot, ChevronRight, Coins, KeyRound, Plug, LayoutGrid, Palette, Menu, Plus, Sparkles, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -63,8 +63,7 @@ function DeveloperSidebar() {
   const available = useAgentAvailable()
   const { settings } = useAgentSettings()
   const agents = settings?.agents ?? []
-  const team = agents.filter((a) => a.kind !== 'workflow')
-  const force = agents.filter((a) => a.kind === 'workflow')
+  const here = useLocation().pathname
 
   return (
     <div className="flex h-full min-w-0 flex-col gap-4 overflow-x-hidden p-3">
@@ -82,20 +81,22 @@ function DeveloperSidebar() {
 
       <nav aria-label="Developer" className="scrollbar-none -mx-1 flex flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-1">
         <div className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
-          <Item to="/agents" label="All agents" icon={LayoutGrid} end />
+          <Item to="/agents" label="Agents" icon={LayoutGrid} end />
+          <Item to="/agents/connections" label="Connections" icon={Plug} />
           <Item to="/agents/usage" label="Usage and cost" icon={Coins} />
-          <Item to="/agents/credentials" label="Credentials" icon={Plug} />
-          <Item to="/agents/settings" label="Providers and models" icon={SlidersHorizontal} />
-          <Item to="/agents/environment" label="Environment" icon={KeyRound} />
-          <Item to="/agents/design" label="Design" icon={Palette} />
         </div>
 
-        {available && (
-          <>
-            <Group label="Team" empty="No agents yet" items={team.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: Bot }))} />
-            <Group label="Task force" empty="No task force yet" items={force.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: Workflow }))} />
-          </>
-        )}
+        {available && <Group label="Your agents" empty="No agents yet" items={agents.map((a) => ({ to: `/agents/${a.id}`, label: a.name, icon: a.kind === 'workflow' ? Workflow : Bot }))} />}
+
+        <details className="group" open={here.includes('/agents/environment') || here.includes('/agents/design')}>
+          <summary className="mb-1 flex cursor-pointer list-none items-center gap-1 px-2.5 text-[10px] font-semibold tracking-widest text-muted-foreground/80 uppercase">
+            <ChevronRight className="size-3 transition-transform group-open:rotate-90" /> Advanced
+          </summary>
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
+            <Item to="/agents/environment" label="Environment" icon={KeyRound} />
+            <Item to="/agents/design" label="Design" icon={Palette} />
+          </div>
+        </details>
       </nav>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-1">
