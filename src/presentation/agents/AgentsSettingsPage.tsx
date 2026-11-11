@@ -15,8 +15,6 @@ import { useAgentSettings } from './useAgent'
 
 /** Everything the agents share: connect the providers, then decide which model each agent runs on. */
 export function AgentsSettingsPage() {
-  const { settings, connected } = useAgentSettings()
-  const agents = settings?.agents ?? []
   return (
     <>
       <PageHeader eyebrow="Agents" title="Settings" description="Connect the AI providers once, then choose the model each agent runs on. An agent’s own page lets you change just its model." />
@@ -26,29 +24,7 @@ export function AgentsSettingsPage() {
       </Step>
 
       <Step n={2} title="Models" description="Which provider and model each agent uses.">
-        {connected.length === 0 ? (
-          <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">Connect a provider above, then choose models here.</p>
-        ) : (
-          <div className="grid gap-4">
-            <UseForAll agents={agents} />
-            <ul className="grid divide-y rounded-2xl border bg-card/70">
-              {agents.map((a) => (
-                <li key={a.id} className="grid gap-2 px-4 py-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:items-center">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">{a.kind === 'workflow' ? <Workflow className="size-4" /> : <Bot className="size-4" />}</span>
-                    <div className="min-w-0">
-                      <Link to={`/agents/${a.id}`} className="block truncate text-sm font-medium hover:underline">
-                        {a.name}
-                      </Link>
-                      <span className={cn('block truncate text-xs', a.selection ? 'text-muted-foreground' : 'text-warning')}>{a.selection ? (a.selectionInherited ? 'Following the last choice' : 'Its own model') : 'No model yet'}</span>
-                    </div>
-                  </div>
-                  <ModelPicker def={a} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <ModelsBody />
       </Step>
     </>
   )
@@ -98,5 +74,47 @@ function UseForAll({ agents }: { agents: AgentSummary[] }) {
         Apply to all {agents.length} agents
       </Button>
     </Section>
+  )
+}
+
+/** Which provider and model each agent runs on, and one choice for all of them. */
+function ModelsBody() {
+  const { settings, connected } = useAgentSettings()
+  const agents = settings?.agents ?? []
+  return connected.length === 0 ? (
+    <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">Add an AI key above, then choose models here.</p>
+  ) : (
+    <div className="grid gap-4">
+      <UseForAll agents={agents} />
+      <ul className="grid divide-y rounded-2xl border bg-card/70">
+        {agents.map((a) => (
+          <li key={a.id} className="grid gap-2 px-4 py-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:items-center">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">{a.kind === 'workflow' ? <Workflow className="size-4" /> : <Bot className="size-4" />}</span>
+              <div className="min-w-0">
+                <Link to={`/agents/${a.id}`} className="block truncate text-sm font-medium hover:underline">
+                  {a.name}
+                </Link>
+                <span className={cn('block truncate text-xs', a.selection ? 'text-muted-foreground' : 'text-warning')}>{a.selection ? (a.selectionInherited ? 'Following the last choice' : 'Its own model') : 'No model yet'}</span>
+              </div>
+            </div>
+            <ModelPicker def={a} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** The models half of the Connections page. */
+export function ModelsSection() {
+  return (
+    <section className="grid gap-3" aria-label="Models">
+      <div>
+        <h2 className="text-sm font-semibold">Models</h2>
+        <p className="text-xs text-muted-foreground">Which provider and model each agent thinks with. An agent’s own Settings tab changes just its model.</p>
+      </div>
+      <ModelsBody />
+    </section>
   )
 }

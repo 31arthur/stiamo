@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
-import { useNavigate } from '@/presentation/routing'
+import { Link, useNavigate } from '@/presentation/routing'
 import type { FlowConnections, FlowNode } from '@/domain/ai/AgentApi'
 import { readWorkflowJson } from './flowModel'
 
@@ -83,6 +83,9 @@ export function NewFromWorkflow({ open, onOpenChange }: { open: boolean; onOpenC
               Name
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={template?.name ?? 'New agent'} />
             </label>
+            <p className="text-xs text-muted-foreground">
+              Want one that sorts your mail with a review queue? <Link to="/agents/new" className="underline underline-offset-2" onClick={() => onOpenChange(false)}>Use the mail-sorting builder.</Link>
+            </p>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel

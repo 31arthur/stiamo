@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Bot, ChevronRight, Network, Plus, Workflow } from 'lucide-react'
+import { Bot, ChevronRight, Plus, Workflow } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -34,10 +34,7 @@ export function AgentsHome() {
         description={here ? `The agents that work in ${here.short}. Add one you already have, or build a new one for it.` : 'Every agent you have. Each has its own model, prompt, channels and history; open one to see how it has been doing.'}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setFromFlow(true)}>
-              <Network /> From a workflow
-            </Button>
-            <Button nativeButton={false} render={<Link to="/agents/new" />}>
+            <Button onClick={() => setFromFlow(true)}>
               <Plus /> New agent
             </Button>
           </div>

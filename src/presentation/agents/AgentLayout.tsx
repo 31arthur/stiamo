@@ -1,4 +1,4 @@
-import { Activity, Bot, History, Network, ListChecks, ListTree, MessagesSquare, Play, Settings2, Workflow } from 'lucide-react'
+import { Activity, Bot, History, Network, ListChecks, ListTree, Play, Settings2, Workflow } from 'lucide-react'
 import { Outlet, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/presentation/components/layout'
@@ -7,23 +7,21 @@ import { Navigate, NavLink } from '@/presentation/routing'
 import { SweepWatcher } from './SweepPanel'
 import { useAgentSummary, useReview, useSweep } from './useAgent'
 
+/** Four places for an agent: how it is doing (and a chat to try it), how it works, what it has done, and how it is set up. */
 const CHAT_TABS = [
   { path: '', label: 'Overview', icon: Activity },
   { path: '/workflow', label: 'Workflow', icon: Network },
-  { path: '/try', label: 'Try it', icon: Play },
+  { path: '/history', label: 'Runs', icon: History },
   { path: '/settings', label: 'Settings', icon: Settings2 },
-  { path: '/channels', label: 'Channels', icon: MessagesSquare },
-  { path: '/history', label: 'History', icon: History },
 ]
 
 /** An agent someone built has no chat or channels: it is run, and its decisions are reviewed. */
 const WORKFLOW_TABS = [
   { path: '', label: 'Overview', icon: Activity },
   { path: '/run', label: 'Run', icon: Play },
-  { path: '/executions', label: 'Executions', icon: ListTree },
   { path: '/review', label: 'Review', icon: ListChecks, badge: true },
+  { path: '/executions', label: 'Runs', icon: ListTree },
   { path: '/settings', label: 'Settings', icon: Settings2 },
-  { path: '/history', label: 'History', icon: History },
 ]
 
 /** One agent: who it is, and the tabs for how it has been doing, trying it, configuring it, its channels and its history. */

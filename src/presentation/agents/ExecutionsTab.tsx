@@ -41,6 +41,9 @@ export function ExecutionsTab() {
   return (
     <div className="grid gap-3">
       <SweepPanel agentId={agentId!} compact />
+      <Link to={`/agents/${agentId}/history`} className="w-fit text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+        Every call it made, one by one
+      </Link>
       <ul className="grid gap-2">
         {data.map((e) => (
           <li key={e.id}>

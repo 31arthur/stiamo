@@ -21,7 +21,7 @@ interface Row {
 }
 
 /** Everything agents and workflows connect with, in one list, the way n8n keeps credentials: Telegram bots, WhatsApp numbers and AI provider keys. */
-export function CredentialsPage() {
+export function CredentialsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { channels, loading } = useChannels()
   const { settings } = useAgentSettings()
   const [modal, setModal] = useState<{ kind?: CredentialKind; channel?: Channel } | null>(null)
@@ -40,16 +40,28 @@ export function CredentialsPage() {
 
   return (
     <>
-      <PageHeader
-        eyebrow="Agents"
-        title="Credentials"
-        description="The accounts your agents and workflows connect with. A node asks for one by name, so a key or token is kept once, encrypted on your server, and never sent back to the browser."
-        actions={
-          <Button onClick={() => setModal({})}>
-            <Plus /> Create credential
+      {embedded ? (
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Accounts</h2>
+            <p className="text-xs text-muted-foreground">Telegram bots, WhatsApp numbers and AI keys. A node or an agent asks for one by name; each is kept once, encrypted on your server.</p>
+          </div>
+          <Button size="sm" onClick={() => setModal({})}>
+            <Plus /> Add account
           </Button>
-        }
-      />
+        </div>
+      ) : (
+        <PageHeader
+          eyebrow="Agents"
+          title="Credentials"
+          description="The accounts your agents and workflows connect with. A node asks for one by name, so a key or token is kept once, encrypted on your server, and never sent back to the browser."
+          actions={
+            <Button onClick={() => setModal({})}>
+              <Plus /> Create credential
+            </Button>
+          }
+        />
+      )}
       {loading ? (
         <Spinner label="Loading" />
       ) : rows.length === 0 ? (
