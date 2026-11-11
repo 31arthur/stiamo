@@ -1,7 +1,7 @@
 import '@xyflow/react/dist/style.css'
 import { Background, BackgroundVariant, Handle, MiniMap, Panel, Position, ReactFlow, useReactFlow } from '@xyflow/react'
 import type { Connection, Edge, EdgeChange, Node, NodeChange, NodeProps } from '@xyflow/react'
-import { AlertTriangle, BellRing, Bot, Inbox, Sparkle, CalendarPlus, Check, ScanText, ShieldCheck, Tags, Trash2, Clock, Database, GitBranch, Maximize, MessageSquare, Pin, Plus, Send, Sparkles, StickyNote, Zap, ZoomIn, ZoomOut } from 'lucide-react'
+import { AlertTriangle, BellRing, Hourglass, Workflow, Bot, Inbox, Sparkle, CalendarPlus, Check, ScanText, ShieldCheck, Tags, Trash2, Clock, Database, GitBranch, Maximize, MessageSquare, Pin, Plus, Send, Sparkles, StickyNote, Zap, ZoomIn, ZoomOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { AgentFlow, FlowNode, FlowTrace } from '@/domain/ai/AgentApi'
@@ -12,7 +12,7 @@ export type Ran = FlowTrace & { runs: number }
 export type CanvasNode = Node<{ node: FlowNode; ran?: Ran; running?: boolean; open: number[]; onAdd?: (id: string, lane: number) => void; /** The model an AI node thinks with (its own, or the agent's), and what to do when its slot is pressed. */ model?: { label: string; own: boolean }; onModel?: (id: string) => void }, 'flow'>
 
 const GROUP_ICON: Record<string, LucideIcon> = { trigger: Zap, core: GitBranch, data: Database, msg: Send, ai: Sparkles, respond: MessageSquare }
-export const iconOf = (type: string): LucideIcon => (type === 'trigger.schedule' ? Clock : type === 'msg.trash' ? Trash2 : type === 'core.safe_senders' ? ShieldCheck : type === 'msg.alert' ? BellRing : type === 'msg.attention' ? Inbox : type === 'core.only_new' ? Sparkle : type === 'msg.event' ? CalendarPlus : type === 'ai.classify' ? Tags : type === 'ai.read' ? ScanText : type === 'trigger.telegram' || type === 'msg.telegram' ? Send : type === 'trigger.orchestrator' ? Bot : type === 'core.note' ? StickyNote : (GROUP_ICON[type.split('.')[0]!] ?? Bot))
+export const iconOf = (type: string): LucideIcon => (type === 'trigger.schedule' ? Clock : type === 'core.wait' ? Hourglass : type === 'core.call_agent' ? Workflow : type === 'msg.trash' ? Trash2 : type === 'core.safe_senders' ? ShieldCheck : type === 'msg.alert' ? BellRing : type === 'msg.attention' ? Inbox : type === 'core.only_new' ? Sparkle : type === 'msg.event' ? CalendarPlus : type === 'ai.classify' ? Tags : type === 'ai.read' ? ScanText : type === 'trigger.telegram' || type === 'msg.telegram' ? Send : type === 'trigger.orchestrator' ? Bot : type === 'core.note' ? StickyNote : (GROUP_ICON[type.split('.')[0]!] ?? Bot))
 
 /** The colour of a node's tile, by what kind of node it is (as n8n does it). */
 export const TONE: Record<string, string> = {
@@ -50,7 +50,7 @@ function StudioNode({ data, selected }: NodeProps<CanvasNode>) {
   }
 
   return (
-    <div className="group relative flex w-24 flex-col items-center">
+    <div className="group relative flex w-24 flex-col items-center" title={node.settings?.notes}>
       <div
         style={{ height }}
         className={cn(

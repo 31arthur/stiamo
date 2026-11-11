@@ -65,3 +65,18 @@ describe('reading a workflow copied out of n8n', () => {
     if (r.ok) expect(r.warnings[0]).toBe('Read as an n8n workflow.')
   })
 })
+
+describe('what n8n keeps beside a node', () => {
+  it('reads retry, error handling, run once, always output and notes into the node’s settings, and Wait into the Wait node', () => {
+    const r = fromN8n({
+      nodes: [
+        { id: 'a', name: 'Ask', type: '@n8n/n8n-nodes-langchain.agent', parameters: { text: 'hi' }, retryOnFail: true, maxTries: 9, waitBetweenTries: 250, onError: 'continueRegularOutput', alwaysOutputData: true, executeOnce: true, notes: 'Flaky provider' },
+        { id: 'w', name: 'Pause', type: 'n8n-nodes-base.wait', parameters: { amount: 2, unit: 'minutes' } },
+      ],
+      connections: {},
+    })
+    const ask = r.nodes.find((x) => x.name === 'Ask')!
+    expect(ask.settings).toEqual({ retryOnFail: true, maxTries: 5, waitBetween: 250, onError: 'continue', alwaysOutput: true, executeOnce: true, notes: 'Flaky provider' })
+    expect(r.nodes.find((x) => x.name === 'Pause')).toMatchObject({ type: 'core.wait', parameters: { amount: 2, unit: 'minutes' } })
+  })
+})
