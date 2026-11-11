@@ -63,7 +63,7 @@ export function newNode(type: string, label: string, taken: string[], position: 
   while (taken.includes(`${base}${n}`)) n++
   const parameters: Record<string, unknown> =
     {
-      'trigger.schedule': { time: '07:30', timezone: 'Asia/Kolkata' },
+      'trigger.schedule': { time: '07:30', timezone: 'Asia/Kolkata', days: [0, 1, 2, 3, 4, 5, 6] },
       'core.if': { combine: 'all', conditions: [{ left: '{{ $json.title }}', op: 'contains', right: '' }] },
       'core.filter': { combine: 'all', conditions: [{ left: '{{ $json.title }}', op: 'contains', right: '' }] },
       'core.switch': { rules: [{ left: '{{ $json.title }}', op: 'contains', right: '' }] },
@@ -83,6 +83,7 @@ export function newNode(type: string, label: string, taken: string[], position: 
       'data.calendar': { limit: 50 },
       'data.drive': { query: '{{ $json.message }}', limit: 10 },
       'msg.send': { text: '{{ $json.text }}', once: true },
+      'msg.mail': { to: '{{ $json.email }}', subject: '', text: '', tell: true },
       'msg.ask': { text: 'Shall I go ahead?', options: ['Yes', 'No'] },
       'ai.agent': { prompt: '{{ $json.text }}', history: false },
       respond: { text: '{{ $json.text }}' },

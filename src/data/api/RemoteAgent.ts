@@ -272,6 +272,10 @@ export class RemoteAgent implements AgentApi {
     return this.http.post<{ answer: string; runId: string | null }>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow/run`, { message, scheduled })
   }
 
+  runFlowNode(agentId: string, nodeId: string, items?: Record<string, unknown>[], confirm = false) {
+    return this.http.post<{ outputs: Record<string, unknown>[][]; itemsIn: number; ms: number; error?: string }>(`/v1/agent/agents/${encodeURIComponent(agentId)}/flow/node`, { nodeId, items, confirm })
+  }
+
   flowCatalog() {
     return this.http.get<{ nodes: FlowCatalogNode[]; templates: FlowTemplate[] }>('/v1/agent/flow/catalog')
   }

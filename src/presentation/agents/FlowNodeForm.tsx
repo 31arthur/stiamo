@@ -122,6 +122,20 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
           <Row label="Time zone">
             <Input className="w-56" value={String(p.timezone ?? 'Asia/Kolkata')} onChange={(e) => set({ timezone: e.target.value })} />
           </Row>
+          <div className="grid gap-1.5" role="group" aria-label="Days">
+            <span className="text-xs font-medium text-muted-foreground">On these days{Array.isArray(p.days) && p.days.length === 0 ? ' · none ticked: it never runs' : ''}</span>
+            <div className="flex flex-wrap gap-1.5">
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => {
+                const days = (Array.isArray(p.days) ? (p.days as number[]) : [0, 1, 2, 3, 4, 5, 6])
+                const on = days.includes(i)
+                return (
+                  <button key={d} type="button" aria-pressed={on} onClick={() => set({ days: on ? days.filter((x) => x !== i) : [...days, i].sort() })} className={`rounded-lg border px-2.5 py-1 text-xs ${on ? 'border-foreground bg-muted font-medium' : 'text-muted-foreground'}`}>
+                    {d}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )
     case 'core.if':
@@ -273,6 +287,18 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
             <textarea rows={3} className={AREA} value={String(p.text ?? '')} onChange={(e) => set({ text: e.target.value })} />
           </Row>
           <Check label="Send one message, however many items come in" on={p.once !== false} onChange={(v) => set({ once: v })} />
+        </div>
+      )
+    case 'msg.mail':
+      return (
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">Writes an email and keeps it for you to approve. <b>Nothing is sent</b> until you approve it (in Needs me, or YES on your phone). It is sent from this workspace’s mailbox.</p>
+          {text('to', 'To', 'An address, or an expression like {{ $json.email }}. Several: separate with commas.')}
+          {text('subject', 'Subject')}
+          <Row label="Text" hint="An expression, so it can use what the earlier nodes found.">
+            <textarea rows={5} className={AREA} value={String(p.text ?? '')} onChange={(e) => set({ text: e.target.value })} />
+          </Row>
+          <Check label="Tell me on my phone when a draft is ready" on={p.tell !== false} onChange={(v) => set({ tell: v })} />
         </div>
       )
     case 'msg.ask': {

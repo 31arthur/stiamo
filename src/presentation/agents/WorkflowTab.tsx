@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { Background, Controls, Handle, MiniMap, Position, ReactFlow, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow } from '@xyflow/react'
 import type { Connection, Edge, EdgeChange, Node, NodeChange, NodeProps } from '@xyflow/react'
-import { AlertTriangle, Bot, Clock, Database, GitBranch, MessageSquare, Play, Save, Send, Sparkles, StickyNote, Trash2, Undo2, X, Zap } from 'lucide-react'
+import { AlertTriangle, Bot, Clock, Database, GitBranch, MessageSquare, Pin, PinOff, Play, Save, Send, Sparkles, StickyNote, Trash2, Undo2, X, Zap } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,7 +42,8 @@ function FlowCanvasNode({ data, selected }: NodeProps<CanvasNode>) {
       <div className="flex min-w-0 items-center gap-1.5">
         <Icon className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="truncate font-medium">{node.name}</span>
-        {ran && <span aria-label={ran.state} className={cn('ml-auto size-2 shrink-0 rounded-full', DOT[ran.state])} />}
+        {node.pinData && <Pin aria-label="Pinned data" className="ml-auto size-3 shrink-0 text-warning" />}
+        {ran && <span aria-label={ran.state} className={cn(!node.pinData && 'ml-auto', 'size-2 shrink-0 rounded-full', DOT[ran.state])} />}
       </div>
       {note ? (
         <p className="mt-1 max-w-48 text-[11px] text-muted-foreground">{String(node.parameters.text ?? '')}</p>
@@ -104,7 +105,9 @@ function Editor() {
   const [selected, setSelected] = useState<string | null>(null)
   const [runId, setRunId] = useState<string | null>(null)
   const [message, setMessage] = useState('')
-  const [busy, setBusy] = useState<'save' | 'run' | null>(null)
+  const [busy, setBusy] = useState<'save' | 'run' | 'node' | null>(null)
+  const [tried, setTried] = useState<Record<string, { outputs: Record<string, unknown>[][]; itemsIn: number; ms: number; error?: string }>>({})
+  const [confirmSend, setConfirmSend] = useState(false)
   const run = useQuery({ queryKey: ['agent', 'run', userId, runId], queryFn: () => agent.run(runId!), enabled: !!runId, retry: false })
 
   const f = flow.data
@@ -189,6 +192,18 @@ function Editor() {
     } catch (e) {
       toast.error('The run failed', { description: e instanceof Error ? e.message : undefined })
       await client.invalidateQueries({ queryKey: ['agent', 'runs'] })
+    } finally {
+      setBusy(null)
+    }
+  }
+  async function runOne(id: string) {
+    setBusy('node')
+    try {
+      setTried((t) => ({ ...t, [id]: undefined as never }))
+      const r = await agent.runFlowNode(agentId!, id, undefined, confirmSend)
+      setTried((t) => ({ ...t, [id]: r }))
+    } catch (e) {
+      toast.error('Couldn’t run that node', { description: e instanceof Error ? e.message : undefined })
     } finally {
       setBusy(null)
     }
@@ -316,6 +331,16 @@ function Editor() {
                   Run when nothing arrives
                 </label>
               </div>
+              <NodeTry
+                node={current}
+                result={tried[current.id]}
+                busy={busy === 'node'}
+                disabled={dirty || busy !== null}
+                confirm={confirmSend}
+                onConfirm={setConfirmSend}
+                onRun={() => void runOne(current.id)}
+                onPin={(items) => patch(current.id, { pinData: items })}
+              />
               <FlowNodeForm node={current} flow={f} set={setParams} />
             </div>
           </Section>
@@ -375,6 +400,58 @@ function Items({ trace }: { trace: Ran }) {
           <pre className="max-h-52 overflow-auto rounded-lg border bg-background p-2 font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap">{show(v)}</pre>
         </div>
       ))}
+    </div>
+  )
+}
+
+const SENDS = ['msg.send', 'msg.ask', 'msg.mail']
+
+/** Try one node on its own, and pin what it gave so the rest of the workflow can be tried with that data when it is run by hand. */
+function NodeTry({ node, result, busy, disabled, confirm, onConfirm, onRun, onPin }: { node: FlowNode; result?: { outputs: Record<string, unknown>[][]; itemsIn: number; ms: number; error?: string }; busy: boolean; disabled: boolean; confirm: boolean; onConfirm: (v: boolean) => void; onRun: () => void; onPin: (items: Record<string, unknown>[] | undefined) => void }) {
+  const first = result?.outputs[0] ?? []
+  const sends = SENDS.includes(node.type)
+  return (
+    <div className="grid gap-2 rounded-xl border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" disabled={disabled || (sends && !confirm)} onClick={onRun} title={disabled ? 'Save first: it runs the saved workflow.' : undefined}>
+          {busy ? <Spinner size="xs" tone="current" decorative /> : <Play />} Run this node
+        </Button>
+        {sends && (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <input type="checkbox" className="size-3.5 accent-[var(--foreground)]" checked={confirm} onChange={(e) => onConfirm(e.target.checked)} />
+            It sends or drafts something: I mean it
+          </label>
+        )}
+        {node.pinData ? (
+          <>
+            <span className="flex items-center gap-1 text-xs text-warning">
+              <Pin className="size-3.5" /> Pinned · {node.pinData.length} item{node.pinData.length === 1 ? '' : 's'}: used when you run by hand
+            </span>
+            <Button size="xs" variant="ghost" onClick={() => onPin(undefined)}>
+              <PinOff /> Unpin
+            </Button>
+          </>
+        ) : (
+          first.length > 0 && (
+            <Button size="xs" variant="ghost" onClick={() => onPin(first)}>
+              <Pin /> Pin this output
+            </Button>
+          )
+        )}
+      </div>
+      {result?.error && (
+        <p role="alert" className="text-xs text-destructive">
+          {result.error}
+        </p>
+      )}
+      {result && !result.error && (
+        <div>
+          <h4 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
+            Gave {result.outputs.map((o) => o.length).join(' / ')} item{result.outputs.flat().length === 1 ? '' : 's'} from {result.itemsIn} in · {result.ms} ms
+          </h4>
+          <pre className="max-h-48 overflow-auto rounded-lg border bg-background p-2 font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap">{JSON.stringify(result.outputs.length === 1 ? result.outputs[0] : result.outputs, null, 2)}</pre>
+        </div>
+      )}
     </div>
   )
 }
