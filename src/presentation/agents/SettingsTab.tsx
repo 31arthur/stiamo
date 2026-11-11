@@ -64,6 +64,34 @@ export function WorkspacesSection({ id }: { id: string }) {
   )
 }
 
+/** Make a copy of a mail-sorting agent as a workflow on the canvas, to run beside it and compare. The agent itself is not changed. */
+function RebuildCard({ id }: { id: string }) {
+  const { agent } = useServices()
+  const client = useQueryClient()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  async function rebuild() {
+    setBusy(true)
+    try {
+      const made = await agent.rebuildOnCanvas(id)
+      await client.invalidateQueries({ queryKey: ['agent'] })
+      toast.success(`“${made.name}” is ready on the canvas`, { description: made.notes.join(' '), duration: 15000 })
+      navigate(`/agents/${made.id}/workflow`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Couldn’t rebuild it')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Section title="See it on the canvas" description="Make a copy of this agent as a workflow you can see node by node: the same prompt, labels, safe senders and what happens to each label. This agent is not changed, so you can run both on the same mailbox and compare.">
+      <Button variant="outline" onClick={() => void rebuild()} disabled={busy}>
+        {busy && <Spinner size="xs" tone="current" decorative />} Rebuild on the canvas
+      </Button>
+    </Section>
+  )
+}
+
 /** An agent someone built: change its setup (each change is a new version), or delete it. */
 function WorkflowSettings({ id }: { id: string }) {
   const { agent } = useServices()
@@ -110,6 +138,7 @@ function WorkflowSettings({ id }: { id: string }) {
           <>
             {w.config.decider === 'model' ? <ModelSection id={id} /> : <p className="text-xs text-muted-foreground">It decides with Jev, through your OpenRouter key, so it has no model of its own to choose.</p>}
             <WorkspacesSection id={id} />
+            {w.config.source.kind === 'mail' && <RebuildCard id={id} />}
           </>
         }
       />

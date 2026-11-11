@@ -100,6 +100,10 @@ export class RemoteAgent implements AgentApi {
     return this.http.put<Workflow>(`/v1/agent/workflows/${encodeURIComponent(id)}`, { name, description, config })
   }
 
+  rebuildOnCanvas(id: string) {
+    return this.http.post<AgentSummary & { notes: string[] }>(`/v1/agent/workflows/${encodeURIComponent(id)}/rebuild`, {})
+  }
+
   async deleteWorkflow(id: string) {
     await this.http.delete(`/v1/agent/workflows/${encodeURIComponent(id)}`)
   }
