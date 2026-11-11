@@ -17,7 +17,8 @@ import { Section } from '@/presentation/components/layout'
 import { useUserId } from '@/presentation/data/hooks'
 import { useNavigate } from '@/presentation/routing'
 import { handleIn, handleOut, newNode, outputsOf, readWorkflowJson, toEdges, traceByNode, workflowJson } from '../flowModel'
-import { ago, formatMs, triggerLabel } from '../format'
+import { format, parseISO } from 'date-fns'
+import { formatMs, triggerLabel } from '../format'
 import { ModelSection, WorkspacesSection } from '../SettingsTab'
 import { TryTab } from '../TryTab'
 import { PromptEditor } from '../PromptEditor'
@@ -74,7 +75,9 @@ function Studio() {
   const box = useRef<HTMLDivElement>(null)
 
   const flow = useQuery({ queryKey: ['agent', 'flow', userId, agentId], queryFn: () => agent.agentFlow(agentId!), enabled: !!agentId, retry: false })
-  const runs = useQuery({ queryKey: ['agent', 'runs', userId, agentId, 'recent'], queryFn: () => agent.runs(agentId!), enabled: !!agentId, retry: false, refetchInterval: 15_000 })
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'ok' | 'error'>('all')
+  const runs = useQuery({ queryKey: ['agent', 'runs', userId, agentId, 'recent'], queryFn: () => agent.runs(agentId!), enabled: !!agentId, retry: false, refetchInterval: autoRefresh ? 5_000 : false })
 
   const [nodes, setNodes] = useState<CanvasNode[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
@@ -230,7 +233,11 @@ function Studio() {
   const open = useMemo(() => openLanes(nodes, edges), [nodes, edges])
   const onAdd = useCallback((id: string, lane: number) => setPicker({ after: { id, lane } }), [])
   const shown = useMemo(() => nodes.map((n) => ({ ...n, data: { ...n.data, ran: running ? reached(n.id) : viewedRun ? ran[n.id] : undefined, running: lit(n.id), model: n.data.node.type === 'ai.agent' ? modelOf(n.data.node) : undefined, onModel: setOpened, open: tab === 'editor' ? (open[n.id] ?? []) : [], onAdd } })), [nodes, ran, viewedRun, open, tab, onAdd, running, progress, summary?.selection]) // eslint-disable-line react-hooks/exhaustive-deps
-  const drawn = useMemo(() => (running ? edges.map((e) => ({ ...e, animated: progress?.nodes[e.target]?.state === 'running' })) : edges), [edges, running, progress])
+  const drawn = useMemo(() => {
+    if (running) return edges.map((e) => ({ ...e, animated: progress?.nodes[e.target]?.state === 'running' }))
+    if (viewedRun && !running) return edges.map((e) => (ran[e.source] && ran[e.target] ? { ...e, style: { ...e.style, stroke: 'var(--color-success, #16a34a)', strokeWidth: 2.2 } } : e)) // the way the execution went
+    return edges
+  }, [edges, running, progress, viewedRun, ran])
   function modelOf(node: FlowNode) {
     const own = node.parameters.model as { modelId?: string } | undefined
     const id = own?.modelId || summary?.selection?.modelId
@@ -477,26 +484,31 @@ function Studio() {
           <div className={cn('absolute inset-0 flex', tab === 'executions' && 'flex-col md:flex-row')}>
             {tab === 'executions' && (
               <aside aria-label="Executions" className="max-h-56 w-full shrink-0 overflow-y-auto border-b bg-background md:max-h-none md:w-72 md:border-r md:border-b-0">
-                <div className="sticky top-0 z-10 border-b bg-background px-4 py-3">
+                <div className="sticky top-0 z-10 grid gap-2 border-b bg-background px-4 py-3">
                   <h2 className="text-sm font-semibold">Executions</h2>
-                  <p className="text-xs text-muted-foreground">Each time this agent ran. Pick one to see it node by node.</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="flex items-center gap-1.5 text-xs">
+                      <input type="checkbox" className="size-3.5 accent-orange-500" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} /> Auto refresh
+                    </label>
+                    <select aria-label="Show executions" className="h-7 rounded-md border border-input bg-transparent px-1.5 text-xs" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
+                      <option value="all">All</option>
+                      <option value="ok">Succeeded</option>
+                      <option value="error">Failed</option>
+                    </select>
+                  </div>
                 </div>
                 {runs.isLoading ? (
                   <div className="p-4"><Spinner label="Loading" /></div>
                 ) : !runs.data || runs.data.items.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground">It hasn’t run yet. Press “Execute workflow” in the Editor and it appears here.</p>
                 ) : (
-                  <ul className="grid gap-1 p-2">
-                    {runs.data.items.slice(0, 40).map((r) => (
+                  <ul className="grid gap-0.5 p-2">
+                    {runs.data.items.filter((r) => statusFilter === 'all' || (statusFilter === 'ok') === (r.status === 'ok')).slice(0, 60).map((r) => (
                       <li key={r.id}>
-                        <button type="button" aria-pressed={pickedRun === r.id} onClick={() => setPickedRun(pickedRun === r.id ? null : r.id)} className={cn('grid w-full gap-0.5 rounded-lg border px-3 py-2 text-left text-xs transition-colors', pickedRun === r.id ? 'border-foreground bg-muted/60' : 'border-transparent hover:bg-muted/50')}>
-                          <span className="flex items-center gap-1.5">
-                            <span aria-label={r.status} className={cn('size-2 rounded-full', r.status === 'ok' ? 'bg-success' : 'bg-destructive')} />
-                            <span className="font-medium">{triggerLabel(r.trigger)}</span>
-                            <span className="ml-auto text-muted-foreground tabular-nums">{ago(r.startedAt)}</span>
-                          </span>
-                          <span className="truncate text-muted-foreground">{r.input}</span>
-                          <span className="text-muted-foreground tabular-nums">{formatMs(r.durationMs)}</span>
+                        <button type="button" aria-pressed={pickedRun === r.id} onClick={() => setPickedRun(pickedRun === r.id ? null : r.id)} className={cn('grid w-full gap-0.5 rounded-md border-l-4 px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50', r.status === 'ok' ? 'border-l-success' : 'border-l-destructive', pickedRun === r.id && 'bg-muted')}>
+                          <span className="text-[13px] font-medium">{format(parseISO(r.startedAt), 'MMM d, HH:mm:ss')}</span>
+                          <span className="text-muted-foreground">{r.status === 'ok' ? 'Succeeded' : 'Failed'} in {formatMs(r.durationMs)} · {triggerLabel(r.trigger)}</span>
+                          {r.input && <span className="truncate text-muted-foreground/80">{r.input}</span>}
                         </button>
                       </li>
                     ))}
@@ -555,8 +567,19 @@ function Studio() {
                     </ul>
                   </Panel>
                 )}
+                {readOnly && pickedRun && run.data && (
+                  <Panel position="top-left" className="!m-3">
+                    <div className="rounded-lg border bg-background/95 px-3 py-2 shadow-sm">
+                      <p className="text-sm font-semibold">{format(parseISO(run.data.startedAt), 'MMM d, HH:mm:ss')}</p>
+                      <p className="text-xs">
+                        <span className={run.data.status === 'ok' ? 'text-success' : 'text-destructive'}>{run.data.status === 'ok' ? 'Succeeded' : 'Failed'}</span> in {formatMs(run.data.durationMs)} <span className="text-muted-foreground">| {triggerLabel(run.data.trigger)} | ID {run.data.id.slice(0, 8)}</span>
+                      </p>
+                      {run.data.error && <p role="alert" className="mt-0.5 max-w-xs text-xs text-destructive">{run.data.error}</p>}
+                    </div>
+                  </Panel>
+                )}
                 {readOnly && (
-                  <Panel position="top-center">
+                  <Panel position="bottom-center" className="!mb-4">
                     <p className="rounded-full border bg-background/95 px-3 py-1 text-xs text-muted-foreground shadow-sm">
                       {pickedRun ? (run.data && Object.keys(ran).length === 0 ? 'This run is from an older engine, so it has no node-by-node items.' : 'Double-click or click a node to see the items it got and gave.') : 'Pick an execution on the left.'}
                     </p>
