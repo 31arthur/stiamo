@@ -19,6 +19,7 @@ import { useNavigate } from '@/presentation/routing'
 import { handleIn, handleOut, newNode, outputsOf, traceByNode } from '../flowModel'
 import { ago, formatMs, triggerLabel } from '../format'
 import { ModelSection, WorkspacesSection } from '../SettingsTab'
+import { TryTab } from '../TryTab'
 import { PromptEditor } from '../PromptEditor'
 import { useAgentSummary } from '../useAgent'
 import { NodeDetails } from './NodeDetails'
@@ -31,6 +32,7 @@ const TABS = [
   { id: 'editor', label: 'Editor' },
   { id: 'executions', label: 'Executions' },
   { id: 'settings', label: 'Settings' },
+  { id: 'try', label: 'Try it' },
 ] as const
 type TabId = (typeof TABS)[number]['id']
 
@@ -47,7 +49,7 @@ export function WorkflowStudio() {
     }
   }, [])
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground" data-testid="workflow-studio">
+    <div className="fixed inset-y-0 right-0 left-0 z-40 flex flex-col bg-background text-foreground lg:left-64" data-testid="workflow-studio">
       <ReactFlowProvider>
         <Studio />
       </ReactFlowProvider>
@@ -415,7 +417,13 @@ function Studio() {
       </header>
 
       <div ref={box} className="relative min-h-0 flex-1">
-        {tab === 'settings' ? (
+        {tab === 'try' ? (
+          <div className="absolute inset-0 overflow-y-auto">
+            <div className="mx-auto max-w-3xl px-4 py-6 pb-16">
+              <TryTab />
+            </div>
+          </div>
+        ) : tab === 'settings' ? (
           <div className="absolute inset-0 overflow-y-auto">
             <StudioSettings id={f.agentId} summaryName={summary?.name ?? f.name} description={f.description} custom={f.custom} created={f.created} onReset={() => void reset()} onDelete={() => void deleteAgent()} />
           </div>
@@ -515,7 +523,7 @@ function Studio() {
 
         {picker && tab === 'editor' && <NodePicker catalog={f.catalog} hasTrigger={hasTrigger} after={picker.after ? nodes.find((n) => n.id === picker.after!.id)?.data.node.name : undefined} onPick={(c) => addNode(c)} onClose={() => setPicker(null)} />}
 
-        {current && tab !== 'settings' && (
+        {current && tab !== 'settings' && tab !== 'try' && (
           <NodeDetails
             node={current}
             flow={f}
