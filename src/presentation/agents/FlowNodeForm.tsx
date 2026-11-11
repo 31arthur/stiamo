@@ -5,7 +5,7 @@ import type { AgentFlow, FlowNode } from '@/domain/ai/AgentApi'
 import type { AiSelection } from '@/domain/ai/types'
 import { ModelChoice } from './ModelPicker'
 import { CredentialModal } from './studio/CredentialModal'
-import { useChannels } from './useAgent'
+import { useAgentSettings, useChannels } from './useAgent'
 import { useState } from 'react'
 
 const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
@@ -298,6 +298,23 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
       )
     case 'msg.telegram':
       return <TelegramFields p={p} set={set} />
+    case 'core.wait':
+      return (
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">Pauses the workflow, then lets the items through unchanged. A pause is at most a minute: a request can’t be kept waiting longer.</p>
+          <div className="flex items-end gap-2">
+            <Row label="For">
+              <Input type="number" min={0} step={1} value={String(p.amount ?? 5)} onChange={(e) => set({ amount: Number(e.target.value) })} className="h-8 w-24" />
+            </Row>
+            <select aria-label="Unit" className={SELECT} value={String(p.unit ?? 'seconds')} onChange={(e) => set({ unit: e.target.value })}>
+              <option value="seconds">seconds</option>
+              <option value="minutes">minutes</option>
+            </select>
+          </div>
+        </div>
+      )
+    case 'core.call_agent':
+      return <CallAgentFields p={p} set={set} />
     case 'ai.classify':
       return <ClassifyFields p={p} set={set} />
     case 'core.safe_senders': {
@@ -591,6 +608,33 @@ function ClassifyFields({ p, set }: { p: Record<string, unknown>; set: (patch: R
       <Row label="Items to ask about at once" hint="More at once costs less; 1 asks about each on its own.">
         <Input type="number" min={1} max={50} value={String(p.batchSize ?? 1)} onChange={(e) => set({ batchSize: Math.max(1, Math.min(50, Number(e.target.value) || 1)) })} className="h-8 w-24" />
       </Row>
+    </div>
+  )
+}
+
+
+/** Run another agent: which one, and what to tell it. Its own workflow runs and its answer comes back as `text`. */
+function CallAgentFields({ p, set }: { p: Record<string, unknown>; set: (patch: Record<string, unknown>) => void }) {
+  const { settings } = useAgentSettings()
+  const agents = settings?.agents ?? []
+  return (
+    <div className="grid gap-3">
+      <p className="text-sm text-muted-foreground">Hands a message to another agent and brings its answer back. The other agent’s own workflow runs, and is kept in its own history. An agent can’t call itself, and a call can go two deep.</p>
+      <Row label="Agent to call">
+        <select aria-label="Agent to call" className={SELECT} value={String(p.agent ?? '')} onChange={(e) => set({ agent: e.target.value })}>
+          <option value="">Choose an agent…</option>
+          {agents.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <Row label="What to tell it" hint="An expression: it can use what the earlier nodes found.">
+        <textarea rows={3} className={AREA} value={String(p.message ?? '')} onChange={(e) => set({ message: e.target.value })} />
+      </Row>
+      <Check label="Call it once for each item (up to five), not just once" on={!!p.each} onChange={(v) => set({ each: v })} />
+      <p className="text-xs text-muted-foreground">Its answer is <code>text</code> in the item that comes out, with <code>agent</code> naming it.</p>
     </div>
   )
 }

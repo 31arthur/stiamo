@@ -1,4 +1,4 @@
-import type { FlowConnections, FlowNode } from '@/domain/ai/AgentApi'
+import type { FlowConnections, FlowNode, NodeSettings } from '@/domain/ai/AgentApi'
 
 /**
  * Reads a workflow copied out of n8n and says it in this app's terms. n8n names its nodes' kinds its own way (`n8n-nodes-base.if`), links nodes by
@@ -102,6 +102,11 @@ function convert(type: string, p: Raw, name: string): { type: string; parameters
       const f = list(obj(p.sortFieldsUi).sortField)[0]
       return { type: 'core.sort', parameters: { field: str(f?.fieldName, 'title'), order: str(f?.order) === 'descending' ? 'desc' : 'asc' } }
     }
+    case 'wait': {
+      const unit = str(p.unit, 'hours')
+      const amount = Number(p.amount ?? 1) || 1
+      return { type: 'core.wait', parameters: { amount, unit: unit.startsWith('min') ? 'minutes' : 'seconds' } }
+    }
     case 'noOp':
       return { type: 'core.noop', parameters: {} }
     case 'stopAndError':
@@ -119,6 +124,17 @@ function convert(type: string, p: Raw, name: string): { type: string; parameters
 
 /** Language-model and tool nodes hang off an AI agent in n8n; here the agent has its own model slot, so these are noted rather than kept. */
 const SUB = /(lmChat|embeddings|memory|tool|vectorStore|outputParser|retriever|textSplitter|documentLoader)/i
+
+/** What n8n keeps beside a node (retry, what to do on an error, run once, always output, its notes), in this app's settings. */
+function settingsOf(r: Raw): NodeSettings {
+  const s: NodeSettings = {}
+  if (r.retryOnFail === true) Object.assign(s, { retryOnFail: true, maxTries: Math.min(5, Math.max(2, Number(r.maxTries ?? 3) || 3)), waitBetween: Math.min(10_000, Math.max(0, Number(r.waitBetweenTries ?? 1000) || 1000)) })
+  if (str(r.onError).startsWith('continue')) s.onError = 'continue'
+  if (r.executeOnce === true) s.executeOnce = true
+  if (r.alwaysOutputData === true) s.alwaysOutput = true
+  if (str(r.notes).trim()) s.notes = str(r.notes).slice(0, 2000)
+  return s
+}
 
 export function fromN8n(v: unknown): { nodes: FlowNode[]; connections: FlowConnections; warnings: string[] } {
   const raw = list(obj(v).nodes)
@@ -146,7 +162,8 @@ export function fromN8n(v: unknown): { nodes: FlowNode[]; connections: FlowConne
       return
     }
     if (made.type === 'core.loop') swapped.add(id)
-    nodes.push({ id, type: made.type, name: made.type === 'core.note' ? 'Note' : name, position: pos, parameters: made.parameters, ...(r.disabled ? { disabled: true } : {}) })
+    const settings = settingsOf(r)
+    nodes.push({ id, type: made.type, name: made.type === 'core.note' ? 'Note' : name, position: pos, parameters: made.parameters, ...(r.disabled ? { disabled: true } : {}), ...(Object.keys(settings).length ? { settings } : {}) })
   })
   if (dropped.length) warnings.push(`Not imported (kept as notes): ${dropped.join(', ')}.`)
   if (nodes.some((n) => n.type === 'msg.telegram')) warnings.push('Telegram nodes need a bot: choose a credential in each one.')

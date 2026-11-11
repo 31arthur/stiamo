@@ -1,4 +1,4 @@
-import type { FlowConnections, FlowNode, FlowTrace } from '@/domain/ai/AgentApi'
+import type { FlowConnections, FlowNode, FlowTrace, NodeSettings } from '@/domain/ai/AgentApi'
 import { fromN8n, isN8n } from './n8nImport'
 
 /** A connection as the canvas draws it: from an output handle of one node to an input handle of another. */
@@ -78,6 +78,8 @@ export function newNode(type: string, label: string, taken: string[], position: 
       'core.loop': { batchSize: 1 },
       'core.split_out': { field: 'items' },
       'core.stop': { message: 'Stopped.' },
+      'core.wait': { amount: 5, unit: 'seconds' },
+      'core.call_agent': { agent: '', message: '{{ $json.message }}', each: false },
       'data.mail': { days: 1, limit: 20, query: '' },
       'data.contacts': { query: '{{ $json.message }}', limit: 5 },
       'data.tasks': { status: 'open', overdue: false, limit: 50 },
@@ -148,7 +150,7 @@ export function readWorkflowJson(text: string, known: string[]): { ok: true; nod
     if (!raw || typeof raw.id !== 'string' || typeof raw.type !== 'string' || !raw.id || seen.has(raw.id)) return { ok: false, reason: 'Every node needs its own id and a type.' }
     seen.add(raw.id)
     const pos = Array.isArray(raw.position) && raw.position.length === 2 && raw.position.every((x) => typeof x === 'number') ? (raw.position as [number, number]) : ([0, 0] as [number, number])
-    out.push({ id: raw.id, type: raw.type, name: typeof raw.name === 'string' && raw.name ? raw.name : raw.type, position: pos, parameters: raw.parameters && typeof raw.parameters === 'object' && !Array.isArray(raw.parameters) ? (raw.parameters as Record<string, unknown>) : {}, ...(raw.disabled ? { disabled: true } : {}), ...(Array.isArray(raw.pinData) ? { pinData: raw.pinData as Record<string, unknown>[] } : {}) })
+    out.push({ id: raw.id, type: raw.type, name: typeof raw.name === 'string' && raw.name ? raw.name : raw.type, position: pos, parameters: raw.parameters && typeof raw.parameters === 'object' && !Array.isArray(raw.parameters) ? (raw.parameters as Record<string, unknown>) : {}, ...(raw.disabled ? { disabled: true } : {}), ...(raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings) ? { settings: raw.settings as NodeSettings } : {}), ...(Array.isArray(raw.pinData) ? { pinData: raw.pinData as Record<string, unknown>[] } : {}) })
   }
   const unknown = [...new Set(out.map((n) => n.type).filter((t) => !known.includes(t)))]
   if (unknown.length) return { ok: false, reason: `This app has no node of the kind ${unknown.slice(0, 3).join(', ')}.` }

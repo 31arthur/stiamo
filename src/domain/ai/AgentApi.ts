@@ -741,6 +741,17 @@ export interface GraphTool {
   enabled: boolean
 }
 
+export interface NodeSettings {
+  retryOnFail?: boolean
+  maxTries?: number
+  /** Milliseconds between tries. */
+  waitBetween?: number
+  onError?: 'continue'
+  executeOnce?: boolean
+  alwaysOutput?: boolean
+  notes?: string
+}
+
 /** One node of a workflow in the item-passing form: a trigger, flow control, this app's data, a message, the AI agent or the answer. */
 export interface FlowNode {
   id: string
@@ -752,6 +763,8 @@ export interface FlowNode {
   disabled?: boolean
   /** Items used in place of this node when the workflow is run by hand. */
   pinData?: Record<string, unknown>[]
+  /** How the node behaves around its work: retry, errors, run once, always output, notes. */
+  settings?: NodeSettings
 }
 
 /** node id → one list per output of `{ node, index }` targets. */

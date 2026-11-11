@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeftToLine, ArrowRightToLine, Pin, PinOff, Play, Tr
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { AgentFlow, FlowNode } from '@/domain/ai/AgentApi'
+import type { AgentFlow, FlowNode, NodeSettings } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
 import { FlowNodeForm } from '../FlowNodeForm'
 import { iconOf, toneOf } from './StudioCanvas'
@@ -234,22 +234,7 @@ export function NodeDetails({ node, flow, ran, feeding, tried, busy, canRun, con
                   <FlowNodeForm node={node} flow={flow} set={onParams} />
                 )
               ) : (
-                <div className="grid gap-4">
-                  <label className="flex items-start gap-2 text-sm">
-                    <input type="checkbox" disabled={readOnly} className="mt-1 size-4 accent-[var(--foreground)]" checked={!!node.disabled} onChange={(e) => onChange({ disabled: e.target.checked || undefined })} />
-                    <span>
-                      Deactivate
-                      <span className="block text-xs text-muted-foreground">The node is skipped and its items pass straight through.</span>
-                    </span>
-                  </label>
-                  <label className="flex items-start gap-2 text-sm">
-                    <input type="checkbox" disabled={readOnly} className="mt-1 size-4 accent-[var(--foreground)]" checked={!!node.parameters.runWhenEmpty} onChange={(e) => onParams({ runWhenEmpty: e.target.checked || undefined })} />
-                    <span>
-                      Run when nothing arrives
-                      <span className="block text-xs text-muted-foreground">Run even with no items, so “found nobody” can still be answered.</span>
-                    </span>
-                  </label>
-                </div>
+                <NodeSettingsForm node={node} readOnly={!!readOnly} onChange={onChange} onParams={onParams} />
               )}
             </div>
           </section>
@@ -299,6 +284,59 @@ export function NodeDetails({ node, flow, ran, feeding, tried, busy, canRun, con
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+const SETTING = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
+
+/** How a node behaves around its work, as n8n's Settings tab has it: always give an item, run once, try again on a failure, what to do on an error, and notes. */
+function NodeSettingsForm({ node, readOnly, onChange, onParams }: { node: FlowNode; readOnly: boolean; onChange: (c: Partial<FlowNode>) => void; onParams: (v: Record<string, unknown>) => void }) {
+  const st: NodeSettings = node.settings ?? {}
+  const put = (patch: Partial<NodeSettings>) => {
+    const next: Record<string, unknown> = { ...st, ...patch }
+    for (const k of Object.keys(next)) if (next[k] === undefined || next[k] === false || next[k] === '') delete next[k]
+    onChange({ settings: Object.keys(next).length ? (next as NodeSettings) : undefined })
+  }
+  const Toggle = ({ on, set, label, hint }: { on: boolean; set: (v: boolean) => void; label: string; hint: string }) => (
+    <label className="flex items-start gap-2 text-sm">
+      <input type="checkbox" disabled={readOnly} className="mt-1 size-4 accent-orange-500" checked={on} onChange={(e) => set(e.target.checked)} />
+      <span>
+        {label}
+        <span className="block text-xs text-muted-foreground">{hint}</span>
+      </span>
+    </label>
+  )
+  return (
+    <div className="grid gap-4">
+      <Toggle label="Deactivate" hint="The node is skipped and its items pass straight through." on={!!node.disabled} set={(v) => onChange({ disabled: v || undefined })} />
+      <Toggle label="Run when nothing arrives" hint="Run even with no items, so “found nobody” can still be answered." on={!!node.parameters.runWhenEmpty} set={(v) => onParams({ runWhenEmpty: v || undefined })} />
+      <Toggle label="Always output data" hint="If the node gives nothing, give one empty item, so the nodes after it still run." on={!!st.alwaysOutput} set={(v) => put({ alwaysOutput: v })} />
+      <Toggle label="Execute once" hint="Do the node’s work for the first item only, however many arrive." on={!!st.executeOnce} set={(v) => put({ executeOnce: v })} />
+      <Toggle label="Retry on fail" hint="Try again after a pause when the node fails (a mistake in what you wrote is not retried)." on={!!st.retryOnFail} set={(v) => put({ retryOnFail: v, maxTries: v ? (st.maxTries ?? 3) : undefined, waitBetween: v ? (st.waitBetween ?? 1000) : undefined })} />
+      {st.retryOnFail && (
+        <div className="flex flex-wrap gap-3 pl-6">
+          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+            Max tries
+            <input type="number" min={2} max={5} disabled={readOnly} value={st.maxTries ?? 3} onChange={(e) => put({ maxTries: Math.max(2, Math.min(5, Number(e.target.value) || 3)) })} className={`${SETTING} w-24`} />
+          </label>
+          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+            Wait between tries (ms)
+            <input type="number" min={0} max={10000} step={100} disabled={readOnly} value={st.waitBetween ?? 1000} onChange={(e) => put({ waitBetween: Math.max(0, Math.min(10_000, Number(e.target.value) || 0)) })} className={`${SETTING} w-32`} />
+          </label>
+        </div>
+      )}
+      <label className="grid gap-1 text-sm">
+        On error
+        <select aria-label="On error" disabled={readOnly} className={`${SETTING} w-fit`} value={st.onError ?? 'stop'} onChange={(e) => put({ onError: e.target.value === 'continue' ? 'continue' : undefined })}>
+          <option value="stop">Stop the workflow</option>
+          <option value="continue">Continue, with the items it was given</option>
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm">
+        Notes
+        <textarea rows={3} disabled={readOnly} value={st.notes ?? ''} onChange={(e) => put({ notes: e.target.value })} placeholder="Why this node is here, for whoever opens the workflow next." className="w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
+      </label>
     </div>
   )
 }
