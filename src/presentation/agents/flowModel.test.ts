@@ -83,7 +83,7 @@ describe('copying and pasting workflow JSON', () => {
   it('says why it can’t read something, rather than pasting half of it', () => {
     expect(readWorkflowJson('hello there', known)).toEqual({ ok: false, reason: 'That isn’t JSON.' })
     expect(readWorkflowJson('{"a":1}', known)).toMatchObject({ ok: false })
-    expect(readWorkflowJson(JSON.stringify({ nodes: [{ id: 'x', type: 'n8n-nodes-base.telegram' }] }), known)).toMatchObject({ ok: false, reason: expect.stringContaining('n8n-nodes-base.telegram') })
+    expect(readWorkflowJson(JSON.stringify({ nodes: [{ id: 'x', type: 'made.up' }] }), known)).toMatchObject({ ok: false, reason: expect.stringContaining('made.up') })
     expect(readWorkflowJson(JSON.stringify({ nodes: [{ id: 'x', type: 'respond' }, { id: 'x', type: 'respond' }] }), known)).toMatchObject({ ok: false })
   })
   it('drops joins to nodes that are not in the paste', () => {
