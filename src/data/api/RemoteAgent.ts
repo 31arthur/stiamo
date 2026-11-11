@@ -176,7 +176,7 @@ export class RemoteAgent implements AgentApi {
     return this.http.get<ReminderSettings>('/v1/agent/reminders')
   }
 
-  setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }) {
+  setReminders(settings: { enabled: boolean; call: boolean; callUser: string; callVoice: string }) {
     return this.http.put<ReminderSettings>('/v1/agent/reminders', settings)
   }
 
@@ -249,7 +249,7 @@ export class RemoteAgent implements AgentApi {
   }
 
   testReminder() {
-    return this.http.post<{ sent: number; spoken: boolean; rang: boolean }>('/v1/agent/reminders/test', {})
+    return this.http.post<{ sent: number; rang: boolean }>('/v1/agent/reminders/test', {})
   }
 
   agentFlow(agentId: string) {

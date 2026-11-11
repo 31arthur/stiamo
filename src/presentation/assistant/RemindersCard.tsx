@@ -1,23 +1,22 @@
 import { useState } from 'react'
-import { BellRing, Check, PhoneCall, Send } from 'lucide-react'
+import { BellRing, PhoneCall, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { ReminderSettings } from '@/domain/ai/AgentApi'
-import { Link } from '@/presentation/routing'
 import { useAgentAction, useReminders } from '@/presentation/agents/useAgent'
 
-/** Reminders for calls you haven't marked done: written on the phone and, if you want, spoken as a Telegram voice message. */
+/** Reminders for calls you haven't marked done: written on the phone, and a real Telegram call if you want one. No audio messages are sent. */
 export function RemindersCard() {
   const { data } = useReminders()
   const [user, setUser] = useState<string | null>(null)
   const [callError, setCallError] = useState<string | null>(null)
-  const toggle = useAgentAction((a, v: Omit<ReminderSettings, 'voiceKey' | 'timezone'>) => a.setReminders(v))
-  const test = useAgentAction((a) => a.testReminder(), { success: (r) => (r.rang ? 'Ringing you on Telegram now.' : r.sent ? (r.spoken ? 'Sent. Check Telegram for the voice message.' : 'Sent. It was written only: add a voice key or switch on the call to hear it.') : 'Nothing was sent: connect Telegram or WhatsApp first.') })
+  const toggle = useAgentAction((a, v: Omit<ReminderSettings, 'timezone'>) => a.setReminders(v))
+  const test = useAgentAction((a) => a.testReminder(), { success: (r) => (r.rang ? 'Ringing you on Telegram now.' : r.sent ? 'Sent. Check Telegram. Switch on the call to be rung as well.' : 'Nothing was sent: connect Telegram or WhatsApp first.') })
   const ring = useAgentAction((a, who: string) => a.testCall(who), { success: (r) => `Calling ${r.user} on Telegram now. Answer it there.` })
   if (!data) return null
 
-  const current = { enabled: data.enabled, voice: data.voice, call: data.call, callUser: data.callUser, callVoice: data.callVoice }
+  const current = { enabled: data.enabled, call: data.call, callUser: data.callUser, callVoice: data.callVoice }
 
   async function testCall() {
     setCallError(null)
@@ -60,35 +59,6 @@ export function RemindersCard() {
       {data.enabled && (
         <div className="grid gap-3 border-t pt-3">
           <label className="flex items-start gap-2.5 text-sm">
-            <input type="checkbox" checked={data.voice} disabled={toggle.pending} onChange={(e) => void toggle.run({ ...current, voice: e.target.checked })} className="mt-0.5 size-4 accent-[var(--foreground)]" />
-            <span>
-              Also send a voice message
-              <span className="block text-xs text-muted-foreground">Off by default: the Telegram notification is usually enough, and a call is for what’s urgent. A spoken message arrives with the reminder.</span>
-            </span>
-          </label>
-
-          {data.voice && (
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              {data.voiceKey.connected ? (
-                <>
-                  <span className="flex items-center gap-1 rounded-full bg-success/12 px-2 py-0.5 text-[11px] font-medium text-success">
-                    <Check className="size-3" /> Voice ready
-                  </span>
-                  The Deepgram key is set.
-                </>
-              ) : (
-                <span>
-                  The voice needs a Deepgram key. Add <span className="font-mono">DEEPGRAM_API_KEY</span> in{' '}
-                  <Link to="/agents/environment" className="underline">
-                    Developer → Environment
-                  </Link>
-                  .
-                </span>
-              )}
-            </p>
-          )}
-
-          <label className="flex items-start gap-2.5 text-sm">
             <input
               type="checkbox"
               checked={data.call}
@@ -98,7 +68,7 @@ export function RemindersCard() {
             />
             <span>
               Ring me on Telegram
-              <span className="block text-xs text-muted-foreground">A real Telegram call that reads the reminder aloud when you answer. It comes through CallMeBot, a free third-party service.</span>
+              <span className="block text-xs text-muted-foreground">A real Telegram call that reads the reminder aloud when you answer: no audio message is sent. It comes through CallMeBot, a free third-party service.</span>
             </span>
           </label>
 
