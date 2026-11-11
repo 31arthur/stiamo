@@ -967,7 +967,7 @@ export interface AgentApi {
   /** Runs one node of the saved workflow alone, with the items given (or those pinned on the nodes leading into it). */
   runFlowNode(agentId: string, nodeId: string, items?: Record<string, unknown>[], confirm?: boolean): Promise<{ outputs: Record<string, unknown>[][]; itemsIn: number; ms: number; error?: string }>
   flowCatalog(): Promise<{ nodes: FlowCatalogNode[]; templates: FlowTemplate[] }>
-  createAgent(a: { name: string; description?: string; templateId?: string }): Promise<AgentSummary>
+  createAgent(a: { name: string; description?: string; templateId?: string; flow?: { nodes: FlowNode[]; connections: FlowConnections } }): Promise<AgentSummary>
   deleteAgent(agentId: string): Promise<void>
   clearRuns(agentId: string): Promise<void>
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string): Promise<DecisionResult>

@@ -284,7 +284,7 @@ export class RemoteAgent implements AgentApi {
     return this.http.get<{ nodes: FlowCatalogNode[]; templates: FlowTemplate[] }>('/v1/agent/flow/catalog')
   }
 
-  createAgent(a: { name: string; description?: string; templateId?: string }) {
+  createAgent(a: { name: string; description?: string; templateId?: string; flow?: { nodes: FlowNode[]; connections: FlowConnections } }) {
     return this.http.post<AgentSummary>('/v1/agent/agents', a)
   }
 

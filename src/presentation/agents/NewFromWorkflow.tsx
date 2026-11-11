@@ -9,6 +9,8 @@ import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
 import { useNavigate } from '@/presentation/routing'
+import type { FlowConnections, FlowNode } from '@/domain/ai/AgentApi'
+import { readWorkflowJson } from './flowModel'
 
 /** Make a new agent from a workflow: pick a template (a workflow that already works), name it, and open it on the canvas to change. */
 export function NewFromWorkflow({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -19,12 +21,22 @@ export function NewFromWorkflow({ open, onOpenChange }: { open: boolean; onOpenC
   const [picked, setPicked] = useState('assistant')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
+  const [json, setJson] = useState('')
   const template = catalog.data?.templates.find((t) => t.id === picked)
 
   async function create() {
+    let flow: { nodes: FlowNode[]; connections: FlowConnections } | undefined
+    if (json.trim()) {
+      const r = readWorkflowJson(json, catalog.data?.nodes.map((c) => c.type) ?? [])
+      if (!r.ok) {
+        toast.error('That workflow can’t be used', { description: r.reason })
+        return
+      }
+      flow = { nodes: r.nodes, connections: r.connections }
+    }
     setBusy(true)
     try {
-      const made = await agent.createAgent({ name: name.trim() || template?.name || 'New agent', templateId: picked })
+      const made = await agent.createAgent(flow ? { name: name.trim() || 'Pasted workflow', flow } : { name: name.trim() || template?.name || 'New agent', templateId: picked })
       await client.invalidateQueries({ queryKey: ['agent'] })
       toast.success(`“${made.name}” created`, { description: 'It uses the model you chose last, until you give it its own.' })
       onOpenChange(false)
@@ -41,8 +53,8 @@ export function NewFromWorkflow({ open, onOpenChange }: { open: boolean; onOpenC
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>New agent from a workflow</DialogTitle>
-          <DialogDescription>Start from one that already works, then change it node by node.</DialogDescription>
+          <DialogTitle>New agent</DialogTitle>
+          <DialogDescription>Start from one that already works, from a blank workflow, or from JSON you paste, then change it node by node.</DialogDescription>
         </DialogHeader>
         {catalog.isLoading ? (
           <Spinner label="Loading" />
@@ -61,6 +73,10 @@ export function NewFromWorkflow({ open, onOpenChange }: { open: boolean; onOpenC
                 </li>
               ))}
             </ul>
+            <details className="rounded-xl border px-3 py-2 text-sm" open={!!json}>
+              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Or paste a workflow’s JSON{json ? ' (it is used instead of the template)' : ''}</summary>
+              <textarea aria-label="Workflow JSON" rows={6} value={json} onChange={(e) => setJson(e.target.value)} spellCheck={false} placeholder='{ "nodes": [ … ], "connections": { … } }' className="mt-2 w-full resize-y rounded-lg border border-input bg-transparent p-2 font-mono text-[11px] outline-none focus-visible:border-ring" />
+            </details>
             <label className="grid gap-1 text-xs font-medium text-muted-foreground">
               Name
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={template?.name ?? 'New agent'} />

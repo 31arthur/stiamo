@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FlowConnections, FlowNode } from '@/domain/ai/AgentApi'
-import { fromEdges, handleIn, handleOut, inputsOf, newNode, outputsOf, toEdges, traceByNode } from './flowModel'
+import { fromEdges, handleIn, handleOut, inputsOf, newNode, outputsOf, readWorkflowJson, toEdges, traceByNode, workflowJson } from './flowModel'
 
 const n = (id: string, type: string, parameters: Record<string, unknown> = {}): FlowNode => ({ id, type, name: id, position: [0, 0], parameters })
 
@@ -58,5 +58,36 @@ describe('new nodes and traces', () => {
     ])
     expect(t.a).toMatchObject({ ms: 2, runs: 2 })
     expect(t.old).toBeUndefined()
+  })
+})
+
+describe('copying and pasting workflow JSON', () => {
+  const known = ['trigger.chat', 'core.if', 'respond']
+  const nodes = [n('t', 'trigger.chat'), n('i', 'core.if'), n('a', 'respond'), n('b', 'respond')]
+  const edges = toEdges({ t: { main: [[{ node: 'i', index: 0 }]] }, i: { main: [[{ node: 'a', index: 0 }], [{ node: 'b', index: 0 }]] } })
+
+  it('copies the nodes and only the joins among them, and reads them back as they were', () => {
+    const json = workflowJson([nodes[0]!, nodes[1]!, nodes[2]!], edges)
+    const back = readWorkflowJson(json, known)
+    expect(back.ok).toBe(true)
+    if (!back.ok) return
+    expect(back.nodes.map((x) => x.id)).toEqual(['t', 'i', 'a'])
+    expect(back.connections.i?.main).toEqual([[{ node: 'a', index: 0 }], []]) // the join to the node that wasn't copied is left out
+    expect(back.connections.t?.main).toEqual([[{ node: 'i', index: 0 }]])
+  })
+  it('keeps pinned data and the off switch', () => {
+    const pinned = { ...n('a', 'respond'), pinData: [{ x: 1 }], disabled: true }
+    const back = readWorkflowJson(workflowJson([pinned], []), known)
+    expect(back.ok && back.nodes[0]).toMatchObject({ pinData: [{ x: 1 }], disabled: true })
+  })
+  it('says why it can’t read something, rather than pasting half of it', () => {
+    expect(readWorkflowJson('hello there', known)).toEqual({ ok: false, reason: 'That isn’t JSON.' })
+    expect(readWorkflowJson('{"a":1}', known)).toMatchObject({ ok: false })
+    expect(readWorkflowJson(JSON.stringify({ nodes: [{ id: 'x', type: 'n8n-nodes-base.telegram' }] }), known)).toMatchObject({ ok: false, reason: expect.stringContaining('n8n-nodes-base.telegram') })
+    expect(readWorkflowJson(JSON.stringify({ nodes: [{ id: 'x', type: 'respond' }, { id: 'x', type: 'respond' }] }), known)).toMatchObject({ ok: false })
+  })
+  it('drops joins to nodes that are not in the paste', () => {
+    const back = readWorkflowJson(JSON.stringify({ nodes: [{ id: 't', type: 'trigger.chat' }], connections: { t: { main: [[{ node: 'gone', index: 0 }]] } } }), known)
+    expect(back.ok && back.connections.t?.main).toEqual([[]])
   })
 })
