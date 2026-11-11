@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { AgentFlow, FlowNode } from '@/domain/ai/AgentApi'
@@ -345,14 +345,11 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
       return (
         <div className="grid gap-4">
           <p className="text-sm text-muted-foreground">A model that reads, calls the tools you give it, and answers. Its answer is <code>text</code> in the item it gives.</p>
-          <Row label="What it is asked" hint="An expression: {{ $json.asked }} is the message with the conversation so far; {{ $json.text }} the previous AI node’s answer.">
-            <textarea rows={3} className={AREA} value={String(p.prompt ?? '{{ $json.asked }}')} onChange={(e) => set({ prompt: e.target.value })} />
-          </Row>
-          <Row label="Instructions" hint="Empty: the agent’s saved prompt (Settings).">
-            <textarea rows={4} className={AREA} value={String(p.system ?? '')} placeholder={flow.defaults.system.slice(0, 140) + '…'} onChange={(e) => set({ system: e.target.value || undefined })} />
-          </Row>
-          <div className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Model</span>
+          <div className="grid gap-2 rounded-xl border p-3">
+            <span className="flex items-center gap-1.5 text-xs font-semibold">
+              <Sparkles className="size-3.5 text-violet-600" /> Chat model
+            </span>
+            <p className="text-[11px] text-muted-foreground">{p.model ? 'This node thinks with its own model, so one workflow can use a quick one here and a careful one elsewhere.' : 'Following the agent’s model (Settings). Choose one here to give just this node its own.'}</p>
             <ModelChoice value={(p.model as AiSelection | null | undefined) ?? null} onChange={(s) => set({ model: s })} />
             <div>
               <Button variant="ghost" size="xs" disabled={!p.model} onClick={() => set({ model: undefined })}>
@@ -360,6 +357,12 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
               </Button>
             </div>
           </div>
+          <Row label="What it is asked" hint="An expression: {{ $json.asked }} is the message with the conversation so far; {{ $json.text }} the previous AI node’s answer.">
+            <textarea rows={3} className={AREA} value={String(p.prompt ?? '{{ $json.asked }}')} onChange={(e) => set({ prompt: e.target.value })} />
+          </Row>
+          <Row label="Instructions" hint="Empty: the agent’s saved prompt (Settings).">
+            <textarea rows={4} className={AREA} value={String(p.system ?? '')} placeholder={flow.defaults.system.slice(0, 140) + '…'} onChange={(e) => set({ system: e.target.value || undefined })} />
+          </Row>
           {num('maxSteps', 'Most tool calls', 1, 20)}
           <Check label="Knows the conversation so far" on={p.history !== false} onChange={(v) => set({ history: v ? undefined : false })} />
           <div className="grid gap-1.5">

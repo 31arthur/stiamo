@@ -204,8 +204,13 @@ function Studio() {
   const ran = useMemo(() => traceByNode(run.data?.trace as unknown[] | undefined), [run.data])
   const open = useMemo(() => openLanes(nodes, edges), [nodes, edges])
   const onAdd = useCallback((id: string, lane: number) => setPicker({ after: { id, lane } }), [])
-  const shown = useMemo(() => nodes.map((n) => ({ ...n, data: { ...n.data, ran: running ? reached(n.id) : viewedRun ? ran[n.id] : undefined, running: lit(n.id), open: tab === 'editor' ? (open[n.id] ?? []) : [], onAdd } })), [nodes, ran, viewedRun, open, tab, onAdd, running, progress]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = useMemo(() => nodes.map((n) => ({ ...n, data: { ...n.data, ran: running ? reached(n.id) : viewedRun ? ran[n.id] : undefined, running: lit(n.id), model: n.data.node.type === 'ai.agent' ? modelOf(n.data.node) : undefined, onModel: setOpened, open: tab === 'editor' ? (open[n.id] ?? []) : [], onAdd } })), [nodes, ran, viewedRun, open, tab, onAdd, running, progress, summary?.selection]) // eslint-disable-line react-hooks/exhaustive-deps
   const drawn = useMemo(() => (running ? edges.map((e) => ({ ...e, animated: progress?.nodes[e.target]?.state === 'running' })) : edges), [edges, running, progress])
+  function modelOf(node: FlowNode) {
+    const own = node.parameters.model as { modelId?: string } | undefined
+    const id = own?.modelId || summary?.selection?.modelId
+    return { label: id ? id.split('/').pop()! : 'Choose a model', own: !!own?.modelId }
+  }
   const current = nodes.find((n) => n.id === opened)?.data.node
   const feeding = current ? edges.filter((e) => e.target === current.id).map((e) => nodes.find((n) => n.id === e.source)?.data.node).filter((n): n is FlowNode => !!n) : []
 

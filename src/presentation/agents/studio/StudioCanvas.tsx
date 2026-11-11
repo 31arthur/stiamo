@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { fromEdges, handleIn, handleOut, inputsOf, outputsOf, toEdges } from '../flowModel'
 
 export type Ran = FlowTrace & { runs: number }
-export type CanvasNode = Node<{ node: FlowNode; ran?: Ran; running?: boolean; open: number[]; onAdd?: (id: string, lane: number) => void }, 'flow'>
+export type CanvasNode = Node<{ node: FlowNode; ran?: Ran; running?: boolean; open: number[]; onAdd?: (id: string, lane: number) => void; /** The model an AI node thinks with (its own, or the agent's), and what to do when its slot is pressed. */ model?: { label: string; own: boolean }; onModel?: (id: string) => void }, 'flow'>
 
 const GROUP_ICON: Record<string, LucideIcon> = { trigger: Zap, core: GitBranch, data: Database, msg: Send, ai: Sparkles, respond: MessageSquare }
 export const iconOf = (type: string): LucideIcon => (type === 'trigger.schedule' ? Clock : type === 'core.note' ? StickyNote : (GROUP_ICON[type.split('.')[0]!] ?? Bot))
@@ -29,7 +29,7 @@ const sum = (ran?: Ran) => (ran?.outputs ?? []).reduce((a, b) => a + b, 0)
 
 /** One node, drawn as n8n draws it: a tile with its icon, the name under it, inputs on the left and outputs on the right. */
 function StudioNode({ data, selected }: NodeProps<CanvasNode>) {
-  const { node, ran, running, open, onAdd } = data
+  const { node, ran, running, open, onAdd, model, onModel } = data
   const Icon = iconOf(node.type)
   const outs = outputsOf(node)
   const ins = inputsOf(node.type)
@@ -89,6 +89,17 @@ function StudioNode({ data, selected }: NodeProps<CanvasNode>) {
       </div>
       <p className="mt-1.5 max-w-full text-center text-[11px] leading-tight font-medium break-words">{node.name}</p>
       <p className="max-w-full text-center text-[10px] leading-tight text-muted-foreground">{ran ? `${sum(ran)} item${sum(ran) === 1 ? '' : 's'} · ${ran.ms} ms${ran.runs > 1 ? ` · ×${ran.runs}` : ''}` : node.type.split('.')[1]}</p>
+      {node.type === 'ai.agent' && model && (
+        <div className="nodrag nopan mt-1 flex flex-col items-center">
+          <span className="h-5 border-l border-dashed border-muted-foreground/60" />
+          <span className="-mt-px size-2 rotate-45 border border-muted-foreground/60 bg-card" />
+          <span className="text-[9px] leading-none text-muted-foreground">Chat model</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onModel?.(node.id) }} aria-label={`Chat model of ${node.name}: ${model.label}. Change`} title="Change the model" className={cn('mt-1 flex size-11 items-center justify-center rounded-full border bg-card shadow-xs transition-colors hover:border-foreground', model.own ? 'border-violet-400' : 'border-dashed')}>
+            <Sparkles className="size-4 text-violet-600 dark:text-violet-400" strokeWidth={1.7} />
+          </button>
+          <span className="mt-1 max-w-24 truncate text-center text-[10px] leading-tight text-muted-foreground" title={model.label}>{model.label}</span>
+        </div>
+      )}
     </div>
   )
 }
