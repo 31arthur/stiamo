@@ -113,6 +113,10 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
   switch (node.type) {
     case 'trigger.chat':
       return <p className="text-sm text-muted-foreground">Starts the workflow when a message comes in: from the app’s chat, Telegram or WhatsApp. Its item has <code>message</code>, <code>asked</code> (with the conversation so far) and <code>workspace</code>.</p>
+    case 'trigger.telegram':
+      return <p className="text-sm text-muted-foreground">Starts the workflow when a message arrives on a Telegram bot linked to this agent. Its item has <code>message</code>, <code>asked</code>, <code>workspace</code> and <code>source</code>. A workflow without this trigger answers Telegram from its “When a message comes in” trigger.</p>
+    case 'trigger.orchestrator':
+      return <p className="text-sm text-muted-foreground">Starts the workflow when the master assistant hands it a message: it chose this agent for the job. Its item has <code>message</code>, <code>asked</code> (with what the conversation has established), <code>workspace</code> and <code>source</code> (“orchestrator”). A workflow without this trigger answers from its “When a message comes in” trigger.</p>
     case 'trigger.manual':
       return <p className="text-sm text-muted-foreground">Starts the workflow when you press Run.</p>
     case 'trigger.schedule':

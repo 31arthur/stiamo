@@ -9,7 +9,7 @@ export interface CanvasEdge {
   targetHandle: string
 }
 
-export const TRIGGERS = ['trigger.chat', 'trigger.schedule', 'trigger.manual']
+export const TRIGGERS = ['trigger.chat', 'trigger.telegram', 'trigger.orchestrator', 'trigger.schedule', 'trigger.manual']
 
 /** The labels of a node's outputs, in order (an If has true and false; a Switch one per rule and a fallback). No outputs: it ends the run. */
 export function outputsOf(node: Pick<FlowNode, 'type' | 'parameters'>): string[] {
