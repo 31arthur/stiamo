@@ -989,6 +989,8 @@ export interface AgentApi {
   setWorkspaces(agentId: string, workspaces: string[]): Promise<void>
   updateWorkflow(id: string, name: string, description: string, config: WorkflowConfig): Promise<Workflow>
   deleteWorkflow(id: string): Promise<void>
+  /** A copy of a mail-sorting agent as a workflow on the canvas (the agent is left as it is), and what could not be carried over. */
+  rebuildOnCanvas(id: string): Promise<AgentSummary & { notes: string[] }>
   testDraft(config: WorkflowConfig, manual?: string): Promise<WorkflowRun>
   promptPreview(config: WorkflowConfig): Promise<PromptPreview>
   safeSenders(accountIds: string[]): Promise<SafeSenders[]>
