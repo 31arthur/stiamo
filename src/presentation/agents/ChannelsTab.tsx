@@ -72,9 +72,9 @@ function ScopeLine({ channel }: { channel: Channel }) {
   const ws = channel.workspace && channel.workspace in WORKSPACES ? (channel.workspace as WorkspaceId) : null
   const role = channel.role ?? 'assistant'
   return (
-    <div className={cn('grid gap-2 rounded-xl border p-3', ws ? 'bg-muted/30' : 'border-warning/40 bg-warning/10')}>
+    <div className="grid gap-2 rounded-xl border bg-muted/30 p-3">
       <p className="flex items-center gap-2 text-sm">
-        {ws ? <ShieldCheck className="size-4 shrink-0 text-success" /> : <Eye className="size-4 shrink-0 text-warning" />}
+        {ws ? <ShieldCheck className="size-4 shrink-0 text-success" /> : <Eye className="size-4 shrink-0 text-muted-foreground" />}
         <span>
           {ws ? (
             <>
@@ -82,7 +82,7 @@ function ScopeLine({ channel }: { channel: Channel }) {
             </>
           ) : (
             <>
-              Sees <b>every workspace</b>: all tasks, plans and reminders. If this bot is for one workspace, limit it.
+              <b>Master:</b> picks the workspace for each message and keeps them apart. Gets every workspace’s plans, alerts and reminders. Limit it only if this bot is for just one workspace.
             </>
           )}
         </span>
@@ -141,8 +141,8 @@ export function TelegramCard({ agentId, channel, workspace, role: fixedRole }: {
 
   const shown = channel?.workspace && channel.workspace in WORKSPACES ? (channel.workspace as WorkspaceId) : workspace
   const purpose = channel ? (channel.role ?? 'assistant') : role
-  const title = shown ? `${WORKSPACES[shown].short} · ${purpose === 'assistant' ? 'assistant' : ROLE_LABEL[purpose].toLowerCase()} bot` : 'Telegram'
-  const description = shown ? `Message this bot to work with ${WORKSPACES[shown].short} only: ask what’s pending, plan the day, add tasks. It never sees or says anything about another workspace.` : 'Message a bot to ask this agent. This one is the general bot: it sees every workspace.'
+  const title = shown ? `${WORKSPACES[shown].short} · ${purpose === 'assistant' ? 'assistant' : ROLE_LABEL[purpose].toLowerCase()} bot` : 'Telegram · master assistant'
+  const description = shown ? `Message this bot to work with ${WORKSPACES[shown].short} only: ask what’s pending, plan the day, add tasks. It never sees or says anything about another workspace.` : 'The master assistant, on one bot. It works out which workspace each message is about (S&B, FSA or Personal), asks with buttons when it can’t tell, hands the work to the right agent, and keeps each workspace’s information apart.'
 
   return (
     <Section title={title} description={description} actions={channel ? <Connected>@{channel.username}</Connected> : undefined}>

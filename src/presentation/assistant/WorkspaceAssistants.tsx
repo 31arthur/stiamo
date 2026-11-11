@@ -26,9 +26,9 @@ export function WorkspaceAssistants({ channels }: { channels: Channel[] }) {
           <Sparkles className="size-4" />
         </span>
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold">Workspace assistants</h3>
+          <h3 className="text-sm font-semibold">Separate bots per workspace (optional)</h3>
           <p className="text-xs text-muted-foreground">
-            A bot belongs to one workspace and can’t see or say anything about another: ask the S&amp;B bot what’s pending and it looks at S&amp;B only, it adds to S&amp;B only, and only S&amp;B’s alerts and plans arrive there. A workspace can have several bots, each for everything, for mail alerts, or for the daily plan. The general bot above sees every workspace.
+            You don’t need these: the master bot above already handles every workspace. Add one only if you want a workspace on a bot of its own. A bot belongs to one workspace and can’t see or say anything about another: ask the S&amp;B bot what’s pending and it looks at S&amp;B only, it adds to S&amp;B only, and only S&amp;B’s alerts and plans arrive there. A workspace can have several bots, each for everything, for mail alerts, or for the daily plan. The general bot above sees every workspace.
           </p>
         </div>
       </header>

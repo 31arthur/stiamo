@@ -1,4 +1,4 @@
-import { Activity, Bot, History, ListChecks, ListTree, MessagesSquare, Play, Settings2, Workflow } from 'lucide-react'
+import { Activity, Bot, History, Network, ListChecks, ListTree, MessagesSquare, Play, Settings2, Workflow } from 'lucide-react'
 import { Outlet, useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/presentation/components/layout'
@@ -9,6 +9,7 @@ import { useAgentSummary, useReview, useSweep } from './useAgent'
 
 const CHAT_TABS = [
   { path: '', label: 'Overview', icon: Activity },
+  { path: '/workflow', label: 'Workflow', icon: Network },
   { path: '/try', label: 'Try it', icon: Play },
   { path: '/settings', label: 'Settings', icon: Settings2 },
   { path: '/channels', label: 'Channels', icon: MessagesSquare },
