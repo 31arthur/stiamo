@@ -301,18 +301,15 @@ export interface EnvVariable {
   set: boolean
 }
 
-/** Reminders about calls that were not marked done: written on the phone, and spoken on Telegram when a Deepgram key is kept. */
+/** Reminders about calls that were not marked done: written on the phone, and a real Telegram call if you want one. */
 export interface ReminderSettings {
   enabled: boolean
-  /** Also speak it, as a voice message on Telegram. */
-  voice: boolean
   /** Also ring you on Telegram (through CallMeBot) and read it aloud. */
   call: boolean
   /** Who to ring: your Telegram @username, or your number with its country code. */
   callUser: string
   callVoice: string
   /** Whether the Deepgram key is set (in Developer → Environment). The key itself is never sent. */
-  voiceKey: { connected: boolean }
   timezone: string
 }
 
@@ -996,7 +993,7 @@ export interface AgentApi {
   /** Forget one: the next event with that title is asked about again. */
   forgetAvailability(title: string): Promise<void>
   reminders(): Promise<ReminderSettings>
-  setReminders(settings: { enabled: boolean; voice: boolean; call: boolean; callUser: string; callVoice: string }): Promise<ReminderSettings>
+  setReminders(settings: { enabled: boolean; call: boolean; callUser: string; callVoice: string }): Promise<ReminderSettings>
   themes(): Promise<Theme[]>
   setThemes(themes: Theme[]): Promise<Theme[]>
   /** A reply as it would be sent in this theme: the plain text and the page. */
@@ -1015,7 +1012,7 @@ export interface AgentApi {
   setEnvironment(id: string, value: string): Promise<EnvVariable[]>
   removeEnvironment(id: string): Promise<EnvVariable[]>
   testEnvironment(id: string): Promise<{ ok: boolean; message: string }>
-  testReminder(): Promise<{ sent: number; spoken: boolean; rang: boolean }>
+  testReminder(): Promise<{ sent: number; rang: boolean }>
   /** Rings now with a short test message; `callUser` tries a username or number before it is saved. Fails with the reason when the call can't be placed. */
   testCall(callUser?: string): Promise<{ called: boolean; user: string }>
   applyDayPlan(id: string): Promise<{ plan: DayPlan; booked: number; skipped: number; calendar?: { sent?: { added: number; changed: number; removed: number } } | null }>
