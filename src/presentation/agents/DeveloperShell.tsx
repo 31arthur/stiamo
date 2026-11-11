@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useLocation, useOutlet } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowLeft, Bot, Coins, KeyRound, LayoutGrid, Palette, Menu, Plus, SlidersHorizontal, Sparkles, Workflow } from 'lucide-react'
+import { ArrowLeft, Bot, Coins, KeyRound, Plug, LayoutGrid, Palette, Menu, Plus, SlidersHorizontal, Sparkles, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -84,6 +84,7 @@ function DeveloperSidebar() {
         <div className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
           <Item to="/agents" label="All agents" icon={LayoutGrid} end />
           <Item to="/agents/usage" label="Usage and cost" icon={Coins} />
+          <Item to="/agents/credentials" label="Credentials" icon={Plug} />
           <Item to="/agents/settings" label="Providers and models" icon={SlidersHorizontal} />
           <Item to="/agents/environment" label="Environment" icon={KeyRound} />
           <Item to="/agents/design" label="Design" icon={Palette} />

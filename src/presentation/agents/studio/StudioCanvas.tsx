@@ -23,7 +23,7 @@ export const TONE: Record<string, string> = {
   ai: 'text-violet-600 dark:text-violet-400',
   respond: 'text-pink-600 dark:text-pink-400',
 }
-export const toneOf = (type: string) => TONE[type.split('.')[0]!] ?? 'text-foreground'
+export const toneOf = (type: string) => (type === 'msg.telegram' ? 'text-sky-500' : (TONE[type.split('.')[0]!] ?? 'text-foreground'))
 
 const sum = (ran?: Ran) => (ran?.outputs ?? []).reduce((a, b) => a + b, 0)
 
