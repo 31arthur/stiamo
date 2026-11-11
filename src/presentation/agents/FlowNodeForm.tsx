@@ -298,6 +298,73 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
       )
     case 'msg.telegram':
       return <TelegramFields p={p} set={set} />
+    case 'ai.classify':
+      return <ClassifyFields p={p} set={set} />
+    case 'core.safe_senders': {
+      const lines = (key: string, label: string, hint: string, placeholder: string) => (
+        <Row label={label} hint={hint}>
+          <textarea rows={3} className={AREA} placeholder={placeholder} value={((p[key] as string[] | undefined) ?? []).join('\n')} onChange={(e) => set({ [key]: e.target.value.split('\n').map((x) => x.trim()).filter(Boolean) })} />
+        </Row>
+      )
+      return (
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">Keeps mail from people you trust out of the judging. The first output carries on with the rest; the second is what was kept, with <code>kept</code> saying why.</p>
+          <Check label="Keep mail from anyone I have written to (the addresses in the Sent folder)" on={p.correspondents !== false} onChange={(v) => set({ correspondents: v })} />
+          {lines('domains', 'Domains', 'One a line. A domain and its subdomains.', 'court.gov.in')}
+          {lines('addresses', 'Addresses', 'One a line.', 'someone@example.com')}
+          {lines('phrases', 'Words or phrases', 'One a line. Whole words, in the sender, subject or start of the text.', 'hearing')}
+        </div>
+      )
+    }
+    case 'ai.read':
+      return (
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">Opens each email in full (up to 10) and adds <code>summary</code>, <code>priority</code>, <code>action</code>, <code>due</code> and, for events, <code>event</code>.</p>
+          <Row label="What matters" hint="Tells it what to look for, in your words.">
+            <textarea rows={3} className={AREA} value={String(p.prompt ?? '')} onChange={(e) => set({ prompt: e.target.value })} />
+          </Row>
+          <Row label="What for">
+            <select aria-label="What for" className={SELECT} value={String(p.route ?? 'attention')} onChange={(e) => set({ route: e.target.value })}>
+              <option value="attention">Something I should look at</option>
+              <option value="event">Find an event to put in the calendar</option>
+              <option value="alert">Something to alert me about (with replies to choose from)</option>
+            </select>
+          </Row>
+          <div className="grid gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Model</span>
+            <ModelChoice value={(p.model as AiSelection | null | undefined) ?? null} onChange={(s) => set({ model: s })} />
+            <div>
+              <Button variant="ghost" size="xs" disabled={!p.model} onClick={() => set({ model: undefined })}>
+                Use the agent’s own model
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
+    case 'msg.trash':
+      return (
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">Moves the emails that arrive here to Trash. They are never deleted. By default it <b>asks first</b>: one card for all of them, to approve in Needs me or with YES.</p>
+          {text('folder', 'Folder they are in', undefined, 'INBOX')}
+          <Check label="Move at once, without asking (only when the workflow runs by itself; run by hand it still asks)" on={!!p.auto} onChange={(v) => set({ auto: v })} />
+          <Check label="Tell me on my phone when there is something to approve" on={p.tell !== false} onChange={(v) => set({ tell: v })} />
+        </div>
+      )
+    case 'msg.alert':
+      return (
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">Pings your phone about each email (up to five) with its summary and a few replies to choose from. An email is only ever raised once. It needs the output of <b>Read and summarise</b>.</p>
+          <Check label="Also ring me on Telegram" on={!!p.call} onChange={(v) => set({ call: v })} />
+        </div>
+      )
+    case 'msg.event':
+      return (
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">Puts the event an email names (found by <b>Read and summarise</b> set to find events) in front of you to approve. Nothing reaches the calendar until you do.</p>
+          {text('workspace', 'Workspace of the event', 'Empty: the workspace this runs in.', 'sb')}
+          <Check label="Tell me on my phone when there is something to approve" on={p.tell !== false} onChange={(v) => set({ tell: v })} />
+        </div>
+      )
     case 'msg.mail':
       return (
         <div className="grid gap-3">
@@ -453,6 +520,73 @@ function TelegramFields({ p, set }: { p: Record<string, unknown>; set: (patch: R
       </Row>
       <Check label="Send one message, however many items come in" on={p.once !== false} onChange={(v) => set({ once: v })} />
       <CredentialModal open={making} onOpenChange={setMaking} kind="telegram" onCreated={(id) => set({ credential: id, chat: '' })} />
+    </div>
+  )
+}
+
+
+interface LabelRow {
+  name?: string
+  description?: string
+  threshold?: number | ''
+}
+
+/** Sort into labels: what the sorting is for, the labels (what each means is what the model reads), how sure it must be, and which model decides. */
+function ClassifyFields({ p, set }: { p: Record<string, unknown>; set: (patch: Record<string, unknown>) => void }) {
+  const labels = (p.labels as LabelRow[] | undefined) ?? []
+  const change = (i: number, v: Partial<LabelRow>) => set({ labels: labels.map((l, j) => (j === i ? { ...l, ...v } : l)) })
+  const slug = (v: string) => v.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^[^a-z]+/, '').slice(0, 40)
+  return (
+    <div className="grid gap-4">
+      <p className="text-sm text-muted-foreground">Reads each item (up to 50) and gives it one label, with <code>confidence</code> and <code>reason</code>. There is one output for each label, and the last is for what it isn’t sure about.</p>
+      <Row label="What the sorting is for" hint="Tells the model the purpose, in your words.">
+        <textarea rows={3} className={AREA} value={String(p.prompt ?? '')} onChange={(e) => set({ prompt: e.target.value })} />
+      </Row>
+      <div className="grid gap-2">
+        <span className="text-xs font-medium text-muted-foreground">Labels · what each one means is what the model reads to choose</span>
+        {labels.map((l, i) => (
+          <div key={i} className="grid gap-1.5 rounded-lg border p-2">
+            <div className="flex items-center gap-1.5">
+              <Input aria-label="Label name" value={l.name ?? ''} onChange={(e) => change(i, { name: slug(e.target.value) })} className="h-8 w-40 font-mono text-xs" placeholder="spam" />
+              <Input aria-label="Sure enough at" type="number" min={0} max={1} step={0.05} value={l.threshold ?? ''} onChange={(e) => change(i, { threshold: e.target.value === '' ? '' : Number(e.target.value) })} className="h-8 w-24 text-xs" placeholder={`≥ ${String(p.threshold ?? 0.7)}`} title="How sure it must be to use this label; under it, the item goes to “not sure”" />
+              {labels.length > 2 && (
+                <Button variant="ghost" size="icon-xs" aria-label="Remove this label" className="ml-auto" onClick={() => set({ labels: labels.filter((_, j) => j !== i) })}>
+                  <Trash2 />
+                </Button>
+              )}
+            </div>
+            <textarea aria-label="What it means" rows={2} className={AREA} value={l.description ?? ''} onChange={(e) => change(i, { description: e.target.value })} placeholder="What a mail with this label is like, in things anyone could see." />
+          </div>
+        ))}
+        {labels.length < 12 && (
+          <Button variant="outline" size="xs" className="w-fit" onClick={() => set({ labels: [...labels, { name: '', description: '' }] })}>
+            <Plus /> Add a label
+          </Button>
+        )}
+      </div>
+      <Row label="Sure enough at" hint="The least confidence a label needs. Under it, the item goes to “not sure” so you can look.">
+        <Input type="number" min={0} max={1} step={0.05} value={String(p.threshold ?? 0.7)} onChange={(e) => set({ threshold: Number(e.target.value) })} className="h-8 w-24" />
+      </Row>
+      <Row label="Who decides">
+        <select aria-label="Who decides" className={SELECT} value={String(p.decider ?? 'model')} onChange={(e) => set({ decider: e.target.value })}>
+          <option value="model">A chat model (the one below, or the agent’s)</option>
+          <option value="jev">The decision model (Jev, through OpenRouter)</option>
+        </select>
+      </Row>
+      {p.decider !== 'jev' && (
+        <div className="grid gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Model</span>
+          <ModelChoice value={(p.model as AiSelection | null | undefined) ?? null} onChange={(s) => set({ model: s })} />
+          <div>
+            <Button variant="ghost" size="xs" disabled={!p.model} onClick={() => set({ model: undefined })}>
+              Use the agent’s own model
+            </Button>
+          </div>
+        </div>
+      )}
+      <Row label="Items to ask about at once" hint="More at once costs less; 1 asks about each on its own.">
+        <Input type="number" min={1} max={50} value={String(p.batchSize ?? 1)} onChange={(e) => set({ batchSize: Math.max(1, Math.min(50, Number(e.target.value) || 1)) })} className="h-8 w-24" />
+      </Row>
     </div>
   )
 }

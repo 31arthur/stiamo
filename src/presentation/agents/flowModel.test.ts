@@ -91,3 +91,15 @@ describe('copying and pasting workflow JSON', () => {
     expect(back.ok && back.connections.t?.main).toEqual([[]])
   })
 })
+
+describe('the sorting nodes', () => {
+  it('gives Sort into labels an output for each label and one for what it isn’t sure about, and Keep safe senders two', () => {
+    expect(outputsOf(n('c', 'ai.classify', { labels: [{ name: 'spam' }, { name: 'keep' }, {}] }))).toEqual(['spam', 'keep', 'label 3', 'not sure'])
+    expect(outputsOf(n('s', 'core.safe_senders'))).toEqual(['carry on', 'kept'])
+  })
+  it('starts a new sorting node with two labels that already work', () => {
+    const made = newNode('ai.classify', 'Sort into labels', [], [0, 0])
+    expect(outputsOf(made)).toEqual(['spam', 'keep', 'not sure'])
+    expect(String(made.parameters.prompt).length).toBeGreaterThan(5)
+  })
+})
