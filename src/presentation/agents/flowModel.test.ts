@@ -9,6 +9,8 @@ describe('a node’s outputs and inputs', () => {
     expect(outputsOf(n('i', 'core.if'))).toEqual(['true', 'false'])
     expect(outputsOf(n('s', 'core.switch', { rules: [{}, {}] }))).toEqual(['rule 1', 'rule 2', 'fallback'])
     expect(outputsOf(n('l', 'core.loop'))).toEqual(['loop', 'done'])
+    expect(outputsOf(n('a', 'msg.ask', { options: ['Call now', 'Later'] }))).toEqual(['Call now', 'Later'])
+    expect(outputsOf(n('a', 'msg.ask', { options: [] }))).toEqual(['answer 1', 'answer 2'])
     expect(outputsOf(n('r', 'respond'))).toEqual([])
     expect(outputsOf(n('d', 'data.tasks'))).toEqual([''])
   })

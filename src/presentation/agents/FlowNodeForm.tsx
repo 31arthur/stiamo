@@ -275,6 +275,35 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
           <Check label="Send one message, however many items come in" on={p.once !== false} onChange={(v) => set({ once: v })} />
         </div>
       )
+    case 'msg.ask': {
+      const options = (p.options as string[] | undefined) ?? []
+      return (
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">Asks you on your phone and waits. The workflow stops here, and the button you press carries on from that answer’s output (the answer is <code>{'{{ $json.answer }}'}</code>). A question is good for two days.</p>
+          <Row label="Question" hint="An expression, so it can use what the earlier nodes found.">
+            <textarea rows={3} className={AREA} value={String(p.text ?? '')} onChange={(e) => set({ text: e.target.value })} />
+          </Row>
+          <div className="grid gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Buttons (two to four). Each is an output you can connect.</span>
+            {options.map((o, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <Input aria-label={`Button ${i + 1}`} className="h-8 w-48" value={o} onChange={(e) => set({ options: options.map((x, j) => (j === i ? e.target.value : x)) })} />
+                {options.length > 2 && (
+                  <Button variant="ghost" size="icon-xs" aria-label="Remove this button" onClick={() => set({ options: options.filter((_, j) => j !== i) })}>
+                    <Trash2 />
+                  </Button>
+                )}
+              </div>
+            ))}
+            {options.length < 4 && (
+              <Button variant="outline" size="xs" className="w-fit" onClick={() => set({ options: [...options, `Answer ${options.length + 1}`] })}>
+                <Plus /> Add a button
+              </Button>
+            )}
+          </div>
+        </div>
+      )
+    }
     case 'ai.agent': {
       const tools = p.tools as string[] | undefined
       const on = (name: string) => (tools ? tools.includes(name) : flow.tools.find((t) => t.name === name)?.enabled !== false)
