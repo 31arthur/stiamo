@@ -736,28 +736,69 @@ export interface RunStep {
   error?: string
 }
 
-/** One node of an agent's workflow: a trigger, the workspace scope, the prompt, the model, a tool, or the answer. */
+/** The kinds of node a workflow is made of. */
+export type NodeType = 'trigger' | 'scope' | 'prompt' | 'agent' | 'branch' | 'set' | 'loop' | 'output'
+
+/** One node of an agent's workflow. What `config` holds depends on the type (see the node forms). */
 export interface GraphNode {
   id: string
-  type: 'trigger' | 'scope' | 'prompt' | 'model' | 'tool' | 'output'
+  type: NodeType
   label: string
-  /** For a tool: the pack it comes from. */
-  pack?: string
   config: Record<string, unknown>
 }
 
-/** An agent as nodes and the connections between them. It is the agent's real configuration: editing a node edits how the agent runs. */
+export interface GraphEdge {
+  from: string
+  to: string
+  /** `next`, a branch case's label or `else`, or a loop's `again` / `done`. */
+  label: string
+}
+
+/** A tool an agent can call, as the editor lists it. */
+export interface GraphTool {
+  name: string
+  pack: string
+  description: string
+  enabled: boolean
+}
+
+/** An agent's workflow, with what the editor needs to change it. */
 export interface AgentGraph {
   agentId: string
   name: string
   nodes: GraphNode[]
-  edges: { from: string; to: string }[]
+  edges: GraphEdge[]
+  /** Changed from the default. */
+  custom: boolean
+  engine: string
+  /** What stops it from running, if anything. */
+  problems: string[]
+  tools: GraphTool[]
+  nodeTypes: NodeType[]
+  variables: Record<string, string>
+  defaults: { system: string; inputTemplate: string }
+  triggers: string[]
+}
+
+/** What a node did in one visit during a run. */
+export interface TraceEntry {
+  node: string
+  type: NodeType
+  label: string
+  state: 'ok' | 'error'
+  ms: number
+  in: string
+  out: string
+  calls?: { tool: string; ms: number; found: number; error?: string }[]
+  usage?: Record<string, number>
 }
 
 /** One run in full: what the model was given, each step, and the answer. */
 export interface RunDetail extends RunSummary {
   /** The workspace the run was limited to; empty when it saw every workspace. */
   workspace?: string
+  /** What each node of the workflow did, in the order they ran. Empty for runs from before workflows. */
+  trace?: TraceEntry[]
   thinking: string
   /** The message as the model got it, after the agent's template. */
   userMessage: string
@@ -896,6 +937,9 @@ export interface AgentApi {
   runs(agentId: string, before?: string): Promise<RunPage>
   run(runId: string): Promise<RunDetail>
   agentGraph(agentId: string): Promise<AgentGraph>
+  saveAgentGraph(agentId: string, graph: { nodes: GraphNode[]; edges: GraphEdge[] }): Promise<AgentGraph>
+  checkAgentGraph(agentId: string, graph: { nodes: GraphNode[]; edges: GraphEdge[] }): Promise<string[]>
+  resetAgentGraph(agentId: string): Promise<AgentGraph>
   clearRuns(agentId: string): Promise<void>
   decide(state: string, questions: Record<string, DecisionQuestion>, modelId?: string): Promise<DecisionResult>
   workflow(id: string): Promise<Workflow>

@@ -1,77 +1,205 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
-import { ChevronRight, Cpu, FileText, MessageSquare, Shield, Wrench, X, Zap } from 'lucide-react'
+import { AlertTriangle, Cpu, FileText, GitBranch, MessageSquare, Plus, Repeat, Save, Shield, Tag, Trash2, Undo2, X, Zap } from 'lucide-react'
+import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import type { AgentGraph, GraphNode, ToolOverride } from '@/domain/ai/AgentApi'
+import type { GraphEdge, GraphNode, NodeType } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
 import { useServices } from '@/presentation/app/services'
 import { Section } from '@/presentation/components/layout'
 import { useUserId } from '@/presentation/data/hooks'
 import { Link } from '@/presentation/routing'
-import { ModelPicker } from './ModelPicker'
-import { PromptEditor } from './PromptEditor'
-import { WorkspaceChips } from './WorkspaceChips'
+import { NodeForm } from './NodeForms'
 import { ago, formatMs, triggerLabel } from './format'
-import { useAgentAction, useAgentDetail, useAgentSummary } from './useAgent'
+import { NODE_H, NODE_W, TYPE_LABEL, edgePath, fresh, labelsFor, layout } from './workflowLayout'
 import { traceOf } from './workflowTrace'
 import type { NodeTrace } from './workflowTrace'
 
-const ICON = { trigger: Zap, scope: Shield, prompt: FileText, model: Cpu, tool: Wrench, output: MessageSquare } as const
+const ICON: Record<NodeType, typeof Zap> = { trigger: Zap, scope: Shield, prompt: FileText, agent: Cpu, branch: GitBranch, set: Tag, loop: Repeat, output: MessageSquare }
 const DOT = { ok: 'bg-success', error: 'bg-destructive', skipped: 'bg-muted-foreground/30' } as const
+const NONE: GraphNode[] = []
+const ADDABLE: NodeType[] = ['scope', 'prompt', 'agent', 'branch', 'set', 'loop', 'output']
+
+interface Draft {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}
 
 /**
- * An agent as the nodes it is made of, the way a workflow editor shows it. The graph is the agent's real configuration, so editing a node edits
- * how the agent runs. Pick an execution and every node shows what it did in that run, with the data that went through it.
+ * An agent as a workflow you can edit: nodes on a canvas joined by edges, a form for each node, and every execution laid over it node by node.
+ * Saving keeps only a workflow that can run; the agent uses it from its next run on.
  */
 export function WorkflowTab() {
   const { agentId } = useParams()
   const { agent } = useServices()
   const userId = useUserId()
-  const [selected, setSelected] = useState<string>('prompt')
-  const [runId, setRunId] = useState<string | null>(null)
-
+  const client = useQueryClient()
   const graph = useQuery({ queryKey: ['agent', 'graph', userId, agentId], queryFn: () => agent.agentGraph(agentId!), enabled: !!agentId, retry: false })
   const runs = useQuery({ queryKey: ['agent', 'runs', userId, agentId, 'recent'], queryFn: () => agent.runs(agentId!), enabled: !!agentId, retry: false, refetchInterval: 15_000 })
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [selected, setSelected] = useState('agent')
+  const [runId, setRunId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const run = useQuery({ queryKey: ['agent', 'run', userId, runId], queryFn: () => agent.run(runId!), enabled: !!runId, retry: false })
 
-  if (graph.isLoading) return <Spinner label="Loading the workflow" />
-  if (!graph.data) return <p role="alert" className="text-sm text-destructive">{graph.error instanceof Error ? graph.error.message : 'Couldn’t load the workflow.'}</p>
-  const g = graph.data
-  const trace = run.data ? traceOf(g, run.data) : null
-  const node = g.nodes.find((n) => n.id === selected) ?? g.nodes[0]!
-  const tools = g.nodes.filter((n) => n.type === 'tool')
-  const chain = g.nodes.filter((n) => n.type !== 'tool')
+  // The draft starts from what is saved, and starts again whenever what is saved changes (after a save or a reset).
+  const key = graph.data ? JSON.stringify([graph.data.nodes, graph.data.edges]) : ''
+  useEffect(() => {
+    if (graph.data) setDraft({ nodes: graph.data.nodes, edges: graph.data.edges })
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dirty = !!draft && key !== JSON.stringify([draft.nodes, draft.edges])
+  const deferred = useDeferredValue(draft)
+  const check = useQuery({ queryKey: ['agent', 'graph-check', userId, agentId, JSON.stringify(deferred)], queryFn: () => agent.checkAgentGraph(agentId!, deferred!), enabled: !!deferred && dirty, retry: false })
+  const problems = dirty ? (check.data ?? []) : (graph.data?.problems ?? [])
+
+  const nodes = draft?.nodes ?? NONE
+  const trace = useMemo(() => (run.data ? traceOf(nodes.map((n) => n.id), run.data.trace) : null), [run.data, nodes])
+  const { placed, width, height } = useMemo(() => layout(nodes, draft?.edges ?? []), [nodes, draft?.edges])
+
+  if (graph.isLoading || !draft) return graph.isLoading ? <Spinner label="Loading the workflow" /> : <p role="alert" className="text-sm text-destructive">{graph.error instanceof Error ? graph.error.message : 'Couldn’t load the workflow.'}</p>
+  const g = graph.data!
+  const node = nodes.find((n) => n.id === selected) ?? nodes[0]!
+  const at = new Map(placed.map((p) => [p.node.id, p]))
+  const update = (next: Draft) => setDraft(next)
+  const patchNode = (id: string, change: Partial<GraphNode> | { config: Record<string, unknown> }) => update({ ...draft, nodes: nodes.map((n) => (n.id === id ? { ...n, ...change } : n)) })
+  const setConfig = (patch: Record<string, unknown>) => {
+    const config = { ...node.config, ...patch }
+    for (const k of Object.keys(config)) if (config[k] === undefined) delete config[k]
+    patchNode(node.id, { config })
+  }
+  const add = (type: NodeType) => {
+    const n = fresh(type, nodes.map((x) => x.id))
+    update({ ...draft, nodes: [...nodes, n] })
+    setSelected(n.id)
+  }
+  const remove = (id: string) => {
+    update({ nodes: nodes.filter((n) => n.id !== id), edges: draft.edges.filter((e) => e.from !== id && e.to !== id) })
+    setSelected('agent')
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      await agent.saveAgentGraph(agentId!, draft!)
+      await client.invalidateQueries({ queryKey: ['agent', 'graph'] })
+      toast.success('Saved. The agent uses this workflow from its next run.')
+    } catch (e) {
+      toast.error('Couldn’t save it', { description: e instanceof Error ? e.message : undefined })
+    } finally {
+      setSaving(false)
+    }
+  }
+  async function reset() {
+    setSaving(true)
+    try {
+      await agent.resetAgentGraph(agentId!)
+      await client.invalidateQueries({ queryKey: ['agent', 'graph'] })
+      toast.success('Back to the default workflow')
+    } catch (e) {
+      toast.error('Couldn’t reset it', { description: e instanceof Error ? e.message : undefined })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="grid min-w-0 gap-4">
-        <Section title="Workflow" description={trace ? 'This is one execution: every node shows what it did, and opens to the data that went through it.' : 'The nodes this agent runs through. Open one to edit it; the change applies the next time the agent runs.'}>
-          <div className="grid gap-4">
-            <ol className="flex flex-wrap items-stretch gap-y-2" aria-label="Workflow">
-              {chain.map((n, i) => (
-                <li key={n.id} className="flex items-center">
-                  <NodeCard node={n} active={selected === n.id} trace={trace?.[n.id]} onOpen={() => setSelected(n.id)} />
-                  {i < chain.length - 1 && <ChevronRight aria-hidden className="mx-1 size-4 shrink-0 text-muted-foreground/60" />}
-                </li>
-              ))}
-            </ol>
-            <div className="rounded-xl border border-dashed p-3">
-              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-                <Wrench className="size-3.5" /> Tools the model can call · {tools.filter((t) => t.config.enabled !== false).length} of {tools.length} on
-              </p>
-              <ul className="flex flex-wrap gap-1.5">
-                {tools.map((n) => (
-                  <li key={n.id}>
-                    <NodeCard node={n} compact active={selected === n.id} trace={trace?.[n.id]} onOpen={() => setSelected(n.id)} />
+        <Section
+          title="Workflow"
+          description={trace ? 'This is one execution: each node shows what it did. Open a node to see what went through it.' : g.custom ? 'This agent runs a workflow you changed.' : 'The default workflow. Add nodes and connect them to change how this agent works.'}
+          actions={
+            <div className="flex flex-wrap items-center gap-1.5">
+              <select aria-label="Add a node" className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm" value="" onChange={(e) => e.target.value && add(e.target.value as NodeType)}>
+                <option value="">+ Add a node…</option>
+                {ADDABLE.map((t) => (
+                  <option key={t} value={t}>
+                    {TYPE_LABEL[t]}
+                  </option>
+                ))}
+              </select>
+              <Button size="sm" onClick={() => void save()} disabled={!dirty || saving || problems.length > 0}>
+                {saving ? <Spinner size="xs" tone="current" decorative /> : <Save />} Save
+              </Button>
+              {dirty && (
+                <Button size="sm" variant="ghost" onClick={() => setDraft({ nodes: g.nodes, edges: g.edges })}>
+                  <Undo2 /> Discard
+                </Button>
+              )}
+              {g.custom && !dirty && (
+                <Button size="sm" variant="ghost" onClick={() => void reset()} disabled={saving}>
+                  Back to default
+                </Button>
+              )}
+            </div>
+          }
+        >
+          <div className="grid gap-3">
+            {problems.length > 0 && (
+              <ul role="alert" className="grid gap-1 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+                {problems.map((p) => (
+                  <li key={p} className="flex items-start gap-1.5">
+                    <AlertTriangle className="mt-px size-3.5 shrink-0 text-warning" /> {p}
                   </li>
                 ))}
               </ul>
+            )}
+            <div className="overflow-x-auto rounded-xl border bg-muted/20 p-4">
+              <div className="relative" style={{ width: width + 8, height: height + 40, marginTop: 24 }}>
+                <svg className="pointer-events-none absolute inset-0 overflow-visible" width={width + 8} height={height + 40} aria-hidden>
+                  <defs>
+                    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+                      <path d="M0,0 L8,4 L0,8 z" className="fill-muted-foreground/70" />
+                    </marker>
+                  </defs>
+                  {draft.edges.map((e, i) => {
+                    const a = at.get(e.from)
+                    const b = at.get(e.to)
+                    if (!a || !b) return null
+                    const p = edgePath(a, b)
+                    return (
+                      <g key={`${e.from}-${e.to}-${e.label}-${i}`}>
+                        <path d={p.d} fill="none" className="stroke-muted-foreground/60" strokeWidth={1.5} markerEnd="url(#arrow)" />
+                        {e.label !== 'next' && (
+                          <text x={p.lx} y={p.ly} textAnchor="middle" className="fill-muted-foreground text-[10px]">
+                            {e.label}
+                          </text>
+                        )}
+                      </g>
+                    )
+                  })}
+                </svg>
+                {placed.map((p) => (
+                  <NodeCard key={p.node.id} node={p.node} style={{ left: p.x, top: p.y }} active={selected === p.node.id} trace={trace?.[p.node.id]} onOpen={() => setSelected(p.node.id)} />
+                ))}
+              </div>
             </div>
           </div>
         </Section>
-        <Inspector graph={g} node={node} trace={trace?.[node.id]} />
+
+        <Section
+          title={node.label || TYPE_LABEL[node.type]}
+          description={TYPE_LABEL[node.type]}
+          actions={
+            node.type !== 'trigger' && (
+              <Button variant="ghost" size="xs" onClick={() => remove(node.id)}>
+                <Trash2 /> Delete node
+              </Button>
+            )
+          }
+        >
+          <div className="grid gap-4">
+            {trace?.[node.id] && <VisitList trace={trace[node.id]!} />}
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Name
+              <input value={node.label} onChange={(e) => patchNode(node.id, { label: e.target.value })} className="h-8 w-64 rounded-lg border border-input bg-transparent px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
+            </label>
+            <NodeForm node={node} graph={g} set={setConfig} />
+            {node.type !== 'output' && <Edges node={node} draft={draft} onChange={(edges) => update({ ...draft, edges })} />}
+          </div>
+        </Section>
       </div>
 
       <aside aria-label="Executions" className="grid content-start gap-2">
@@ -104,6 +232,7 @@ export function WorkflowTab() {
               ))}
             </ul>
           )}
+          {run.data && !run.data.trace?.length && <p className="mt-2 text-xs text-muted-foreground">This run is from before workflows, so it has no node trace.</p>}
           <Link to={`/agents/${g.agentId}/history`} className="mt-2 block text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
             Full history
           </Link>
@@ -113,152 +242,99 @@ export function WorkflowTab() {
   )
 }
 
-function NodeCard({ node: n, active, trace, onOpen, compact }: { node: GraphNode; active: boolean; trace?: NodeTrace; onOpen: () => void; compact?: boolean }) {
-  const Icon = ICON[n.type]
-  const off = n.type === 'tool' && n.config.enabled === false
+function NodeCard({ node, style, active, trace, onOpen }: { node: GraphNode; style: React.CSSProperties; active: boolean; trace?: NodeTrace; onOpen: () => void }) {
+  const Icon = ICON[node.type]
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-pressed={active}
-      className={cn(
-        'relative flex min-w-0 items-center gap-2 rounded-xl border bg-card text-left transition-colors',
-        compact ? 'px-2 py-1 text-xs' : 'w-36 flex-col items-start px-3 py-2.5 text-sm sm:w-40',
-        active ? 'border-foreground ring-1 ring-foreground' : 'hover:border-foreground/40',
-        (off || trace?.state === 'skipped') && 'opacity-50',
-      )}
+      style={{ ...style, width: NODE_W, height: NODE_H }}
+      className={cn('absolute flex flex-col items-start gap-0.5 overflow-hidden rounded-xl border bg-card px-2.5 py-2 text-left text-sm transition-colors', active ? 'border-foreground ring-1 ring-foreground' : 'hover:border-foreground/40', trace?.state === 'skipped' && 'opacity-45')}
     >
-      <span className="flex min-w-0 items-center gap-1.5">
-        <Icon className={cn('shrink-0', compact ? 'size-3' : 'size-4 text-muted-foreground')} />
-        <span className={cn('truncate font-medium', n.type === 'tool' && 'font-mono text-[11px]')}>{n.type === 'tool' ? n.label : n.label}</span>
+      <span className="flex w-full min-w-0 items-center gap-1.5">
+        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="truncate font-medium">{node.label || TYPE_LABEL[node.type]}</span>
       </span>
-      {!compact && <span className="line-clamp-2 text-[11px] text-muted-foreground">{trace ? trace.summary : describe(n)}</span>}
-      {trace && <span aria-label={trace.state} className={cn('absolute top-1.5 right-1.5 size-2 rounded-full', DOT[trace.state])} />}
-      {compact && trace && trace.state !== 'skipped' && <span className="text-[10px] text-muted-foreground">{trace.summary}</span>}
-      {off && <span className="text-[10px] text-muted-foreground">off</span>}
+      <span className="line-clamp-2 text-[11px] leading-tight text-muted-foreground">{trace ? trace.summary : TYPE_LABEL[node.type]}</span>
+      {trace && <span aria-label={trace.state} className={cn('absolute top-2 right-2 size-2 rounded-full', DOT[trace.state])} />}
     </button>
   )
 }
 
-/** One line for a node with no execution picked. */
-function describe(n: GraphNode): string {
-  const c = n.config
-  if (n.type === 'trigger') return (c.triggers as string[] | undefined)?.join(' · ') ?? ''
-  if (n.type === 'scope') return ((c.workspaces as string[] | undefined) ?? []).join(', ') || 'No workspace'
-  if (n.type === 'prompt') return `${String(c.system ?? '').length.toLocaleString()} characters of instructions`
-  if (n.type === 'model') return (c.selection as { modelId?: string } | null)?.modelId ?? 'No model chosen yet'
-  return 'The answer, cards and proposals'
-}
-
-function Inspector({ graph, node, trace }: { graph: AgentGraph; node: GraphNode; trace?: NodeTrace }) {
-  const Icon = ICON[node.type]
+/** What a node did in the execution picked: each visit with what went in and what came out. */
+function VisitList({ trace }: { trace: NodeTrace }) {
   return (
-    <Section title={node.type === 'tool' ? node.label : node.label} description={undefined} actions={<Icon className="size-4 text-muted-foreground" aria-hidden />}>
-      <div className="grid gap-4">
-        {trace && (
-          <div className="grid gap-2 rounded-xl border bg-muted/30 p-3">
-            <p className="flex items-center gap-2 text-xs font-semibold">
-              <span className={cn('size-2 rounded-full', DOT[trace.state])} /> In this execution: {trace.state === 'skipped' ? 'not used' : trace.state === 'error' ? 'it failed' : 'it ran'} · {trace.summary}
-            </p>
-            {trace.data.map((d) => (
-              <div key={d.label} className="grid gap-1">
-                <h4 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">{d.label}</h4>
-                <pre className="max-h-56 overflow-auto rounded-lg border bg-background p-2 font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap">{d.text || '—'}</pre>
-              </div>
-            ))}
-          </div>
-        )}
-        <NodeEditor graph={graph} node={node} />
-      </div>
-    </Section>
+    <div className="grid gap-2 rounded-xl border bg-muted/30 p-3">
+      <p className="flex items-center gap-2 text-xs font-semibold">
+        <span className={cn('size-2 rounded-full', DOT[trace.state])} /> In this execution: {trace.state === 'skipped' ? 'not reached' : trace.state === 'error' ? 'it failed' : 'it ran'}
+      </p>
+      {trace.visits.map((v, i) => (
+        <div key={i} className="grid gap-1">
+          {trace.visits.length > 1 && <h4 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">Time {i + 1}</h4>}
+          {([['In', v.in], ['Out', v.out]] as const).map(([label, text]) => text && (
+            <div key={label}>
+              <h4 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">{label}</h4>
+              <pre className="max-h-44 overflow-auto rounded-lg border bg-background p-2 font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap">{text}</pre>
+            </div>
+          ))}
+          {v.calls && v.calls.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5">
+              {v.calls.map((c, j) => (
+                <li key={j} className={cn('rounded-md border px-1.5 py-0.5 font-mono text-[10px]', c.error && 'border-destructive/40 text-destructive')}>
+                  {c.tool} · {c.ms} ms{c.found ? ` · ${c.found} card${c.found === 1 ? '' : 's'}` : ''}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-[11px] text-muted-foreground tabular-nums">{v.ms} ms</p>
+        </div>
+      ))}
+    </div>
   )
 }
 
-function NodeEditor({ graph, node }: { graph: AgentGraph; node: GraphNode }) {
-  const def = useAgentSummary(graph.agentId)
-  const setWorkspaces = useAgentAction((a, w: string[]) => a.setWorkspaces(graph.agentId, w))
-  if (!def) return null
-  switch (node.type) {
-    case 'trigger':
-      return (
-        <div className="grid gap-1.5 text-sm">
-          <p className="text-muted-foreground">This agent starts when:</p>
-          <ul className="grid gap-1">
-            {(node.config.triggers as string[]).map((t) => (
-              <li key={t} className="rounded-lg border px-2.5 py-1.5">
-                {t}
-              </li>
-            ))}
-          </ul>
-          <p className="text-xs text-muted-foreground">
-            Telegram and WhatsApp reach it through the master bot (<Link to="/assistant?phone=1" className="underline">On your phone</Link>), which picks the agent. {graph.agentId === 'daily-planner' && <>The evening schedule is set under <Link to={`/agents/${graph.agentId}`} className="underline">Overview</Link>.</>}
-          </p>
-        </div>
-      )
-    case 'scope':
-      return (
-        <div className="grid gap-2">
-          <p className="text-sm text-muted-foreground">The workspaces this agent can be asked about. Whichever one a message is about, the run is limited to it: {String(node.config.rule)}</p>
-          <WorkspaceChips value={def.workspaces} onChange={(w) => void setWorkspaces.run(w)} disabled={setWorkspaces.pending} />
-        </div>
-      )
-    case 'prompt':
-      return <PromptEditor agentId={graph.agentId} />
-    case 'model':
-      return (
-        <div className="grid gap-2">
-          <p className="text-sm text-muted-foreground">The provider, model and how hard it thinks. It may call up to {String(node.config.maxSteps)} tools per answer.</p>
-          <ModelPicker def={def} />
-        </div>
-      )
-    case 'tool':
-      return <ToolEditor agentId={graph.agentId} node={node} />
-    default:
-      return (
-        <ul className="grid list-disc gap-1 pl-5 text-sm text-muted-foreground">
-          {(node.config.delivers as string[]).map((d) => (
-            <li key={d}>{d}</li>
-          ))}
-        </ul>
-      )
-  }
-}
-
-/** Switch a tool off, or change what the model is told it does. Stored as that agent's prompt settings, the same place the prompt editor uses. */
-function ToolEditor({ agentId, node }: { agentId: string; node: GraphNode }) {
-  const detail = useAgentDetail(agentId)
-  const save = useAgentAction((a, v: { tools: Record<string, ToolOverride> }) => a.setPrompt(agentId, { ...detail.data!.prompt, tools: v.tools }), { success: 'Saved. It applies the next time the agent runs.' })
-  const current = detail.data?.prompt.tools[node.label]
-  const [text, setText] = useState<string | null>(null)
-  if (!detail.data) return <Spinner label="Loading" />
-  const enabled = current?.enabled ?? true
-  const description = text ?? current?.description ?? String(node.config.default ?? '')
-  const write = (next: ToolOverride) => {
-    const tools = { ...detail.data!.prompt.tools, [node.label]: next }
-    const kept = Object.fromEntries(Object.entries(tools).filter(([, t]) => !t.enabled || !!t.description?.trim()))
-    return save.run({ tools: kept })
-  }
+/** Where a node leads: each edge with its label and target, and a way to add or remove one. */
+function Edges({ node, draft, onChange }: { node: GraphNode; draft: Draft; onChange: (edges: GraphEdge[]) => void }) {
+  const mine = draft.edges.map((e, i) => ({ e, i })).filter(({ e }) => e.from === node.id)
+  const labels = labelsFor(node)
+  const unused = labels.find((l) => !mine.some(({ e }) => e.label === l))
+  const targets = draft.nodes.filter((n) => n.id !== node.id && n.type !== 'trigger')
+  const set = (i: number, patch: Partial<GraphEdge>) => onChange(draft.edges.map((e, j) => (j === i ? { ...e, ...patch } : e)))
+  const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm'
   return (
-    <div className="grid gap-3">
-      <p className="text-sm text-muted-foreground">
-        A tool from the <span className="font-mono">{node.pack}</span> pack. Switched off, the model isn’t told it exists.
-      </p>
-      <label className="flex items-center gap-2.5 text-sm font-medium">
-        <input type="checkbox" className="size-4 accent-[var(--foreground)]" checked={enabled} disabled={save.pending} onChange={(e) => void write({ enabled: e.target.checked, description: current?.description ?? null })} />
-        On
-      </label>
-      <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-        What the model is told it does
-        <textarea rows={4} value={description} onChange={(e) => setText(e.target.value)} className="w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
-      </label>
-      <div className="flex gap-2">
-        <Button size="sm" disabled={save.pending || text === null || text.trim() === String(node.config.default)} onClick={() => void write({ enabled, description: text?.trim() || null }).then(() => setText(null))}>
-          Save description
+    <div className="grid gap-1.5">
+      <h3 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">Leads to</h3>
+      {mine.length === 0 && <p className="text-xs text-warning">Nothing yet: connect it to the next node.</p>}
+      {mine.map(({ e, i }) => (
+        <div key={i} className="flex flex-wrap items-center gap-1.5">
+          {labels.length > 1 && (
+            <select aria-label="When" className={SELECT} value={e.label} onChange={(ev) => set(i, { label: ev.target.value })}>
+              {[...new Set([...labels, e.label])].map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          )}
+          <span className="text-xs text-muted-foreground">→</span>
+          <select aria-label="Goes to" className={SELECT} value={e.to} onChange={(ev) => set(i, { to: ev.target.value })}>
+            {targets.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.label || n.id}
+              </option>
+            ))}
+          </select>
+          <Button variant="ghost" size="icon-xs" aria-label="Remove this connection" onClick={() => onChange(draft.edges.filter((_, j) => j !== i))}>
+            <Trash2 />
+          </Button>
+        </div>
+      ))}
+      {unused && targets.length > 0 && (
+        <Button variant="outline" size="xs" className="w-fit" onClick={() => onChange([...draft.edges, { from: node.id, to: (targets.find((n) => n.type === 'output') ?? targets[0]!).id, label: unused }])}>
+          <Plus /> Connect{labels.length > 1 ? ` “${unused}”` : ''}
         </Button>
-        <Button size="sm" variant="ghost" disabled={save.pending || (current?.description == null && text === null)} onClick={() => void write({ enabled, description: null }).then(() => setText(null))}>
-          Use the default
-        </Button>
-      </div>
+      )}
     </div>
   )
 }
