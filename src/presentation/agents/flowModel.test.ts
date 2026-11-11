@@ -47,7 +47,8 @@ describe('new nodes and traces', () => {
     const a = newNode('core.if', 'If', ['if1'], [0, 0])
     expect(a.id).toBe('if2')
     expect((a.parameters.conditions as unknown[]).length).toBe(1)
-    expect(newNode('trigger.schedule', 'On a schedule', [], [0, 0]).parameters).toMatchObject({ time: '07:30' })
+    expect(newNode('trigger.schedule', 'On a schedule', [], [0, 0]).parameters).toMatchObject({ time: '07:30', days: [0, 1, 2, 3, 4, 5, 6] })
+    expect(newNode('msg.mail', 'Draft an email', [], [0, 0]).parameters).toMatchObject({ tell: true })
   })
   it('keeps each node’s last run and counts a loop’s repeats, and ignores a run from an older engine', () => {
     const t = traceByNode([

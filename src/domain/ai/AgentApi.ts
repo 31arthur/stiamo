@@ -753,6 +753,8 @@ export interface FlowNode {
   position: [number, number]
   parameters: Record<string, unknown>
   disabled?: boolean
+  /** Items used in place of this node when the workflow is run by hand. */
+  pinData?: Record<string, unknown>[]
 }
 
 /** node id → one list per output of `{ node, index }` targets. */
@@ -802,6 +804,8 @@ export interface FlowTrace {
   ms: number
   itemsIn: number
   outputs?: number[]
+  /** Used the data pinned on the node instead of running it. */
+  pinned?: boolean
   in?: unknown
   out?: unknown
   error?: string
@@ -955,6 +959,8 @@ export interface AgentApi {
   checkAgentFlow(agentId: string, flow: { nodes: FlowNode[]; connections: FlowConnections }): Promise<string[]>
   resetAgentFlow(agentId: string): Promise<AgentFlow>
   runAgentFlow(agentId: string, message: string, scheduled: boolean): Promise<{ answer: string; runId: string | null }>
+  /** Runs one node of the saved workflow alone, with the items given (or those pinned on the nodes leading into it). */
+  runFlowNode(agentId: string, nodeId: string, items?: Record<string, unknown>[], confirm?: boolean): Promise<{ outputs: Record<string, unknown>[][]; itemsIn: number; ms: number; error?: string }>
   flowCatalog(): Promise<{ nodes: FlowCatalogNode[]; templates: FlowTemplate[] }>
   createAgent(a: { name: string; description?: string; templateId?: string }): Promise<AgentSummary>
   deleteAgent(agentId: string): Promise<void>
