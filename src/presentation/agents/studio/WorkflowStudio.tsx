@@ -386,7 +386,7 @@ function Studio() {
           <span className="hidden text-muted-foreground sm:inline">Developer</span>
           <span className="hidden text-muted-foreground/50 sm:inline">/</span>
           <h1 className="truncate font-semibold">{f.name}</h1>
-          {dirty && <span className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">Unsaved</span>}
+          {dirty && <span aria-label="Unsaved changes" title="Unsaved changes" className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning max-xl:size-2 max-xl:p-0"><span className="max-xl:hidden">Unsaved</span></span>}
         </nav>
 
         <div role="tablist" aria-label="Workflow sections" className="order-last mx-auto flex w-full justify-center gap-0.5 rounded-xl bg-muted p-1 sm:order-none sm:w-auto sm:flex-1 sm:justify-center sm:bg-transparent sm:p-0 sm:absolute sm:left-1/2 sm:-translate-x-1/2 sm:flex-none">
@@ -543,6 +543,7 @@ function Studio() {
             onChange={(c) => patch(current.id, c)}
             onParams={setNodeParams}
             onRun={() => void runOne(current.id)}
+            onExecutePrevious={() => void execute(false)}
             onDelete={() => remove(current.id)}
             onClose={() => setOpened(null)}
           />

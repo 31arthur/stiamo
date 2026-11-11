@@ -12,7 +12,7 @@ export type Ran = FlowTrace & { runs: number }
 export type CanvasNode = Node<{ node: FlowNode; ran?: Ran; running?: boolean; open: number[]; onAdd?: (id: string, lane: number) => void; /** The model an AI node thinks with (its own, or the agent's), and what to do when its slot is pressed. */ model?: { label: string; own: boolean }; onModel?: (id: string) => void }, 'flow'>
 
 const GROUP_ICON: Record<string, LucideIcon> = { trigger: Zap, core: GitBranch, data: Database, msg: Send, ai: Sparkles, respond: MessageSquare }
-export const iconOf = (type: string): LucideIcon => (type === 'trigger.schedule' ? Clock : type === 'core.note' ? StickyNote : (GROUP_ICON[type.split('.')[0]!] ?? Bot))
+export const iconOf = (type: string): LucideIcon => (type === 'trigger.schedule' ? Clock : type === 'trigger.telegram' || type === 'msg.telegram' ? Send : type === 'trigger.orchestrator' ? Bot : type === 'core.note' ? StickyNote : (GROUP_ICON[type.split('.')[0]!] ?? Bot))
 
 /** The colour of a node's tile, by what kind of node it is (as n8n does it). */
 export const TONE: Record<string, string> = {
@@ -23,7 +23,7 @@ export const TONE: Record<string, string> = {
   ai: 'text-violet-600 dark:text-violet-400',
   respond: 'text-pink-600 dark:text-pink-400',
 }
-export const toneOf = (type: string) => (type === 'msg.telegram' ? 'text-sky-500' : (TONE[type.split('.')[0]!] ?? 'text-foreground'))
+export const toneOf = (type: string) => (type === 'msg.telegram' || type === 'trigger.telegram' ? 'text-sky-500' : (TONE[type.split('.')[0]!] ?? 'text-foreground'))
 
 const sum = (ran?: Ran) => (ran?.outputs ?? []).reduce((a, b) => a + b, 0)
 
