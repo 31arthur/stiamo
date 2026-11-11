@@ -4,6 +4,9 @@ import { Input } from '@/components/ui/input'
 import type { AgentFlow, FlowNode } from '@/domain/ai/AgentApi'
 import type { AiSelection } from '@/domain/ai/types'
 import { ModelChoice } from './ModelPicker'
+import { CredentialModal } from './studio/CredentialModal'
+import { useChannels } from './useAgent'
+import { useState } from 'react'
 
 const SELECT = 'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
 const AREA = 'w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-[13px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
@@ -289,6 +292,8 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
           <Check label="Send one message, however many items come in" on={p.once !== false} onChange={(v) => set({ once: v })} />
         </div>
       )
+    case 'msg.telegram':
+      return <TelegramFields p={p} set={set} />
     case 'msg.mail':
       return (
         <div className="grid gap-3">
@@ -394,4 +399,53 @@ export function FlowNodeForm({ node, flow, set }: { node: FlowNode; flow: AgentF
     default:
       return null
   }
+}
+
+
+const NEW = '__new__'
+
+/** The Telegram node: which bot to send with (its credential, made right here if there is none yet), to which chat, and what to say. */
+function TelegramFields({ p, set }: { p: Record<string, unknown>; set: (patch: Record<string, unknown>) => void }) {
+  const { channels } = useChannels()
+  const [making, setMaking] = useState(false)
+  const bots = channels.filter((c) => c.kind === 'telegram')
+  const bot = bots.find((c) => c.id === p.credential)
+  const chats = bot?.paired ?? []
+  const label = (c: (typeof bots)[number]) => `@${c.username ?? 'bot'} · ${c.workspace ? `${c.workspace} only` : 'all workspaces'}${c.paired?.length ? '' : ' (no chat linked yet)'}`
+  return (
+    <div className="grid gap-3">
+      <p className="text-sm text-muted-foreground">Sends a message with one of your Telegram bots. A bot limited to a workspace is only used by that workspace’s workflows.</p>
+      <Row label="Credential to connect with" hint={p.credential && !bot ? 'That bot is no longer connected. Choose another.' : undefined}>
+        <select
+          aria-label="Credential to connect with"
+          className={SELECT}
+          value={bot ? bot.id : ''}
+          onChange={(e) => (e.target.value === NEW ? setMaking(true) : set({ credential: e.target.value, chat: '' }))}
+        >
+          <option value="">Select a credential…</option>
+          {bots.map((c) => (
+            <option key={c.id} value={c.id}>
+              {label(c)}
+            </option>
+          ))}
+          <option value={NEW}>+ Create new credential</option>
+        </select>
+      </Row>
+      <Row label="Chat" hint="Left on all, it goes to every chat linked to the bot (that is just you, unless you linked more).">
+        <select aria-label="Chat" className={SELECT} value={String(p.chat ?? '')} disabled={!bot} onChange={(e) => set({ chat: e.target.value })}>
+          <option value="">All linked chats</option>
+          {chats.map((c) => (
+            <option key={String(c.id)} value={String(c.id)}>
+              {c.name || `Chat ${c.id}`}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <Row label="Text" hint="An expression, so it can use what the earlier nodes found.">
+        <textarea rows={4} className={AREA} value={String(p.text ?? '')} onChange={(e) => set({ text: e.target.value })} />
+      </Row>
+      <Check label="Send one message, however many items come in" on={p.once !== false} onChange={(v) => set({ once: v })} />
+      <CredentialModal open={making} onOpenChange={setMaking} kind="telegram" onCreated={(id) => set({ credential: id, chat: '' })} />
+    </div>
+  )
 }

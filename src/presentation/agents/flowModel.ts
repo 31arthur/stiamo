@@ -83,6 +83,7 @@ export function newNode(type: string, label: string, taken: string[], position: 
       'data.calendar': { limit: 50 },
       'data.drive': { query: '{{ $json.message }}', limit: 10 },
       'msg.send': { text: '{{ $json.text }}', once: true },
+      'msg.telegram': { credential: '', chat: '', text: '{{ $json.text }}', once: true },
       'msg.mail': { to: '{{ $json.email }}', subject: '', text: '', tell: true },
       'msg.ask': { text: 'Shall I go ahead?', options: ['Yes', 'No'] },
       'ai.agent': { prompt: '{{ $json.text }}', history: false },
