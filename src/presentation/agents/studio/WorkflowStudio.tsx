@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Panel, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow } from '@xyflow/react'
 import type { Connection, Edge, EdgeChange, NodeChange } from '@xyflow/react'
-import { AlertTriangle, ArrowLeft, Clock, EllipsisVertical, FlaskConical, Plus, RotateCcw, Save, StickyNote, Trash2, Undo2, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Clock, Copy, EllipsisVertical, FlaskConical, Plus, Redo2, RotateCcw, Save, StickyNote, Trash2, Undo2, X } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -94,6 +94,7 @@ function Studio() {
     const c = canvasOf(f)
     setNodes(c.nodes)
     setEdges(c.edges)
+    hist.current = { past: [], future: [], last: '' }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const doc = useMemo(() => docOf(nodes, edges), [nodes, edges])
@@ -102,10 +103,125 @@ function Studio() {
   const check = useQuery({ queryKey: ['agent', 'flow-check', userId, agentId, JSON.stringify(deferred)], queryFn: () => agent.checkAgentFlow(agentId!, deferred), enabled: !!f && dirty, retry: false })
   const problems: string[] = dirty ? (check.data ?? []) : (f?.problems ?? [])
 
+  // --- undo and redo: what the canvas held, kept after each pause in editing --------------------------------------------------------
+  const hist = useRef<{ past: string[]; future: string[]; last: string }>({ past: [], future: [], last: '' })
+  const [, bump] = useState(0)
+  const docKey = JSON.stringify(doc)
+  useEffect(() => {
+    const h = hist.current
+    if (!f || nodes.length === 0) return
+    if (h.last === '') {
+      h.last = docKey
+      return
+    }
+    if (docKey === h.last) return
+    const t = setTimeout(() => {
+      h.past.push(h.last)
+      if (h.past.length > 100) h.past.shift()
+      h.future = []
+      h.last = docKey
+      bump((n) => n + 1)
+    }, 400)
+    return () => clearTimeout(t)
+  }, [docKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const restore = (s: string) => {
+    const c = canvasOf(JSON.parse(s))
+    setNodes(c.nodes)
+    setEdges(c.edges)
+    setOpened(null)
+    bump((n) => n + 1)
+  }
+  const undo = () => {
+    const h = hist.current
+    if (docKey !== h.last) {
+      h.past.push(h.last) // what was changed in the last moments counts as a step
+      h.last = docKey
+    }
+    const s = h.past.pop()
+    if (s === undefined) return
+    h.future.push(h.last)
+    h.last = s
+    restore(s)
+  }
+  const redo = () => {
+    const h = hist.current
+    const s = h.future.pop()
+    if (s === undefined) return
+    h.past.push(h.last)
+    h.last = s
+    restore(s)
+  }
+
+  // --- copy, paste and duplicate ----------------------------------------------------------------------------------------------------
+  const clip = useRef<{ nodes: FlowNode[]; edges: Edge[]; pastes: number } | null>(null)
+  const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id)
+  const copy = () => {
+    if (selectedIds.length === 0) return false
+    clip.current = { nodes: nodes.filter((n) => n.selected).map((n) => ({ ...n.data.node, position: [n.position.x, n.position.y] as [number, number] })), edges: edges.filter((e) => selectedIds.includes(e.source) && selectedIds.includes(e.target)), pastes: 0 }
+    return true
+  }
+  /** Puts copies of nodes (and the joins between them) on the canvas, shifted by (dx, dy), and selects the copies. */
+  const place = (src: FlowNode[], joins: Edge[], dx: number, dy: number, select = true) => {
+    const taken = nodes.map((n) => n.id)
+    const ids: Record<string, string> = {}
+    const made = src.map((s) => {
+      const fresh = newNode(s.type, s.name, taken, [round(s.position[0] + dx), round(s.position[1] + dy)])
+      taken.push(fresh.id)
+      ids[s.id] = fresh.id
+      return { ...fresh, parameters: structuredClone(s.parameters), disabled: s.disabled, pinData: s.pinData ? structuredClone(s.pinData) : undefined }
+    })
+    setNodes((ns) => [...(select ? ns.map((n) => ({ ...n, selected: false })) : ns), ...made.map((node): CanvasNode => ({ id: node.id, type: 'flow', position: { x: node.position[0], y: node.position[1] }, selected: select, data: { node, open: [] } }))])
+    setEdges((es) => [...es, ...joins.map((e) => { const j = { source: ids[e.source]!, sourceHandle: e.sourceHandle ?? handleOut(0), target: ids[e.target]!, targetHandle: e.targetHandle ?? handleIn(0) }; return { ...j, id: edgeId(j) } })])
+  }
+  const paste = () => {
+    const c = clip.current
+    if (!c) return
+    c.pastes += 1
+    place(c.nodes, c.edges, 40 * c.pastes, 40 * c.pastes)
+  }
+  const duplicate = () => {
+    if (!copy()) return
+    clip.current!.pastes = 1
+    paste()
+  }
+  /** Holding Alt (or Ctrl/Cmd) while dragging a node leaves a copy behind where it was. */
+  const onDragStart = (e: MouseEvent | TouchEvent, _n: CanvasNode, dragged: CanvasNode[]) => {
+    if (!("altKey" in e && (e.altKey || e.ctrlKey || e.metaKey)) || tab !== 'editor') return
+    place(dragged.map((d) => ({ ...d.data.node, position: [d.position.x, d.position.y] as [number, number] })), [], 0, 0, false)
+  }
+
+  // --- the run, drawn as it goes: the server answers when it is done, so this walks the picture along the joins meanwhile ------------
+  const [step, setStep] = useState(0)
+  const depth = useMemo(() => {
+    const d: Record<string, number> = {}
+    let frontier = nodes.filter((n) => !edges.some((e) => e.target === n.id)).map((n) => n.id)
+    for (let i = 0; frontier.length && i < 50; i++) {
+      const next: string[] = []
+      for (const id of frontier) {
+        if (d[id] !== undefined) continue
+        d[id] = i
+        for (const e of edges) if (e.source === id) next.push(e.target)
+      }
+      frontier = next
+    }
+    return d
+  }, [nodes, edges])
+  const running = busy === 'run'
+  const lastDepth = Math.max(0, ...Object.values(depth))
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(() => setStep((s) => (s >= lastDepth ? 0 : s + 1)), 450)
+    return () => {
+      clearInterval(t)
+      setStep(0)
+    }
+  }, [running, lastDepth])
+  const lit = (id: string) => running && depth[id] === step
   const ran = useMemo(() => traceByNode(run.data?.trace as unknown[] | undefined), [run.data])
   const open = useMemo(() => openLanes(nodes, edges), [nodes, edges])
   const onAdd = useCallback((id: string, lane: number) => setPicker({ after: { id, lane } }), [])
-  const shown = useMemo(() => nodes.map((n) => ({ ...n, data: { ...n.data, ran: viewedRun ? ran[n.id] : undefined, open: tab === 'editor' ? (open[n.id] ?? []) : [], onAdd } })), [nodes, ran, viewedRun, open, tab, onAdd])
+  const shown = useMemo(() => nodes.map((n) => ({ ...n, data: { ...n.data, ran: viewedRun && !running ? ran[n.id] : undefined, running: lit(n.id), open: tab === 'editor' ? (open[n.id] ?? []) : [], onAdd } })), [nodes, ran, viewedRun, open, tab, onAdd, running, step, depth]) // eslint-disable-line react-hooks/exhaustive-deps
+  const drawn = useMemo(() => (running ? edges.map((e) => ({ ...e, animated: (depth[e.source] ?? 0) <= step })) : edges), [edges, running, depth, step])
   const current = nodes.find((n) => n.id === opened)?.data.node
   const feeding = current ? edges.filter((e) => e.target === current.id).map((e) => nodes.find((n) => n.id === e.source)?.data.node).filter((n): n is FlowNode => !!n) : []
 
@@ -156,6 +272,24 @@ function Studio() {
       if (e.key === 'Tab' && !typing && tab === 'editor' && !opened && !e.shiftKey) {
         e.preventDefault()
         setPicker({})
+      }
+      if ((e.metaKey || e.ctrlKey) && tab === 'editor' && !typing && !opened) {
+        const k = e.key.toLowerCase()
+        if (k === 'z') {
+          e.preventDefault()
+          if (e.shiftKey) redo()
+          else undo()
+        } else if (k === 'y') {
+          e.preventDefault()
+          redo()
+        } else if (k === 'c') copy()
+        else if (k === 'v') {
+          e.preventDefault()
+          paste()
+        } else if (k === 'd') {
+          e.preventDefault()
+          duplicate()
+        }
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
@@ -328,7 +462,7 @@ function Studio() {
             )}
 
             <div className="relative min-h-0 min-w-0 flex-1" data-testid="flow-canvas">
-              <StudioCanvas nodes={shown} edges={edges} readOnly={readOnly} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onOpen={setOpened} onPane={() => setPicker(null)}>
+              <StudioCanvas nodes={shown} edges={drawn} onDragStart={onDragStart} readOnly={readOnly} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onOpen={setOpened} onPane={() => setPicker(null)}>
                 {tab === 'editor' && (
                   <>
                     <Panel position="top-right" className="flex flex-col gap-2">
@@ -337,6 +471,15 @@ function Studio() {
                       </button>
                       <button type="button" aria-label="Add a note" title="Add a note" className={CANVAS_BUTTON} onClick={() => addNode({ type: 'core.note', label: 'Note' }, undefined)}>
                         <StickyNote className="size-4" />
+                      </button>
+                      <button type="button" aria-label="Duplicate the selected nodes" title="Duplicate selected (Ctrl+D). Hold Alt while dragging a node to copy it." className={CANVAS_BUTTON} disabled={selectedIds.length === 0} onClick={duplicate}>
+                        <Copy className="size-4" />
+                      </button>
+                      <button type="button" aria-label="Undo" title="Undo (Ctrl+Z)" className={CANVAS_BUTTON} disabled={hist.current.past.length === 0 && docKey === hist.current.last} onClick={undo}>
+                        <Undo2 className="size-4" />
+                      </button>
+                      <button type="button" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" className={CANVAS_BUTTON} disabled={hist.current.future.length === 0} onClick={redo}>
+                        <Redo2 className="size-4" />
                       </button>
                     </Panel>
                     <Panel position="bottom-center" className="mb-16 flex flex-wrap items-center justify-center gap-2 sm:mb-3.5">

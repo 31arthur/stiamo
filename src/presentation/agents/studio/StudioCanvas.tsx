@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { fromEdges, handleIn, handleOut, inputsOf, outputsOf, toEdges } from '../flowModel'
 
 export type Ran = FlowTrace & { runs: number }
-export type CanvasNode = Node<{ node: FlowNode; ran?: Ran; open: number[]; onAdd?: (id: string, lane: number) => void }, 'flow'>
+export type CanvasNode = Node<{ node: FlowNode; ran?: Ran; running?: boolean; open: number[]; onAdd?: (id: string, lane: number) => void }, 'flow'>
 
 const GROUP_ICON: Record<string, LucideIcon> = { trigger: Zap, core: GitBranch, data: Database, msg: Send, ai: Sparkles, respond: MessageSquare }
 export const iconOf = (type: string): LucideIcon => (type === 'trigger.schedule' ? Clock : type === 'core.note' ? StickyNote : (GROUP_ICON[type.split('.')[0]!] ?? Bot))
@@ -29,7 +29,7 @@ const sum = (ran?: Ran) => (ran?.outputs ?? []).reduce((a, b) => a + b, 0)
 
 /** One node, drawn as n8n draws it: a tile with its icon, the name under it, inputs on the left and outputs on the right. */
 function StudioNode({ data, selected }: NodeProps<CanvasNode>) {
-  const { node, ran, open, onAdd } = data
+  const { node, ran, running, open, onAdd } = data
   const Icon = iconOf(node.type)
   const outs = outputsOf(node)
   const ins = inputsOf(node.type)
@@ -58,6 +58,7 @@ function StudioNode({ data, selected }: NodeProps<CanvasNode>) {
           trigger ? 'rounded-l-[2rem] rounded-r-xl' : 'rounded-xl',
           selected ? 'border-foreground ring-2 ring-foreground/30' : 'group-hover:border-foreground/40 group-hover:shadow-md',
           node.disabled && 'opacity-45',
+          running && 'animate-pulse border-orange-500 ring-4 ring-orange-500/30',
           ran?.state === 'error' ? 'border-destructive ring-2 ring-destructive/30' : ran?.state === 'ok' && !selected && 'border-success',
         )}
       >
@@ -120,7 +121,7 @@ export function openLanes(nodes: CanvasNode[], edges: Edge[]): Record<string, nu
 const BTN = 'flex size-9 items-center justify-center rounded-lg border bg-card text-foreground shadow-xs transition-colors hover:bg-muted disabled:opacity-50'
 
 /** The canvas that takes the screen: the grid, the zoom buttons bottom left, a map on a computer, and whatever else is put on it. */
-export function StudioCanvas({ nodes, edges, readOnly, onNodesChange, onEdgesChange, onConnect, onOpen, onPane, children }: { nodes: CanvasNode[]; edges: Edge[]; readOnly?: boolean; onNodesChange?: (c: NodeChange<CanvasNode>[]) => void; onEdgesChange?: (c: EdgeChange[]) => void; onConnect?: (c: Connection) => void; onOpen: (id: string) => void; onPane?: () => void; children?: ReactNode }) {
+export function StudioCanvas({ nodes, edges, readOnly, onNodesChange, onEdgesChange, onConnect, onOpen, onPane, onDragStart, children }: { nodes: CanvasNode[]; edges: Edge[]; readOnly?: boolean; onNodesChange?: (c: NodeChange<CanvasNode>[]) => void; onEdgesChange?: (c: EdgeChange[]) => void; onConnect?: (c: Connection) => void; onOpen: (id: string) => void; onPane?: () => void; onDragStart?: (e: MouseEvent | TouchEvent, n: CanvasNode, all: CanvasNode[]) => void; children?: ReactNode }) {
   return (
     <ReactFlow
       nodes={nodes}
@@ -132,6 +133,9 @@ export function StudioCanvas({ nodes, edges, readOnly, onNodesChange, onEdgesCha
       onNodeDoubleClick={(_, n) => onOpen(n.id)}
       onNodeClick={(_, n) => { if (readOnly) onOpen(n.id) }}
       onPaneClick={onPane}
+      onNodeDragStart={onDragStart}
+      multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
+      selectionOnDrag={false}
       nodesDraggable={!readOnly}
       nodesConnectable={!readOnly}
       elementsSelectable
