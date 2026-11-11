@@ -21,6 +21,10 @@ export function outputsOf(node: Pick<FlowNode, 'type' | 'parameters'>): string[]
       return ['loop', 'done']
     case 'msg.ask':
       return Array.from({ length: Math.max(2, ((node.parameters.options as unknown[] | undefined) ?? []).length) }, (_, i) => String(((node.parameters.options as string[] | undefined) ?? [])[i] ?? `answer ${i + 1}`))
+    case 'ai.classify':
+      return [...((node.parameters.labels as { name?: string }[] | undefined) ?? []).map((l, i) => l.name || `label ${i + 1}`), 'not sure']
+    case 'core.safe_senders':
+      return ['carry on', 'kept']
     case 'core.switch':
       return [...((node.parameters.rules as unknown[] | undefined) ?? []).map((_, i) => `rule ${i + 1}`), 'fallback']
     case 'respond':
@@ -85,6 +89,12 @@ export function newNode(type: string, label: string, taken: string[], position: 
       'data.drive': { query: '{{ $json.message }}', limit: 10 },
       'msg.send': { text: '{{ $json.text }}', once: true },
       'msg.telegram': { credential: '', chat: '', text: '{{ $json.text }}', once: true },
+      'ai.classify': { prompt: 'Sort my mail: what is it, and does it matter to me?', labels: [{ name: 'spam', description: 'Unwanted sales mail, newsletters and mass mailings.' }, { name: 'keep', description: 'Real mail from real people, or anything that needs me.' }], decider: 'model', threshold: 0.7, batchSize: 1 },
+      'core.safe_senders': { correspondents: true, domains: [], addresses: [], phrases: [] },
+      'ai.read': { prompt: 'Mail that needs my attention.', route: 'attention' },
+      'msg.trash': { folder: 'INBOX', auto: false, tell: true },
+      'msg.alert': { call: false },
+      'msg.event': { tell: true },
       'msg.mail': { to: '{{ $json.email }}', subject: '', text: '', tell: true },
       'msg.ask': { text: 'Shall I go ahead?', options: ['Yes', 'No'] },
       'ai.agent': { prompt: '{{ $json.text }}', history: false },
