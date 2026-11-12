@@ -3,7 +3,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { format, parseISO } from 'date-fns'
 import { motion } from 'motion/react'
-import { ArrowRight, BellRing, BookOpen, CalendarClock, CalendarDays, CalendarRange, Check, ExternalLink, Gavel, ListChecks, Phone, Plus, Users } from 'lucide-react'
+import { ArrowRight, BellRing, BookOpen, BookMarked, CalendarClock, CalendarDays, CalendarRange, Check, ExternalLink, Gavel, ListChecks, Phone, Plus, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -25,6 +25,8 @@ const SECTION: Record<BriefingKind, { icon: LucideIcon; tone: string; stripe: st
   prepare: { icon: BookOpen, tone: 'bg-ws-media-soft text-ws-media', stripe: 'bg-ws-media' },
   calls: { icon: Phone, tone: 'bg-ws-fsa-soft text-ws-fsa', stripe: 'bg-ws-fsa' },
   work: { icon: ListChecks, tone: 'bg-success/12 text-success', stripe: 'bg-success' },
+  // The story most worth your time, from the planner's push score.
+  push: { icon: BookMarked, tone: 'bg-primary/10 text-primary', stripe: 'bg-primary' },
   attention: { icon: BellRing, tone: 'bg-destructive/10 text-destructive', stripe: 'bg-destructive' },
   later: { icon: CalendarRange, tone: 'bg-muted text-muted-foreground', stripe: 'bg-muted-foreground/40' },
 }
