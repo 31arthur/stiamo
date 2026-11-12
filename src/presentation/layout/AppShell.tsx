@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, BookUser, ChartNoAxesColumn, Code2, HeartPulse, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
+import { BellRing, BookOpenText, BookUser, Drama, ChartNoAxesColumn, Code2, HeartPulse, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -216,6 +216,10 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       ].filter((i) => on(i.to.slice(1))),
     },
     ...workspaceGroups,
+    // Stories you write, and the people in them: every workspace has them.
+    ...(backend === 'api'
+      ? [{ label: 'Stories', items: [{ to: '/stories', label: 'Stories', icon: BookOpenText }, { to: '/cast', label: 'Cast', icon: Drama }].filter((i) => on(i.to.slice(1))) }]
+      : []),
     ...monitoring,
     {
       label: 'Execute',

@@ -45,7 +45,7 @@ export interface BriefingItem {
   link?: string
 }
 
-export type BriefingKind = 'fixed' | 'prepare' | 'calls' | 'work' | 'attention' | 'later'
+export type BriefingKind = 'fixed' | 'prepare' | 'calls' | 'work' | 'push' | 'attention' | 'later'
 
 export interface BriefingSection {
   kind: BriefingKind

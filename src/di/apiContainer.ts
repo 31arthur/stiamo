@@ -5,6 +5,7 @@ import { RemoteDrive } from '@/data/api/RemoteDrive'
 import { RemoteCalendar } from '@/data/api/RemoteCalendar'
 import { RemoteContacts } from '@/data/api/RemoteContacts'
 import { RemoteMail } from '@/data/api/RemoteMail'
+import { RemoteStories } from '@/data/api/RemoteStories'
 import type { ApiConfig } from '@/data/api/config'
 import { ChangeBus } from '@/data/api/ChangeBus'
 import { PATHS } from '@/data/api/ApiRepository'
@@ -91,6 +92,7 @@ export function createApiContainer(config: ApiConfig, options: { sessions?: Sess
     mail: new RemoteMail(http),
     calendar: new RemoteCalendar(http),
     contacts: new RemoteContacts(http),
+    stories: new RemoteStories(http),
     live: {
       subscribe: <K extends StoreKind>(kind: K, userId: ID, listener: (items: EntityMap[K][]) => void, onError?: (e: Error) => void) =>
         crud[kind].subscribe(userId, listener as never, onError),

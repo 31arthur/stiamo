@@ -16,6 +16,10 @@ const NeedsPage = lazy(() => import('@/presentation/needs/NeedsPage').then((m) =
 const SetupPage = lazy(() => import('@/presentation/setup/SetupPage').then((m) => ({ default: m.SetupPage })))
 const InsightsPage = lazy(() => import('@/presentation/insights/InsightsPage').then((m) => ({ default: m.InsightsPage })))
 const ContactsPage = lazy(() => import('@/presentation/contacts/ContactsPage').then((m) => ({ default: m.ContactsPage })))
+const StoriesPage = lazy(() => import('@/presentation/stories/StoriesPage').then((m) => ({ default: m.StoriesPage })))
+const StoryPage = lazy(() => import('@/presentation/stories/StoryPage').then((m) => ({ default: m.StoryPage })))
+const CastPage = lazy(() => import('@/presentation/stories/CastPage').then((m) => ({ default: m.CastPage })))
+const CharacterPage = lazy(() => import('@/presentation/stories/CharacterPage').then((m) => ({ default: m.CharacterPage })))
 const CalendarPage = lazy(() => import('@/presentation/pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
 const CaseDetailPage = lazy(() => import('@/presentation/pages/CaseDetailPage').then((m) => ({ default: m.CaseDetailPage })))
 const ClientsPage = lazy(() => import('@/presentation/pages/ClientsPage').then((m) => ({ default: m.ClientsPage })))
@@ -106,6 +110,10 @@ export default function App({ container }: { container: Container }) {
                   <Route path="cases/:id" element={<CaseDetailPage />} />
                   <Route path="mail" element={<MailPage />} />
                   <Route path="contacts" element={<ContactsPage />} />
+                  <Route path="stories" element={<StoriesPage />} />
+                  <Route path="stories/:id" element={<StoryPage />} />
+                  <Route path="cast" element={<CastPage />} />
+                  <Route path="cast/:id" element={<CharacterPage />} />
                   <Route path="insights" element={<InsightsPage />} />
                   <Route path="needs" element={<NeedsPage />} />
                   <Route path="setup" element={<SetupPage />} />
