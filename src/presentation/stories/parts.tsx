@@ -7,11 +7,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import { WORKSPACE_IDS } from '@/domain/shared/workspace'
-import { BEAT_LABEL, PACING_LABEL, checkpointsFromLines, currentCheckpoint } from '@/domain/stories/Stories'
+import { BEAT_LABEL, LINKS_BY_WORKSPACE, PACING_LABEL, checkpointsFromLines, currentCheckpoint, linksAllowed, sameRef, toggleLink } from '@/domain/stories/Stories'
+import type { EntityRef } from '@/domain/shared/types'
 import type { Beat, Checkpoint, Pacing, Story } from '@/domain/stories/Stories'
 import { Field, NativeSelect, Segmented } from '@/presentation/components/form'
 import { WorkspacePicker } from '@/presentation/components/workspace'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
+import { useLinkables } from './useLinkables'
+import { X } from 'lucide-react'
 import { useArcTemplates, useStoryAction } from './useStories'
 
 const newId = () => crypto.randomUUID()
@@ -107,21 +110,22 @@ export function ChanceTrend({ points, current }: { points: { number: number; cha
 const PACINGS: Pacing[] = ['brisk', 'steady', 'slow']
 
 /** A new story, or the details of one: its ending, stakes, chance, pace, and its checkpoints (one per line, or from a template). */
-export function StoryDialog({ open, onOpenChange, story, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; story?: Story; onSaved?: (s: Story) => void }) {
+export function StoryDialog({ open, onOpenChange, story, onSaved, start }: { open: boolean; onOpenChange: (o: boolean) => void; story?: Story; onSaved?: (s: Story) => void; /** A new story that begins tied to a record (from a case, a project or a client). */ start?: { workspace: WorkspaceId; links: EntityRef[]; title?: string } }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">{open && <StoryForm story={story} onSaved={onSaved} onClose={() => onOpenChange(false)} />}</DialogContent>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">{open && <StoryForm story={story} start={start} onSaved={onSaved} onClose={() => onOpenChange(false)} />}</DialogContent>
     </Dialog>
   )
 }
 
 /** The form itself, started afresh each time the dialog opens (from the story when there is one). */
-function StoryForm({ story, onSaved, onClose }: { story?: Story; onSaved?: (s: Story) => void; onClose: () => void }) {
+function StoryForm({ story, start, onSaved, onClose }: { story?: Story; start?: { workspace: WorkspaceId; links: EntityRef[]; title?: string }; onSaved?: (s: Story) => void; onClose: () => void }) {
   const { scope } = useWorkspaceFilter()
   const templates = useArcTemplates()
   const { run, busy } = useStoryAction()
-  const [title, setTitle] = useState(story?.title ?? '')
-  const [workspace, setWorkspace] = useState<WorkspaceId>(story?.workspace ?? (scope === 'all' ? 'personal' : scope))
+  const [title, setTitle] = useState(story?.title ?? start?.title ?? '')
+  const [workspace, setWorkspace] = useState<WorkspaceId>(story?.workspace ?? start?.workspace ?? (scope === 'all' ? 'personal' : scope))
+  const [links, setLinks] = useState<EntityRef[]>(story?.links ?? start?.links ?? [])
   const [ending, setEnding] = useState(story?.ending ?? '')
   const [stakes, setStakes] = useState(String(story?.stakes ?? 3))
   const [chance, setChance] = useState(story?.chance !== undefined ? String(story.chance) : '')
@@ -142,6 +146,7 @@ function StoryForm({ story, onSaved, onClose }: { story?: Story; onSaved?: (s: S
       stakes: Number(stakes),
       chance: chanceNum,
       pacing,
+      links: linksAllowed(links, workspace),
       checkpoints: [...(story?.checkpoints ?? []), ...added],
     } as Story
     const saved = await run((s) => s.stories.saveStory(next), { success: story ? 'Saved' : 'Story started', failure: 'Couldn’t save the story' })
@@ -169,9 +174,14 @@ function StoryForm({ story, onSaved, onClose }: { story?: Story; onSaved?: (s: S
           <Field label="Title" htmlFor="story-title">
             <Input id="story-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Home loan" required autoFocus />
           </Field>
-          {!story && (
+          {!story && !start && (
             <Field label="Workspace" htmlFor="story-ws">
-              <WorkspacePicker id="story-ws" value={workspace} onChange={setWorkspace} only={[...WORKSPACE_IDS]} />
+              <WorkspacePicker id="story-ws" value={workspace} onChange={(ws) => (setWorkspace(ws), setLinks((l) => linksAllowed(l, ws)))} only={[...WORKSPACE_IDS]} />
+            </Field>
+          )}
+          {LINKS_BY_WORKSPACE[workspace].length > 0 && (
+            <Field label={LINKS_BY_WORKSPACE[workspace].includes('case') ? 'Cases it covers' : 'Projects and clients it covers'} hint="Optional. A story can cover several; its timeline then shows their recorded hearings, and they list the story.">
+              <LinkedRecords workspace={workspace} value={links} onChange={setLinks} />
             </Field>
           )}
           <Field label="The ending you want" htmlFor="story-ending">
@@ -226,5 +236,48 @@ function StoryForm({ story, onSaved, onClose }: { story?: Story; onSaved?: (s: S
           </DialogFooter>
         </form>
     </>
+  )
+}
+
+
+// --- what a story covers ---------------------------------------------------------------------------------------------
+
+/** Picks the cases, projects or clients a story covers, from those the workspace has. */
+export function LinkedRecords({ workspace, value, onChange }: { workspace: WorkspaceId; value: EntityRef[]; onChange: (v: EntityRef[]) => void }) {
+  const options = useLinkables(workspace)
+  const chosen = value.map((r) => options.find((o) => sameRef(o.ref, r)) ?? { ref: r, kind: r.kind, label: 'A record that’s gone' })
+  const left = options.filter((o) => !value.some((r) => sameRef(r, o.ref)))
+  return (
+    <div className="grid gap-2">
+      {chosen.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5">
+          {chosen.map((o) => (
+            <li key={`${o.ref.kind}:${o.ref.id}`} className="inline-flex max-w-full items-center gap-1 rounded-lg border bg-muted/40 py-0.5 pr-1 pl-2 text-xs">
+              <span className="text-muted-foreground">{o.kind}</span>
+              <span className="truncate">{o.label}</span>
+              <button type="button" className="rounded p-0.5 text-muted-foreground hover:text-foreground" aria-label={`Stop covering ${o.label}`} onClick={() => onChange(toggleLink(value, o.ref))}>
+                <X className="size-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <NativeSelect
+        aria-label="Cover another record"
+        value=""
+        onChange={(e) => {
+          const [kind, id] = e.target.value.split(':')
+          if (kind && id) onChange(toggleLink(value, { kind, id } as EntityRef))
+        }}
+        disabled={left.length === 0}
+      >
+        <option value="">{options.length === 0 ? 'Nothing here to cover yet' : left.length === 0 ? 'Everything is covered' : 'Cover another…'}</option>
+        {left.map((o) => (
+          <option key={`${o.ref.kind}:${o.ref.id}`} value={`${o.ref.kind}:${o.ref.id}`}>
+            {o.kind} · {o.label}
+          </option>
+        ))}
+      </NativeSelect>
+    </div>
   )
 }

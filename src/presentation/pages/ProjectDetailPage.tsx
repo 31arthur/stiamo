@@ -17,6 +17,7 @@ import { Meta, Section } from '@/presentation/components/layout'
 import { useEntities, useEntity, useRemove, useSave } from '@/presentation/data/hooks'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { StoriesForRecord } from '@/presentation/stories/StoriesForRecord'
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -82,6 +83,7 @@ function ProjectDetail({ project: p }: { project: Project }) {
           <ClientWork target={{ kind: 'project', id: p.id }} keys={keys} counterpart={client?.name} />
         </div>
         <div className="grid content-start gap-4">
+          <StoriesForRecord refTo={{ kind: 'project', id: p.id }} workspace="fsa" title={p.title} />
           <Section title="Documents" description="Specs, designs, contracts — upload a file or link a Google Doc">
             <AttachmentsPanel owner={{ kind: 'project', id: p.id }} compact />
           </Section>

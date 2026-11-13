@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import type { Chapter, Checkpoint, CheckpointStatus, DraftResult, Story, Timeline } from '@/domain/stories/Stories'
-import { PACING_LABEL, moveCheckpoint } from '@/domain/stories/Stories'
+import { LINKS_BY_WORKSPACE, PACING_LABEL, moveCheckpoint, recordPath } from '@/domain/stories/Stories'
 import { BackButton } from '@/presentation/components/BackButton'
 import { ConfirmDelete } from '@/presentation/components/confirm'
 import { DateInput, NativeSelect } from '@/presentation/components/form'
@@ -21,7 +21,8 @@ import { useToday } from '@/presentation/data/hooks'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { toast } from '@/presentation/notifications/toast'
 import { Link, Navigate, useNavigate } from '@/presentation/routing'
-import { ArcTrack, BeatChip, ChanceTrend, StoryDialog } from './parts'
+import { ArcTrack, BeatChip, ChanceTrend, LinkedRecords, StoryDialog } from './parts'
+import { useLinkables } from './useLinkables'
 import { useStoryAction, useTimeline } from './useStories'
 
 const newId = () => crypto.randomUUID()
@@ -99,6 +100,7 @@ function StoryView({ t }: { t: Timeline }) {
         </div>
         <aside className="grid content-start gap-4">
           <WhereItStands t={t} onSave={save} />
+          <Covers story={s} onSave={save} />
           <OpenWork t={t} />
           <CastPanel t={t} />
           <Threads t={t} />
@@ -526,3 +528,54 @@ function Bible({ story, onSave }: { story: Story; onSave: (next: Partial<Story>,
 }
 
 
+
+
+/** The cases, projects or clients this story covers: each opens its record, and its recorded hearings show in the story. */
+function Covers({ story, onSave }: { story: Story; onSave: (next: Partial<Story>, success?: string) => Promise<unknown> }) {
+  const options = useLinkables(story.workspace)
+  const [changing, setChanging] = useState(false)
+  const canCover = LINKS_BY_WORKSPACE[story.workspace].length > 0
+  const links = story.links ?? []
+  if (!canCover && links.length === 0) return null
+  return (
+    <Section
+      title="Covers"
+      description={links.length ? `${links.length} ${links.length === 1 ? 'record' : 'records'}` : 'Nothing yet'}
+      actions={
+        canCover && (
+          <Button size="xs" variant="ghost" onClick={() => setChanging((c) => !c)}>
+            <Pencil /> {changing ? 'Done' : 'Change'}
+          </Button>
+        )
+      }
+      bodyClassName="p-2"
+    >
+      {changing ? (
+        <div className="p-2">
+          <LinkedRecords workspace={story.workspace} value={links} onChange={(next) => void onSave({ links: next }, 'Saved')} />
+        </div>
+      ) : links.length === 0 ? (
+        <p className="p-2 text-sm text-muted-foreground">{story.workspace === 'sb' ? 'Tie it to the case or cases it’s about, and their recorded hearings appear among your chapters.' : 'Tie it to the project or client it’s about.'}</p>
+      ) : (
+        <ul className="grid gap-1">
+          {links.map((r) => {
+            const o = options.find((x) => x.ref.kind === r.kind && x.ref.id === r.id)
+            const to = recordPath(r)
+            return (
+              <li key={`${r.kind}:${r.id}`}>
+                {to && o ? (
+                  <Link to={to} className="flex items-baseline gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted/40">
+                    <span className="text-xs text-muted-foreground">{o.kind}</span>
+                    <span className="truncate">{o.label}</span>
+                  </Link>
+                ) : (
+                  <span className="block px-2 py-1.5 text-sm text-muted-foreground">A {r.kind} that’s gone</span>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Section>
+  )
+}

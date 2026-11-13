@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { arcProgress, checkpointsFromLines, currentCheckpoint, moveCheckpoint, phrase, sketchOf } from './Stories'
-import type { Checkpoint, Profile } from './Stories'
+import { LINKS_BY_WORKSPACE, arcProgress, checkpointsFromLines, currentCheckpoint, linksAllowed, moveCheckpoint, phrase, recordPath, sketchOf, storiesLinkedTo, toggleLink } from './Stories'
+import type { Checkpoint, Profile, Story } from './Stories'
 
 const cp = (id: string, status: Checkpoint['status'] = 'ahead'): Checkpoint => ({ id, title: id.toUpperCase(), status })
 
@@ -47,5 +47,35 @@ describe('what is known about a person', () => {
   it('says a label in words, or the label itself when it is the person’s own', () => {
     expect(phrase('agrees_no_delivery')).toBe('agrees, then doesn’t deliver')
     expect(phrase('overpromises_a_lot')).toBe('overpromises a lot')
+  })
+})
+
+describe('what a story covers', () => {
+  const story = (id: string, links: Story['links']) => ({ id, links }) as Story
+
+  it('offers cases to S&B, projects and clients to FSA, and nothing elsewhere', () => {
+    expect(LINKS_BY_WORKSPACE.sb).toEqual(['case'])
+    expect(LINKS_BY_WORKSPACE.fsa).toEqual(['project', 'client'])
+    expect(LINKS_BY_WORKSPACE.personal).toEqual([])
+  })
+
+  it('adds a link, or takes it away when it is already there', () => {
+    const a = { kind: 'case' as const, id: 'c1' }
+    expect(toggleLink([], a)).toEqual([a])
+    expect(toggleLink([a, { kind: 'case', id: 'c2' }], a)).toEqual([{ kind: 'case', id: 'c2' }])
+  })
+
+  it('keeps only the links a workspace may have', () => {
+    const links = [{ kind: 'case' as const, id: 'c1' }, { kind: 'project' as const, id: 'p1' }]
+    expect(linksAllowed(links, 'sb')).toEqual([links[0]])
+    expect(linksAllowed(links, 'fsa')).toEqual([links[1]])
+    expect(linksAllowed(links, 'personal')).toEqual([])
+  })
+
+  it('finds the stories that cover a record, and where a record lives', () => {
+    const list = [story('s1', [{ kind: 'case', id: 'c1' }]), story('s2', [{ kind: 'project', id: 'c1' }]), story('s3', [])]
+    expect(storiesLinkedTo(list, { kind: 'case', id: 'c1' }).map((s) => s.id)).toEqual(['s1'])
+    expect(recordPath({ kind: 'client', id: 'k' })).toBe('/clients/k')
+    expect(recordPath({ kind: 'task', id: 't' })).toBeNull()
   })
 })
