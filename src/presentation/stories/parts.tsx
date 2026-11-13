@@ -132,6 +132,8 @@ function StoryForm({ story, start, onSaved, onClose }: { story?: Story; start?: 
   const [pacing, setPacing] = useState<Pacing>(story?.pacing ?? 'steady')
   const [lines, setLines] = useState('')
   const [asTemplate, setAsTemplate] = useState('')
+  // Stakes, chance and pace have sensible defaults, so a new story asks for them only if you want to.
+  const [more, setMore] = useState(!!story)
 
   const offered = (templates.data ?? []).filter((t) => t.workspace === workspace)
 
@@ -187,17 +189,6 @@ function StoryForm({ story, start, onSaved, onClose }: { story?: Story; start?: 
           <Field label="The ending you want" htmlFor="story-ending">
             <Textarea id="story-ending" value={ending} onChange={(e) => setEnding(e.target.value)} placeholder="Disbursed before March, at 9% or less" rows={2} className="font-display text-lg" />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Stakes" hint="How much rides on it">
-              <Segmented label="Stakes" value={stakes} onChange={setStakes} options={['1', '2', '3', '4', '5'].map((v) => ({ value: v, label: v }))} />
-            </Field>
-            <Field label="Chance of the ending" htmlFor="story-chance" hint="0–100, your read">
-              <Input id="story-chance" type="number" min={0} max={100} value={chance} onChange={(e) => setChance(e.target.value)} placeholder="60" />
-            </Field>
-          </div>
-          <Field label="Pace" hint="How quiet is too quiet: the editor nudges when a story falls behind it">
-            <Segmented label="Pace" value={pacing} onChange={setPacing} options={PACINGS.map((p) => ({ value: p, label: PACING_LABEL[p] }))} />
-          </Field>
           <Field label={story ? 'Add checkpoints' : 'Checkpoints'} htmlFor="story-cps" hint="One per line, in order. Plot points, not tasks: “Documents in”, “Sanction letter”">
             {offered.length > 0 && (
               <NativeSelect
@@ -221,10 +212,28 @@ function StoryForm({ story, start, onSaved, onClose }: { story?: Story; start?: 
             )}
             <Textarea id="story-cps" value={lines} onChange={(e) => setLines(e.target.value)} rows={4} placeholder={'Pick a lender\nDocuments in\nBank verification\nSanction letter'} />
           </Field>
-          {(lines.trim() || (story?.checkpoints.length ?? 0) > 0) && (
-            <Field label="Save this arc as a template" htmlFor="story-template" hint="Optional: a name, and the checkpoints are offered for new stories in this workspace">
-              <Input id="story-template" value={asTemplate} onChange={(e) => setAsTemplate(e.target.value)} placeholder="Loan" />
-            </Field>
+          <button type="button" className="w-fit text-xs font-medium text-muted-foreground hover:text-foreground" aria-expanded={more} onClick={() => setMore((m) => !m)}>
+            {more ? 'Fewer options' : `More options: stakes ${stakes}, ${PACING_LABEL[pacing].split(' · ')[1]}${chance ? `, ${chance}% chance` : ''}`}
+          </button>
+          {more && (
+            <div className="grid gap-4 rounded-xl border bg-muted/20 p-3">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Stakes" hint="How much rides on it">
+                  <Segmented label="Stakes" value={stakes} onChange={setStakes} options={['1', '2', '3', '4', '5'].map((v) => ({ value: v, label: v }))} />
+                </Field>
+                <Field label="Chance of the ending" htmlFor="story-chance" hint="0–100, your read">
+                  <Input id="story-chance" type="number" min={0} max={100} value={chance} onChange={(e) => setChance(e.target.value)} placeholder="60" />
+                </Field>
+              </div>
+              <Field label="Pace" hint="How quiet is too quiet: the editor nudges when a story falls behind it">
+                <Segmented label="Pace" value={pacing} onChange={setPacing} options={PACINGS.map((p) => ({ value: p, label: PACING_LABEL[p] }))} />
+              </Field>
+              {(lines.trim() || (story?.checkpoints.length ?? 0) > 0) && (
+                <Field label="Save this arc as a template" htmlFor="story-template" hint="Optional: a name, and the checkpoints are offered for new stories in this workspace">
+                  <Input id="story-template" value={asTemplate} onChange={(e) => setAsTemplate(e.target.value)} placeholder="Loan" />
+                </Field>
+              )}
+            </div>
           )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>

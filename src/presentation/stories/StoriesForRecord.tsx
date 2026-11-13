@@ -30,17 +30,15 @@ export function StoriesForRecord({ refTo, workspace, title, also = [] }: { refTo
   return (
     <Section
       title="Stories"
-      description={loading ? undefined : linked.length ? `${linked.length} covering this` : 'None yet'}
+      description={loading ? undefined : linked.length ? `${linked.length} covering this` : 'None yet: tell it as a story'}
       actions={
         <Button size="xs" variant="ghost" onClick={() => setStarting(true)}>
           <Plus /> Start a story
         </Button>
       }
-      bodyClassName="p-2"
+      bodyClassName={linked.length === 0 && addable.length === 0 ? 'hidden' : 'p-2'}
     >
-      {linked.length === 0 ? (
-        <p className="p-2 text-sm text-muted-foreground">Tell this one as a story: chapters you write, checkpoints of its own, and the work each chapter leaves.</p>
-      ) : (
+      {linked.length === 0 ? null : (
         <ul className="grid gap-1.5">
           {linked.map((s) => {
             const here = currentCheckpoint(s)
