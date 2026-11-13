@@ -18,6 +18,7 @@ import { Meta, Section } from '@/presentation/components/layout'
 import { useAction, useEntities, useEntity } from '@/presentation/data/hooks'
 import { useDocumentTitle } from '@/presentation/layout/useDocumentTitle'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { StoriesForRecord } from '@/presentation/stories/StoriesForRecord'
 import { initials } from './CounselPage'
 import { PROJECT_TONE } from './ClientsPage'
 
@@ -122,6 +123,7 @@ function ClientDetail({ client: c }: { client: Client }) {
         </div>
 
         <div className="grid content-start gap-4">
+          <StoriesForRecord refTo={{ kind: 'client', id: c.id }} workspace="fsa" title={c.name} also={theirs.map((p) => ({ kind: 'project' as const, id: p.id }))} />
           <Section title="Profile">
             <div className="grid gap-3">
               <div className="grid grid-cols-2 gap-4">

@@ -30,6 +30,7 @@ import type { RecordInfo } from '@/presentation/components/records'
 import { LinkPicker } from '@/presentation/relations/LinkPicker'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ThreadPanel } from '@/presentation/relations/ThreadPanel'
+import { StoriesForRecord } from '@/presentation/stories/StoriesForRecord'
 import { caseSearchTerms } from '@/domain/drive/Drive'
 import { AttachmentsPanel } from '@/presentation/attachments/AttachmentsPanel'
 import { useAttachments } from '@/presentation/attachments/useAttachments'
@@ -200,6 +201,7 @@ function CaseDetail({ legalCase: c }: { legalCase: LegalCase }) {
               )
             })}
           </Section>
+          <StoriesForRecord refTo={{ kind: 'case', id: c.id }} workspace="sb" title={c.title} />
           <Section title="Case documents" description="Pleadings, orders, evidence, correspondence">
             <AttachmentsPanel owner={{ kind: 'case', id: c.id }} compact suggestTerms={caseSearchTerms(c)} />
           </Section>

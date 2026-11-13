@@ -335,3 +335,24 @@ export function sketchOf(name: string, p: Profile | undefined): string {
 
 export const STANCE_LABEL: Record<Stance, string> = { for_us: 'For us', neutral: 'Neutral', wary: 'Wary', against: 'Against' }
 export const SWAY_LABEL: Record<Sway, string> = { decides: 'Decides', shapes: 'Shapes', informs: 'Informs' }
+
+// --- what a story covers -----------------------------------------------------------------------------------------
+
+export type StoryLinkKind = 'case' | 'project' | 'client'
+
+/** What a story can be linked to in each workspace: cases are S&B's, projects and clients FSA's. */
+export const LINKS_BY_WORKSPACE: Record<WorkspaceId, StoryLinkKind[]> = { sb: ['case'], fsa: ['project', 'client'], personal: [], media: [] }
+
+export const sameRef = (a: EntityRef, b: EntityRef) => a.kind === b.kind && a.id === b.id
+
+/** The stories that cover a record. */
+export const storiesLinkedTo = (stories: Story[], ref: EntityRef) => stories.filter((s) => (s.links ?? []).some((l) => sameRef(l, ref)))
+
+/** Adds a link, or takes it away when it is already there. */
+export const toggleLink = (links: EntityRef[], ref: EntityRef) => (links.some((l) => sameRef(l, ref)) ? links.filter((l) => !sameRef(l, ref)) : [...links, ref])
+
+/** Only the links a workspace's stories may have (when a new story's workspace changes, the others go). */
+export const linksAllowed = (links: EntityRef[], ws: WorkspaceId) => links.filter((l) => (LINKS_BY_WORKSPACE[ws] as string[]).includes(l.kind))
+
+/** Where a covered record lives in the app, for a link back from a story. */
+export const recordPath = (r: EntityRef) => (r.kind === 'case' ? `/cases/${r.id}` : r.kind === 'project' ? `/projects/${r.id}` : r.kind === 'client' ? `/clients/${r.id}` : null)
