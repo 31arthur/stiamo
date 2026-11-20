@@ -95,6 +95,8 @@ export interface MailApi {
   page(accountId: string, folder: string, opts: { before?: number; q?: string }): Promise<MailPage>
   message(accountId: string, folder: string, uid: number): Promise<MailMessage>
   mark(accountId: string, folder: string, uid: number, flags: { seen?: boolean; flagged?: boolean }): Promise<void>
+  /** Moves messages to the Trash folder of the real mailbox (the server's own, so it is gone from the mailbox elsewhere too). Never deletes: it can be put back from Trash. Returns how many moved. */
+  trash(accountId: string, folder: string, uids: number[]): Promise<number>
   download(accountId: string, folder: string, uid: number, attachment: MailAttachment): Promise<Blob>
   /** Opens the live feed for a folder (IMAP IDLE on the server). Reconnects by itself until `signal` is aborted. */
   watch(accountId: string, folder: string, onEvent: (e: LiveEvent) => void, signal: AbortSignal): void

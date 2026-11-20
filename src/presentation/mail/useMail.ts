@@ -184,6 +184,19 @@ export function useMailActions() {
       },
     }),
     test: useMutation({ mutationFn: (id: string) => mail.test(id), onSettled: refreshAccounts }),
+    /** Moves messages to Trash, in the real mailbox too. They leave the list at once; the server follows (and the lists are asked again, so a failure puts them back). */
+    trash: useMutation({
+      mutationFn: (v: { accountId: string; folder: string; uids: number[] }) => mail.trash(v.accountId, v.folder, v.uids),
+      onMutate: (v) => {
+        const gone = new Set(v.uids)
+        client.setQueriesData<InfiniteData<MailPage>>({ queryKey: ['mail', userId, v.accountId, 'list', v.folder] }, (data) => data && { ...data, pages: data.pages.map((p) => ({ ...p, messages: p.messages.filter((m) => !gone.has(m.uid)) })) })
+        client.setQueriesData<InfiniteData<{ items: UnifiedSummary[] }>>({ queryKey: ['mail', userId, 'unified'] }, (data) => data && { ...data, pages: data.pages.map((p) => ({ ...p, items: p.items.filter((m) => !(m.accountId === v.accountId && gone.has(m.uid))) })) })
+      },
+      onSettled: (_d, _e, v) => {
+        void client.invalidateQueries({ queryKey: ['mail', userId, v.accountId] })
+        void client.invalidateQueries({ queryKey: ['mail', userId, 'unified'] })
+      },
+    }),
     /** Marks a message seen or flagged. The list and the open message change at once; the server follows. */
     mark: useMutation({
       mutationFn: (v: { accountId: string; folder: string; uid: number; seen?: boolean; flagged?: boolean }) => mail.mark(v.accountId, v.folder, v.uid, { seen: v.seen, flagged: v.flagged }),

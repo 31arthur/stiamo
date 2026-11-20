@@ -36,6 +36,10 @@ export class RemoteMail implements MailApi {
   async mark(accountId: string, folder: string, uid: number, flags: { seen?: boolean; flagged?: boolean }) {
     await this.http.request('PATCH', `${base(accountId)}/messages/${uid}`, { json: flags, query: { folder } })
   }
+  async trash(accountId: string, folder: string, uids: number[]) {
+    const r = await this.http.request<{ moved: number }>('POST', `${base(accountId)}/messages/trash`, { json: { folder, uids } })
+    return r.moved
+  }
   download(accountId: string, folder: string, uid: number, a: MailAttachment) {
     return this.http.request<Blob>('GET', `${base(accountId)}/messages/${uid}/attachments/${a.index}`, { query: { folder }, as: 'blob' })
   }

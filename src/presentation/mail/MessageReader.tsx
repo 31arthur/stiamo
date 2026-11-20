@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Download, Flag, Image, ImageOff, MailOpen, Paperclip } from 'lucide-react'
+import { ArrowLeft, Download, Flag, Image, ImageOff, MailOpen, Paperclip, Trash2 } from 'lucide-react'
 import { toast } from '@/presentation/notifications/toast'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -44,14 +44,17 @@ export function MessageReader({ accountId, folder, uid, onBack, markRead = true 
           {error instanceof Error ? error.message : 'Couldn’t open that message.'}
         </p>
       ) : (
-        <Body m={m} accountId={accountId} folder={folder} />
+        <Body m={m} accountId={accountId} folder={folder} onGone={onBack} />
       )}
     </div>
   )
 }
 
-function Body({ m, accountId, folder }: { m: MailMessage; accountId: string; folder: string }) {
-  const { mark } = useMailActions()
+/** A folder the server calls Trash (or Bin, or Deleted Items): there is nothing further to move a message to. */
+const IN_TRASH = /^(trash|bin|deleted items|deleted messages)$/i
+
+function Body({ m, accountId, folder, onGone }: { m: MailMessage; accountId: string; folder: string; onGone?: () => void }) {
+  const { mark, trash } = useMailActions()
   const [images, setImages] = useState(true) // pictures show by default; the reader is keyed by message, so each starts the same way
 
   return (
@@ -66,6 +69,29 @@ function Body({ m, accountId, folder }: { m: MailMessage; accountId: string; fol
             <Button size="icon" variant="ghost" aria-label="Mark as unread" onClick={() => mark.mutate({ accountId, folder, uid: m.uid, seen: false })}>
               <MailOpen />
             </Button>
+            {!IN_TRASH.test(folder.split('/').pop() ?? '') && (
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Move to Trash"
+                title="Move to Trash (in your mailbox too)"
+                disabled={trash.isPending}
+                onClick={() =>
+                  trash.mutate(
+                    { accountId, folder, uids: [m.uid] },
+                    {
+                      onSuccess: () => {
+                        toast.success('Moved to Trash', { description: 'It is in the Trash folder of your mailbox too, and can be put back from there.' })
+                        onGone?.()
+                      },
+                      onError: (e) => toast.error('Couldn’t move it to Trash', { description: e instanceof Error ? e.message : undefined }),
+                    },
+                  )
+                }
+              >
+                <Trash2 />
+              </Button>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
