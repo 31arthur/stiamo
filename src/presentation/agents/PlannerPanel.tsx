@@ -5,7 +5,7 @@ import { CalendarClock, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { DayPlanSettings } from '@/domain/ai/AgentApi'
+import type { ChittuSettings, DayPlanSettings } from '@/domain/ai/AgentApi'
 import { WORKSPACES } from '@/domain/shared/workspace'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import { Section } from '@/presentation/components/layout'
@@ -38,6 +38,8 @@ export function PlannerPanel() {
 
   const dirty = JSON.stringify(saved) !== JSON.stringify(draft)
   const set = (patch: Partial<DayPlanSettings>) => setDraft({ ...draft, ...patch })
+  const chittu: ChittuSettings = draft.chittu ?? { enabled: true, morning: '06:00', night: '22:00', remindAfter: 45 }
+  const setChittu = (patch: Partial<ChittuSettings>) => set({ chittu: { ...chittu, ...patch } })
   const waiting = data?.plans.filter((p) => p.status === 'proposed') ?? []
   const chosen = draft.workspaces ?? []
   const toggle = (ws: WorkspaceId) => set({ workspaces: chosen.includes(ws) ? chosen.filter((w) => w !== ws) : [...chosen, ws] })
@@ -77,7 +79,7 @@ export function PlannerPanel() {
 
   return (
     <Section
-      title="Evening plan"
+      title="Chittu’s day and the evening plan"
       description="At the end of the day the planner reads tomorrow, workspace by workspace, and proposes what to prepare, who to call and what to do when. Each plan goes to that workspace's own Telegram bot with Approve and Not this buttons, and an approved plan is added to its Google calendar."
       actions={
         <Button variant="outline" size="sm" onClick={() => void planNow()} disabled={planning !== null}>
@@ -136,6 +138,32 @@ export function PlannerPanel() {
             </span>
           </span>
         </label>
+        <fieldset className="grid gap-3 rounded-lg border px-3 py-3">
+          <legend className="px-1 text-xs font-medium text-muted-foreground">Chittu’s day</legend>
+          <label className="flex items-start gap-2.5 text-sm">
+            <input type="checkbox" checked={chittu.enabled} onChange={(e) => setChittu({ enabled: e.target.checked })} className="mt-0.5 size-4 accent-[var(--foreground)]" />
+            <span>
+              Good morning and good night on Telegram
+              <span className="block text-xs text-muted-foreground">
+                In the morning Chittu says how many things need you and asks whether to start, then brings them one at a time. At night he says what got done and what tomorrow opens with.
+              </span>
+            </span>
+          </label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Good morning at
+              <Input type="time" value={chittu.morning} onChange={(e) => setChittu({ morning: e.target.value })} disabled={!chittu.enabled} className="w-36" />
+            </label>
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Good night at
+              <Input type="time" value={chittu.night} onChange={(e) => setChittu({ night: e.target.value })} disabled={!chittu.enabled} className="w-36" />
+            </label>
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Ask once more after (minutes, 0 = never)
+              <Input type="number" min={0} max={240} value={chittu.remindAfter} onChange={(e) => setChittu({ remindAfter: Math.max(0, Math.min(240, Number(e.target.value) || 0)) })} disabled={!chittu.enabled} className="w-36" />
+            </label>
+          </div>
+        </fieldset>
         <Remembered />
         <div className="flex flex-wrap items-center gap-3">
           <Button size="sm" onClick={() => void save()} disabled={!dirty || saving}>

@@ -158,6 +158,19 @@ export interface DayPlanSettings {
   channels: boolean
   /** Which workspaces plan their own day each evening, each to its own bot. Empty: one plan across everything. */
   workspaces: string[]
+  /** Chittu's day: a good morning and a good night, and one thing at a time on Telegram in between. */
+  chittu?: ChittuSettings
+}
+
+/** When Chittu opens and closes the day. */
+export interface ChittuSettings {
+  /** Says good morning and good night (on unless switched off). */
+  enabled: boolean
+  /** 24-hour clock: the good morning (06:00) and the good night (22:00). */
+  morning: string
+  night: string
+  /** Minutes after the good morning to ask once more if there was no answer; 0 never asks again. */
+  remindAfter: number
 }
 
 /** How replies to one organisation sound and look. Used when an agent drafts a reply to an urgent email. */
