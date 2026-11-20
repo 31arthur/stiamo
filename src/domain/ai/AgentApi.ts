@@ -171,6 +171,8 @@ export interface ChittuSettings {
   night: string
   /** Minutes after the good morning to ask once more if there was no answer; 0 never asks again. */
   remindAfter: number
+  /** What Chittu calls you (your first name, say). Empty: the name your email gives. */
+  name?: string
 }
 
 /** How replies to one organisation sound and look. Used when an agent drafts a reply to an urgent email. */

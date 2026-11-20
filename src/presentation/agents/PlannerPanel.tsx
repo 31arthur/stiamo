@@ -149,6 +149,10 @@ export function PlannerPanel() {
               </span>
             </span>
           </label>
+          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+            What Chittu calls you
+            <Input value={chittu.name ?? ''} onChange={(e) => setChittu({ name: e.target.value })} placeholder="Your first name" maxLength={40} disabled={!chittu.enabled} className="max-w-60" />
+          </label>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="grid gap-1 text-xs font-medium text-muted-foreground">
               Good morning at
