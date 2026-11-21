@@ -14,6 +14,8 @@ import { HomeRedirect, WorkspaceShell } from '@/presentation/routing/WorkspaceSh
 
 // Each section is its own chunk; the shell and login load first.
 const ActionItemsPage = lazy(() => import('@/presentation/actions/ActionItemsPage').then((m) => ({ default: m.ActionItemsPage })))
+const CampaignsPage = lazy(() => import('@/presentation/campaigns/CampaignsPage').then((m) => ({ default: m.CampaignsPage })))
+const CampaignPage = lazy(() => import('@/presentation/campaigns/CampaignPage').then((m) => ({ default: m.CampaignPage })))
 const RapportPage = lazy(() => import('@/presentation/rapport/RapportPage').then((m) => ({ default: m.RapportPage })))
 const NeedsPage = lazy(() => import('@/presentation/needs/NeedsPage').then((m) => ({ default: m.NeedsPage })))
 const SetupPage = lazy(() => import('@/presentation/setup/SetupPage').then((m) => ({ default: m.SetupPage })))
@@ -126,6 +128,8 @@ export default function App({ container }: { container: Container }) {
                   <Route path="actions" element={<ActionsOrNeeds />} />
                   <Route path="needs" element={<Navigate to="/actions" replace />} />
                   <Route path="rapport" element={<RapportPage />} />
+                  <Route path="campaigns" element={<CampaignsPage />} />
+                  <Route path="campaigns/:id" element={<CampaignPage />} />
                   <Route path="setup" element={<SetupPage />} />
                   <Route path="assistant" element={<AssistantHome />} />
                   <Route path="assistant/:threadId" element={<AssistantThread />} />

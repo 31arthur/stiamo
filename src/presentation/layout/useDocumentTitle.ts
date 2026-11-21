@@ -24,6 +24,7 @@ export const SECTION_TITLES: Record<string, string> = {
   needs: 'Needs me',
   actions: 'Action items',
   rapport: 'Rapport',
+  campaigns: 'Campaigns',
   setup: 'Setup and health',
   attention: 'Attention',
   news: 'News',

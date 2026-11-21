@@ -1,4 +1,4 @@
-import type { RapportAdvice, RapportDetail, ActionChange, ActionItem, RapportOverview, AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowProgress, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { Campaign, CampaignDetail, CampaignInput, CampaignState, LinkPreview, RapportAdvice, RapportDetail, ActionChange, ActionItem, RapportOverview, AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowProgress, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -230,6 +230,38 @@ export class RemoteAgent implements AgentApi {
 
   rapportScan() {
     return this.http.post<{ started: number; waiting: number }>('/v1/agent/rapport/scan', {})
+  }
+
+  async campaigns() {
+    return (await this.http.get<{ items: Campaign[] }>('/v1/agent/campaigns')).items
+  }
+
+  campaignPreview(url: string) {
+    return this.http.post<LinkPreview>('/v1/agent/campaigns/preview', { url })
+  }
+
+  campaign(id: string) {
+    return this.http.get<CampaignDetail>(`/v1/agent/campaigns/${encodeURIComponent(id)}`)
+  }
+
+  campaignSave(id: string | null, input: CampaignInput) {
+    return id ? this.http.put<CampaignDetail>(`/v1/agent/campaigns/${encodeURIComponent(id)}`, input) : this.http.post<CampaignDetail>('/v1/agent/campaigns', input)
+  }
+
+  async campaignDelete(id: string) {
+    await this.http.delete(`/v1/agent/campaigns/${encodeURIComponent(id)}`)
+  }
+
+  campaignAddContacts(id: string, contacts: unknown[]) {
+    return this.http.post<CampaignDetail & { added: number; alreadyIn: number }>(`/v1/agent/campaigns/${encodeURIComponent(id)}/contacts`, { contacts })
+  }
+
+  campaignMark(memberId: string, state: CampaignState, note?: string) {
+    return this.http.post<CampaignDetail>(`/v1/agent/campaigns/members/${encodeURIComponent(memberId)}`, { state, note })
+  }
+
+  campaignRemove(memberId: string) {
+    return this.http.delete<CampaignDetail>(`/v1/agent/campaigns/members/${encodeURIComponent(memberId)}`)
   }
 
   rapportDetail(planId: string) {

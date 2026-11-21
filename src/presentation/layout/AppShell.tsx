@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpenText, BookUser, Drama, ChartNoAxesColumn, Code2, HeartHandshake, HeartPulse, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
+import { BookOpenText, BookUser, Drama, ChartNoAxesColumn, Code2, HeartHandshake, HeartPulse, Megaphone, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -217,7 +217,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       ].filter((i) => on(i.to.slice(1))),
     },
     // The people you keep up with: their contacts, and the plan for staying in touch.
-    ...(backend === 'api' ? [{ label: 'Relationships', items: [{ to: '/contacts', label: 'Contacts', icon: BookUser }, { to: '/rapport', label: 'Rapport', icon: HeartHandshake }].filter((i) => on(i.to.slice(1))) }] : []),
+    ...(backend === 'api' ? [{ label: 'Relationships', items: [{ to: '/contacts', label: 'Contacts', icon: BookUser }, { to: '/rapport', label: 'Rapport', icon: HeartHandshake }, { to: '/campaigns', label: 'Campaigns', icon: Megaphone }].filter((i) => on(i.to.slice(1))) }] : []),
     ...workspaceGroups,
     // Stories you write, and the people in them: every workspace has them.
     ...(backend === 'api'

@@ -344,6 +344,74 @@ export interface RapportAdvice extends RapportDetail {
   introductionsChanged: number
 }
 
+/** What a link looks like when shared on WhatsApp, from the page's own sharing tags. */
+export interface LinkPreview {
+  title?: string
+  description?: string
+  image?: string
+  site?: string
+  url?: string
+  host?: string
+  error?: string
+}
+
+export type CampaignState = 'pending' | 'sent' | 'replied' | 'declined' | 'skipped'
+
+export interface CampaignCounts {
+  total: number
+  pending: number
+  sent: number
+  replied: number
+  declined: number
+  skipped: number
+  /** How many people opened their link. */
+  clicked: number
+}
+
+export interface Campaign {
+  id: string
+  name: string
+  message: string
+  url: string
+  imageUrl: string
+  preview: LinkPreview
+  trackClicks: boolean
+  /** Whether each person gets their own tracked link (this server needs a public https address). */
+  tracking: boolean
+  status: 'active' | 'closed'
+  createdAt: string
+  counts: CampaignCounts
+}
+
+export interface CampaignMember {
+  id: string
+  name: string
+  phone: boolean
+  state: CampaignState
+  clicks: number
+  clickedAt: string | null
+  sentAt: string | null
+  repliedAt: string | null
+  note: string
+  /** Their message, ready to send. */
+  text: string
+  /** Opens their WhatsApp chat with the message written. */
+  whatsapp: string
+}
+
+export interface CampaignDetail extends Campaign {
+  members: CampaignMember[]
+}
+
+export interface CampaignInput {
+  name: string
+  message: string
+  url: string
+  image_url: string
+  track_clicks: boolean
+  status?: 'active' | 'closed'
+}
+
 export interface RapportOverview {
   status: { plans: number; active: number; paused: number; excluded: number; needsInfo?: number; dueSoon: { name: string; day?: string; purpose?: string }[] }
   plans: RapportPlan[]
@@ -1155,6 +1223,14 @@ export interface AgentApi {
   /** Looks at the new contacts now: those with tags and a place get their plan. */
   rapportScan(): Promise<{ started: number; waiting: number }>
   rapportDetail(planId: string): Promise<RapportDetail>
+  campaigns(): Promise<Campaign[]>
+  campaignPreview(url: string): Promise<LinkPreview>
+  campaign(id: string): Promise<CampaignDetail>
+  campaignSave(id: string | null, input: CampaignInput): Promise<CampaignDetail>
+  campaignDelete(id: string): Promise<void>
+  campaignAddContacts(id: string, contacts: unknown[]): Promise<CampaignDetail & { added: number; alreadyIn: number }>
+  campaignMark(memberId: string, state: CampaignState, note?: string): Promise<CampaignDetail>
+  campaignRemove(memberId: string): Promise<CampaignDetail>
   /** Tell the adviser what happened with a contact (or ask what to do). It answers, suggests messages and updates the persona. */
   rapportAdvise(planId: string, message: string): Promise<RapportAdvice>
   rapportDo(planId: string, action: 'pause' | 'exclude' | 'tier', tier?: string): Promise<string>
