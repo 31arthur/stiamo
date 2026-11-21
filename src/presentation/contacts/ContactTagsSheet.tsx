@@ -5,13 +5,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Spinner } from '@/components/ui/spinner'
 import type { Contact, ContactProfile } from '@/domain/contacts/Contacts'
 import { toast } from '@/presentation/notifications/toast'
+import { allZones, COMMON_ZONES, zoneLabel } from '@/domain/shared/timezones'
 import { useServices } from '@/presentation/app/services'
 import { PlacePicker } from './PlacePicker'
 import { useContactUpdate } from './useContacts'
 
 const SECTORS = ['Trade union', 'Government', 'Funder', 'Media', 'Client', 'Legal', 'Technology', 'Civil society', 'International body', 'Other']
 const RELATIONSHIPS = ['Partner', 'Official', 'Prospect', 'Peer', 'Client', 'Funder', 'Journalist']
-const ZONES = ['Asia/Kolkata', 'Asia/Qatar', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Singapore', 'Europe/London', 'Europe/Geneva', 'America/New_York', 'America/Sao_Paulo', 'Australia/Sydney']
 
 /** What you know about one contact: tags, sector, how close to keep, where they are. Kept in Stiamo only. Every new contact gets a get-to-know plan that reads this to write each message. */
 export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null; onClose: () => void }) {
@@ -96,12 +96,23 @@ export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null
               </label>
               <label className={field}>
                 Time zone (if it is not obvious)
-                <Input list="contact-zones" value={zone} onChange={(e) => setZone(e.target.value)} placeholder="Worked out from where they are, or their number" />
-                <datalist id="contact-zones">
-                  {ZONES.map((z) => (
-                    <option key={z} value={z} />
-                  ))}
-                </datalist>
+                <select value={zone} onChange={(e) => setZone(e.target.value)} className="h-9 rounded-md border bg-transparent px-2 text-sm text-foreground">
+                  <option value="">Worked out from the place or their number</option>
+                  <optgroup label="Common">
+                    {COMMON_ZONES.map((z) => (
+                      <option key={z} value={z}>
+                        {zoneLabel(z)}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="All time zones">
+                    {(zone && !allZones().includes(zone) ? [zone, ...allZones()] : allZones()).filter((z) => !COMMON_ZONES.includes(z)).map((z) => (
+                      <option key={z} value={z}>
+                        {zoneLabel(z)}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
               </label>
               <label className={field}>
                 Language for messages
