@@ -33,7 +33,10 @@ export function RapportAdvisorSheet({ plan, onClose }: { plan: RapportPlan | nul
     setText('')
     setTier(null)
   }, [plan?.id])
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [d?.notes.length])
+  useEffect(() => {
+    // (a block, so nothing is returned: React would take a returned value for a clean-up function and call it)
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [d?.notes.length])
 
   async function ask() {
     if (!plan || !text.trim() || busy) return

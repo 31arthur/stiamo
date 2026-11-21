@@ -16,7 +16,10 @@ export function PlacePicker({ value, onChange, onPick }: { value: string; onChan
   const [open, setOpen] = useState(false)
   const typed = useRef(false)
   useEffect(() => {
-    if (!typed.current || value.trim().length < 3) return setFound([])
+    if (!typed.current || value.trim().length < 3) {
+      setFound([])
+      return
+    }
     let stale = false
     const id = setTimeout(() => {
       setBusy(true)
