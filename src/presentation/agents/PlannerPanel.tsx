@@ -150,8 +150,13 @@ export function PlannerPanel() {
             </span>
           </label>
           <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-            What Chittu calls you
-            <Input value={chittu.name ?? ''} onChange={(e) => setChittu({ name: e.target.value })} placeholder="Your first name" maxLength={40} disabled={!chittu.enabled} className="max-w-60" />
+            <span>What everyone calls you</span>
+            <Input value={chittu.name ?? ''} onChange={(e) => setChittu({ name: e.target.value })} placeholder="Bhargav" maxLength={40} className="max-w-60" />
+          </label>
+          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+            <span>Your full name</span>
+            <Input value={chittu.fullName ?? ''} onChange={(e) => setChittu({ fullName: e.target.value })} placeholder="Kanthi Kiran Bhargav" maxLength={80} className="max-w-80" />
+            <span className="font-normal">Both are used by every agent in every workspace. The first message to a new contact introduces you by your full name; after that, by the name above.</span>
           </label>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="grid gap-1 text-xs font-medium text-muted-foreground">

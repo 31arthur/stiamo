@@ -171,8 +171,10 @@ export interface ChittuSettings {
   night: string
   /** Minutes after the good morning to ask once more if there was no answer; 0 never asks again. */
   remindAfter: number
-  /** What Chittu calls you (your first name, say). Empty: the name your email gives. */
+  /** What everyone calls you (Bhargav). Every agent uses it. Empty: the name your email gives. */
   name?: string
+  /** Your full name (Kanthi Kiran Bhargav), for what is written on your behalf, like the first message to a new contact. */
+  fullName?: string
 }
 
 /** How replies to one organisation sound and look. Used when an agent drafts a reply to an urgent email. */
