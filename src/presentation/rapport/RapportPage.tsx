@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { HeartHandshake, MessagesSquare, Pause, Pencil, UserX } from 'lucide-react'
+import { HeartHandshake, MessagesSquare, Pause, Pencil, Search, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { RapportPlan } from '@/domain/ai/AgentApi'
 import type { Contact } from '@/domain/contacts/Contacts'
@@ -34,7 +35,16 @@ export function RapportPage() {
   const today = useToday()
   const navigate = useNavigate()
   const q = useQuery({ queryKey: ['agent', 'rapport', userId], queryFn: () => agent.rapport(), enabled: available, staleTime: 15_000, refetchInterval: 60_000, retry: false })
-  const plans = (q.data?.plans ?? []).filter((p) => matches((p.workspace ?? undefined) as WorkspaceId | undefined))
+  const everyone = (q.data?.plans ?? []).filter((p) => matches((p.workspace ?? undefined) as WorkspaceId | undefined))
+  const [typed, setTyped] = useState('')
+  const [state, setState] = useState('all')
+  const plain = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const words = plain(typed).split(/\s+/).filter(Boolean)
+  const plans = everyone.filter((p) => {
+    if (state === 'paused' ? !p.pausedUntil : state === 'active' ? p.status !== 'active' || !!p.pausedUntil : state !== 'all' && p.status !== state) return false
+    const hay = plain([p.name, p.workspace, p.zone, p.tier && `tier ${p.tier}`, p.next?.purpose, p.status === 'needs_info' ? 'needs details' : p.status, ...(p.missing ?? [])].filter(Boolean).join(' '))
+    return words.every((w) => hay.includes(w))
+  })
   const status = q.data?.status
 
   async function change(p: RapportPlan, action: 'pause' | 'exclude' | 'tier', tier?: string) {
@@ -76,7 +86,7 @@ export function RapportPage() {
         <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm">
           {q.error instanceof Error ? q.error.message : 'Couldn’t load the plans'}
         </p>
-      ) : plans.length === 0 ? (
+      ) : everyone.length === 0 ? (
         <div className="grid justify-items-center gap-3 rounded-2xl border border-dashed px-4 py-14 text-center">
           <span className="grid size-12 place-items-center rounded-2xl bg-muted">
             <HeartHandshake className="size-5" />
@@ -91,7 +101,25 @@ export function RapportPage() {
               {status.needsInfo ? `${status.needsInfo} need details · ` : ''}{status.active} active · {status.paused} paused · {status.excluded} without a plan
             </p>
           )}
-          <ul className="grid divide-y overflow-hidden rounded-2xl border bg-card/80">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="relative block w-full sm:max-w-sm">
+              <span className="sr-only">Search the plans</span>
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Search by name, country, zone, tier or what is next" className="pl-9" />
+            </label>
+            <select value={state} onChange={(e) => setState(e.target.value)} className="h-8 rounded-md border bg-transparent px-2 text-xs" aria-label="Show">
+              <option value="all">All</option>
+              <option value="needs_info">Need details</option>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="excluded">Without a plan</option>
+            </select>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {plans.length === everyone.length ? `${everyone.length} plans` : `${plans.length} of ${everyone.length}`}
+            </span>
+          </div>
+          {plans.length === 0 && <p className="rounded-2xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{typed.trim() ? `No plan matches “${typed.trim()}”.` : 'No plan is in that state.'}</p>}
+          <ul className={cn('grid divide-y overflow-hidden rounded-2xl border bg-card/80', plans.length === 0 && 'hidden')}>
             {plans.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-3">
                 <div className="min-w-0 flex-1">
