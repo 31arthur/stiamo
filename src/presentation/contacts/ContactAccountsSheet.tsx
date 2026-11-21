@@ -66,7 +66,7 @@ export function ContactAccountsSheet({ open, onOpenChange, scope }: { open: bool
       <SheetContent side="right" className="gap-0 p-0 data-[side=right]:w-[min(96vw,38rem)] data-[side=right]:sm:max-w-none">
         <SheetHeader className="border-b px-5 py-4 pr-12">
           <SheetTitle className="font-display text-2xl font-normal">Google accounts</SheetTitle>
-          <SheetDescription className="text-xs">Choose whose contacts each workspace shows. A workspace can have several Google accounts, and one account can be in several workspaces. Stiamo only reads: it can’t change your Google contacts.</SheetDescription>
+          <SheetDescription className="text-xs">Choose whose contacts each workspace shows. A workspace can have several Google accounts, and one account can be in several workspaces. Stiamo reads your contacts and writes one thing back: where a contact is, in their address. It never adds or deletes a contact. A link made before this was added only reads; link it again to allow the write.</SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {isLoading ? (

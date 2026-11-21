@@ -17,12 +17,14 @@ export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null
   const [tags, setTags] = useState('')
   const [profile, setProfile] = useState<ContactProfile>({})
   const [zone, setZone] = useState('')
+  const [place, setPlace] = useState('')
   const [excluded, setExcluded] = useState(false)
   useEffect(() => {
     if (!contact) return
     setTags((contact.tags ?? []).join(', '))
     setProfile(contact.profile ?? {})
     setZone(contact.timezone ?? '')
+    setPlace(contact.location ?? '')
     setExcluded(!!contact.rapportExcluded)
   }, [contact])
   const set = (patch: Partial<ContactProfile>) => setProfile((p) => ({ ...p, ...patch }))
@@ -30,11 +32,12 @@ export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null
   async function save() {
     if (!contact) return
     try {
-      await update.mutateAsync({
+      const saved = await update.mutateAsync({
         id: contact.id,
-        changes: { tags: tags.split(',').map((t) => t.trim()).filter(Boolean), profile: Object.fromEntries(Object.entries(profile).filter(([, v]) => v)) as ContactProfile, timezone: zone, rapport_excluded: excluded },
+        changes: { tags: tags.split(',').map((t) => t.trim()).filter(Boolean), profile: Object.fromEntries(Object.entries(profile).filter(([, v]) => v)) as ContactProfile, timezone: zone, rapport_excluded: excluded, ...(place.trim() !== (contact.location ?? '') ? { location: place.trim() } : {}) },
       })
-      toast.success('Saved', { description: 'Kept in Stiamo. Nothing was changed in Google.' })
+      if (saved.googleNote) toast.warning('Saved', { description: saved.googleNote })
+      else toast.success('Saved', { description: saved.googleSaved ? 'Their place is in Google too.' : 'Kept in Stiamo.' })
       onClose()
     } catch (e) {
       toast.error('Couldn’t save that', { description: e instanceof Error ? e.message : undefined })
@@ -47,7 +50,7 @@ export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null
       <SheetContent side="right" className="gap-0 p-0 data-[side=right]:w-[min(96vw,34rem)] data-[side=right]:sm:max-w-none">
         <SheetHeader className="border-b px-5 py-4 pr-12">
           <SheetTitle className="font-display text-2xl font-normal">{contact?.name}</SheetTitle>
-          <SheetDescription className="text-xs">Tags and notes for the get-to-know plan. Kept in Stiamo; nothing is written to Google.</SheetDescription>
+          <SheetDescription className="text-xs">Tags and notes for the get-to-know plan, kept in Stiamo. Where they are is also saved in their address in Google.</SheetDescription>
         </SheetHeader>
         {contact && (
           <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 py-4">
@@ -84,8 +87,13 @@ export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null
                 </select>
               </label>
               <label className={field}>
-                Where they are (time zone)
-                <Input list="contact-zones" value={zone} onChange={(e) => setZone(e.target.value)} placeholder="Asia/Qatar (from their number if empty)" />
+                Where they are (city, country)
+                <Input value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Doha, Qatar" />
+                <span className="font-normal">Their messages go in their working hours. Saved in Google too.</span>
+              </label>
+              <label className={field}>
+                Time zone (if it is not obvious)
+                <Input list="contact-zones" value={zone} onChange={(e) => setZone(e.target.value)} placeholder="Worked out from where they are, or their number" />
                 <datalist id="contact-zones">
                   {ZONES.map((z) => (
                     <option key={z} value={z} />

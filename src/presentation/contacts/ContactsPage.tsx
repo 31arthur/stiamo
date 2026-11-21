@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookUser, History, Mail, Phone, Search, Tag, Users } from 'lucide-react'
+import { BookUser, History, Mail, MapPin, Phone, Search, Tag, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -174,6 +174,12 @@ function ContactCard({ contact: c, showWorkspaces, showAccount, activity, today,
             </li>
           ))}
         </ul>
+      )}
+      {c.location && (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0" />
+          <span className="truncate">{c.location}{c.timezone ? ` · ${c.timezone}` : ''}</span>
+        </p>
       )}
       {c.notes && <p className="line-clamp-2 text-xs text-muted-foreground">{c.notes}</p>}
       <button type="button" onClick={onTag} className="flex flex-wrap items-center gap-1.5 rounded-lg bg-muted/50 px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">

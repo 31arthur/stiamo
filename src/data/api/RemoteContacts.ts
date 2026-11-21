@@ -1,4 +1,4 @@
-import type { Contact, ContactAccount, ContactChanges, ContactsApi, ContactsStatus } from '@/domain/contacts/Contacts'
+import type { Contact, ContactSaved, ContactAccount, ContactChanges, ContactsApi, ContactsStatus } from '@/domain/contacts/Contacts'
 import type { WorkspaceId, WorkspaceScope } from '@/domain/shared/workspace'
 import { ApiHttp } from './ApiHttp'
 
@@ -15,7 +15,7 @@ export class RemoteContacts implements ContactsApi {
   }
 
   update(id: string, changes: ContactChanges) {
-    return this.http.request<Contact>('PATCH', `/v1/calendar/contacts/${encodeURIComponent(id)}`, { json: changes })
+    return this.http.request<ContactSaved>('PATCH', `/v1/calendar/contacts/${encodeURIComponent(id)}`, { json: changes })
   }
 
   start(workspace: WorkspaceId, email?: string) {

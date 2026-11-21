@@ -27,8 +27,13 @@ export interface Contact {
   tags?: string[]
   profile?: ContactProfile
   timezone?: string
+  /** Where they are, from the address in Google (or written here and into Google). The time zone is worked out from it when none is set. */
+  location?: string
   rapportExcluded?: boolean
 }
+
+/** What saving a contact answers: the contact, and whether the place also reached Google. */
+export type ContactSaved = Contact & { googleSaved?: boolean; googleNote?: string }
 
 /** The structured part of what you know about a contact. The rapport plan reads it to write each message. */
 export interface ContactProfile {
@@ -46,6 +51,7 @@ export interface ContactChanges {
   tags?: string[]
   profile?: ContactProfile
   timezone?: string
+  location?: string
   rapport_excluded?: boolean
 }
 
@@ -71,8 +77,8 @@ export interface ContactsApi {
   status(): Promise<ContactsStatus>
   /** One workspace's contacts, or everyone's together; sorted by name. */
   list(scope: WorkspaceScope, q: string, limit: number, opts?: { recent?: number }): Promise<{ items: Contact[]; total: number }>
-  /** Tags, profile, zone, or "no rapport plan" for a contact (kept in Stiamo; nothing is written to Google). */
-  update(id: string, changes: ContactChanges): Promise<Contact>
+  /** Tags, profile, zone, or "no rapport plan" for a contact (kept in Stiamo; a place is also written to their address in Google). */
+  update(id: string, changes: ContactChanges): Promise<ContactSaved>
   /** Where to send the person to let Stiamo read a Google account's contacts. */
   start(workspace: WorkspaceId, email?: string): Promise<{ url: string }>
   /** The same Google account in another workspace too: no new sign-in. */
