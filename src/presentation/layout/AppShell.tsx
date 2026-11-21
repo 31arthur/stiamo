@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, BookOpenText, BookUser, Drama, ChartNoAxesColumn, Code2, HeartHandshake, HeartPulse, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
+import { BookOpenText, BookUser, Drama, ChartNoAxesColumn, Code2, HeartHandshake, HeartPulse, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -15,7 +15,6 @@ import { useAttention } from '@/presentation/app/attention'
 import { NotificationsButton, NotificationsDrawer } from '@/presentation/notifications/NotificationsDrawer'
 import { usePages } from '@/presentation/app/pages'
 import { useServices } from '@/presentation/app/services'
-import { useAgentAttention } from '@/presentation/agents/useAgent'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { useHealth } from '@/presentation/agents/useAgent'
 import { useNeeds } from '@/presentation/needs/useNeeds'
@@ -163,7 +162,6 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
   const needs = backend === 'api' ? remote : local
   const { enabled } = usePages()
   const on = (page: string) => enabled(scope, page)
-  const waiting = useAgentAttention(scope === 'sb' ? 'sb' : undefined, scope === 'sb').data?.count ?? 0
 
   // Each workspace owns its section; the others stay out of the way. "All workspaces" shows the overview instead.
   // What belongs to a workspace is grouped by what it is, not labelled with the workspace's name: you already chose the workspace.
@@ -195,7 +193,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
   // The S&B desk's own section: what its agents found in the mail and in the news. Not in the other workspaces.
   const monitoring: NavGroup[] =
     backend === 'api' && scope === 'sb'
-      ? [{ label: 'Monitoring', items: [{ to: '/attention', label: 'Attention', icon: BellRing, badge: waiting }, { to: '/news', label: 'News', icon: Newspaper }] }]
+      ? [{ label: 'Monitoring', items: [{ to: '/news', label: 'News', icon: Newspaper }] }]
       : []
 
   const groups: NavGroup[] = [

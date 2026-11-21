@@ -39,10 +39,10 @@ export function useActionItems() {
 
 /** What the sidebar shows: what is late or today, and what is waiting for a yes. */
 export function useActionCount() {
-  const { groups } = useActionItems()
+  const { groups, items } = useActionItems()
   const waiting = useWaitingProposals().data?.length ?? 0
   const plans = useDayPlans().data?.plans.filter((p) => p.status === 'proposed').length ?? 0
-  return { total: groups.late.length + groups.today.length + waiting + plans, urgent: groups.late.length > 0 }
+  return { total: new Set([...groups.late, ...groups.today, ...items.filter((i) => i.kind === 'mail')].map((i) => i.ref)).size + waiting + plans, urgent: groups.late.length > 0 }
 }
 
 /** Done, cancel, move or snooze one item. The answer says what happened, and the toast can undo it. */

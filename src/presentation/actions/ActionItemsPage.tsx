@@ -11,6 +11,7 @@ import { useDayPlans, useWaitingProposals } from '@/presentation/agents/useAgent
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { PageHeader } from '@/presentation/components/layout'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
+import { Link } from '@/presentation/routing'
 import { PlanRow, ProposalRow } from '@/presentation/needs/NeedsPage'
 import { GROUPS, useActionItems, useActOnItem } from './useActionItems'
 import type { Group } from './useActionItems'
@@ -49,6 +50,14 @@ export function ActionItemsPage() {
         title="Action items"
         description={total === 0 ? 'Nothing is open.' : `${items.length} open ${items.length === 1 ? 'item' : 'items'}${waiting ? `, and ${waiting} waiting for your yes` : ''}. The same list Chittu walks you through on Telegram.`}
       />
+      {(scope === 'sb' || scope === 'all') && items.some((i) => i.kind === 'mail') && (
+        <p className="mb-4 text-xs text-muted-foreground">
+          Mail your agents flagged is in this list too.{' '}
+          <Link to="/attention" className="font-medium text-foreground underline-offset-2 hover:underline">
+            Review it one by one
+          </Link>
+        </p>
+      )}
       {error && (
         <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm">
           {error}
