@@ -294,6 +294,56 @@ export interface RapportPlan {
   missing?: string[]
 }
 
+/** What is known about one contact, kept by the adviser and used to write every later message to them. */
+export interface RapportPersona {
+  summary?: string
+  stage?: 'new' | 'in_touch' | 'warm' | 'dormant'
+  history?: string[]
+  common?: string[]
+  style?: string
+  avoid?: string[]
+  next?: { purpose?: string; idea?: string }
+  language?: string
+}
+
+export interface RapportNote {
+  at: string
+  by: 'owner' | 'ai'
+  text: string
+}
+
+export interface RapportSuggestion {
+  purpose: string
+  message: string
+  /** Opens the contact's WhatsApp chat with the message written. */
+  whatsapp: string
+}
+
+export interface RapportDetail {
+  id: string
+  name: string
+  workspaces: string[]
+  zone: string | null
+  phone: boolean
+  status: string
+  tier: string | null
+  persona: RapportPersona
+  notes: RapportNote[]
+  suggestions: RapportSuggestion[]
+  about: { organisation?: string; title?: string; tags?: string[] }
+  next: { day: string; purpose: string } | null
+  sent: number
+  unanswered: number
+}
+
+export interface RapportAdvice extends RapportDetail {
+  reply: string
+  /** A tier the adviser thinks fits better than the current one. */
+  suggestedTier: string | null
+  /** How many planned introductions became follow-ups because you had already written. */
+  introductionsChanged: number
+}
+
 export interface RapportOverview {
   status: { plans: number; active: number; paused: number; excluded: number; needsInfo?: number; dueSoon: { name: string; day?: string; purpose?: string }[] }
   plans: RapportPlan[]
@@ -1104,6 +1154,9 @@ export interface AgentApi {
   rapport(): Promise<RapportOverview>
   /** Looks at the new contacts now: those with tags and a place get their plan. */
   rapportScan(): Promise<{ started: number; waiting: number }>
+  rapportDetail(planId: string): Promise<RapportDetail>
+  /** Tell the adviser what happened with a contact (or ask what to do). It answers, suggests messages and updates the persona. */
+  rapportAdvise(planId: string, message: string): Promise<RapportAdvice>
   rapportDo(planId: string, action: 'pause' | 'exclude' | 'tier', tier?: string): Promise<string>
   health(): Promise<Health>
   testMailbox(accountId: string): Promise<{ ok: boolean; message: string }>

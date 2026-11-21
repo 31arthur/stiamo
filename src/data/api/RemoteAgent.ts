@@ -1,4 +1,4 @@
-import type { ActionChange, ActionItem, RapportOverview, AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowProgress, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { RapportAdvice, RapportDetail, ActionChange, ActionItem, RapportOverview, AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowProgress, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -230,6 +230,14 @@ export class RemoteAgent implements AgentApi {
 
   rapportScan() {
     return this.http.post<{ started: number; waiting: number }>('/v1/agent/rapport/scan', {})
+  }
+
+  rapportDetail(planId: string) {
+    return this.http.get<RapportDetail>(`/v1/agent/rapport/${encodeURIComponent(planId)}`)
+  }
+
+  rapportAdvise(planId: string, message: string) {
+    return this.http.post<RapportAdvice>(`/v1/agent/rapport/${encodeURIComponent(planId)}/advise`, { message })
   }
 
   async rapportDo(planId: string, action: 'pause' | 'exclude' | 'tier', tier?: string) {

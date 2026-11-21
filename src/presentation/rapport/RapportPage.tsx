@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { HeartHandshake, Pause, Pencil, UserX } from 'lucide-react'
+import { HeartHandshake, MessagesSquare, Pause, Pencil, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import type { RapportPlan } from '@/domain/ai/AgentApi'
@@ -16,6 +16,7 @@ import { PageHeader } from '@/presentation/components/layout'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
 import { useToday, useUserId } from '@/presentation/data/hooks'
 import { toast } from '@/presentation/notifications/toast'
+import { RapportAdvisorSheet } from './RapportAdvisorSheet'
 import { ContactTagsSheet } from '@/presentation/contacts/ContactTagsSheet'
 import { useNavigate } from '@/presentation/routing'
 
@@ -25,6 +26,7 @@ const TIERS = ['A', 'B', 'C'] as const
 export function RapportPage() {
   const { agent, contacts } = useServices()
   const [tagging, setTagging] = useState<Contact | null>(null)
+  const [advising, setAdvising] = useState<RapportPlan | null>(null)
   const userId = useUserId()
   const client = useQueryClient()
   const available = useAgentAvailable()
@@ -106,6 +108,9 @@ export function RapportPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  <Button variant="outline" size="xs" onClick={() => setAdvising(p)}>
+                    <MessagesSquare /> Adviser
+                  </Button>
                   {p.status === 'needs_info' && (
                     <Button size="xs" onClick={() => void fill(p)}>
                       <Pencil /> Fill in
@@ -133,6 +138,7 @@ export function RapportPage() {
         </div>
       )}
       <ContactTagsSheet contact={tagging} onClose={() => setTagging(null)} />
+      <RapportAdvisorSheet plan={advising} onClose={() => setAdvising(null)} />
     </>
   )
 }
