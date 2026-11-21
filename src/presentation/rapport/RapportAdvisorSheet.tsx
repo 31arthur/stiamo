@@ -4,6 +4,7 @@ import { Copy, MessageCircle, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { RapportDetail, RapportPersona, RapportPlan, RapportSuggestion } from '@/domain/ai/AgentApi'
 import { cn } from '@/lib/utils'
@@ -81,6 +82,7 @@ export function RapportAdvisorSheet({ plan, onClose }: { plan: RapportPlan | nul
               <Spinner label="Loading" />
             ) : d ? (
               <div className="grid gap-4">
+                {d.owner && !d.owner.name && <OwnerNames onSaved={() => void client.invalidateQueries({ queryKey: key })} />}
                 <Persona p={d.persona} tier={d.tier} />
                 {d.notes.length === 0 ? (
                   <p className="rounded-xl border border-dashed px-3.5 py-6 text-center text-sm text-muted-foreground">
@@ -134,6 +136,41 @@ export function RapportAdvisorSheet({ plan, onClose }: { plan: RapportPlan | nul
         </div>
       </SheetContent>
     </Sheet>
+  )
+}
+
+/** Messages are signed with your name, so it is asked for here once when it is missing. It is the same name every agent uses. */
+function OwnerNames({ onSaved }: { onSaved: () => void }) {
+  const { agent } = useServices()
+  const [name, setName] = useState('')
+  const [full, setFull] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function save() {
+    setBusy(true)
+    try {
+      await agent.setOwnerNames(name.trim(), full.trim())
+      toast.success('Saved', { description: 'Every agent uses these now.' })
+      onSaved()
+    } catch (e) {
+      toast.error('Couldn’t save that', { description: e instanceof Error ? e.message : undefined })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section aria-label="Your name" className="grid gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-4 text-sm">
+      <p className="font-medium">What should I sign with?</p>
+      <p className="text-xs text-muted-foreground">Your messages are signed with your name, and I don’t guess it from your email. Set it once: every agent uses it.</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="What everyone calls you (Bhargav)" maxLength={40} />
+        <Input value={full} onChange={(e) => setFull(e.target.value)} placeholder="Your full name" maxLength={80} />
+      </div>
+      <div>
+        <Button size="xs" disabled={busy || !name.trim()} onClick={() => void save()}>
+          {busy && <Spinner size="xs" tone="current" decorative />} Save
+        </Button>
+      </div>
+    </section>
   )
 }
 

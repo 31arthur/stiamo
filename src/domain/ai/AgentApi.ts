@@ -331,6 +331,8 @@ export interface RapportDetail {
   notes: RapportNote[]
   suggestions: RapportSuggestion[]
   about: { organisation?: string; title?: string; tags?: string[] }
+  /** What everyone calls you and your full name, as set for every agent (empty when not set yet). */
+  owner?: { name: string; fullName: string }
   next: { day: string; purpose: string } | null
   sent: number
   unanswered: number
@@ -1223,6 +1225,7 @@ export interface AgentApi {
   /** Looks at the new contacts now: those with tags and a place get their plan. */
   rapportScan(): Promise<{ started: number; waiting: number }>
   rapportDetail(planId: string): Promise<RapportDetail>
+  setOwnerNames(name: string, fullName: string): Promise<{ name: string; fullName: string }>
   campaigns(): Promise<Campaign[]>
   campaignPreview(url: string): Promise<LinkPreview>
   campaign(id: string): Promise<CampaignDetail>

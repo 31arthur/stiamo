@@ -264,6 +264,10 @@ export class RemoteAgent implements AgentApi {
     return this.http.delete<CampaignDetail>(`/v1/agent/campaigns/members/${encodeURIComponent(memberId)}`)
   }
 
+  setOwnerNames(name: string, fullName: string) {
+    return this.http.put<{ name: string; fullName: string }>('/v1/agent/rapport/owner', { name, full_name: fullName })
+  }
+
   rapportDetail(planId: string) {
     return this.http.get<RapportDetail>(`/v1/agent/rapport/${encodeURIComponent(planId)}`)
   }
