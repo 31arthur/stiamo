@@ -2,6 +2,7 @@ import { PagesProvider } from '@/presentation/app/pages'
 import { lazy } from 'react'
 import { MotionConfig } from 'motion/react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { useServices } from '@/presentation/app/services'
 import { Navigate } from '@/presentation/routing'
 import { Toaster } from 'sonner'
 import type { Container } from '@/di/container'
@@ -12,6 +13,8 @@ import { LoginPage } from '@/presentation/pages/LoginPage'
 import { HomeRedirect, WorkspaceShell } from '@/presentation/routing/WorkspaceShell'
 
 // Each section is its own chunk; the shell and login load first.
+const ActionItemsPage = lazy(() => import('@/presentation/actions/ActionItemsPage').then((m) => ({ default: m.ActionItemsPage })))
+const RapportPage = lazy(() => import('@/presentation/rapport/RapportPage').then((m) => ({ default: m.RapportPage })))
 const NeedsPage = lazy(() => import('@/presentation/needs/NeedsPage').then((m) => ({ default: m.NeedsPage })))
 const SetupPage = lazy(() => import('@/presentation/setup/SetupPage').then((m) => ({ default: m.SetupPage })))
 const InsightsPage = lazy(() => import('@/presentation/insights/InsightsPage').then((m) => ({ default: m.InsightsPage })))
@@ -65,6 +68,11 @@ const PlansPage = lazy(() => import('@/presentation/pages/PlansPage').then((m) =
 const TasksPage = lazy(() => import('@/presentation/pages/TasksPage').then((m) => ({ default: m.TasksPage })))
 const TodayPage = lazy(() => import('@/presentation/pages/TodayPage').then((m) => ({ default: m.TodayPage })))
 
+/** The action items come from the backend; without one (the local demo), the old list built from what the app holds. */
+function ActionsOrNeeds() {
+  return useServices().backend === 'api' ? <ActionItemsPage /> : <NeedsPage />
+}
+
 export default function App({ container }: { container: Container }) {
   return (
     <MotionConfig reducedMotion="user">
@@ -115,7 +123,9 @@ export default function App({ container }: { container: Container }) {
                   <Route path="cast" element={<CastPage />} />
                   <Route path="cast/:id" element={<CharacterPage />} />
                   <Route path="insights" element={<InsightsPage />} />
-                  <Route path="needs" element={<NeedsPage />} />
+                  <Route path="actions" element={<ActionsOrNeeds />} />
+                  <Route path="needs" element={<Navigate to="/actions" replace />} />
+                  <Route path="rapport" element={<RapportPage />} />
                   <Route path="setup" element={<SetupPage />} />
                   <Route path="assistant" element={<AssistantHome />} />
                   <Route path="assistant/:threadId" element={<AssistantThread />} />

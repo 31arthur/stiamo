@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { BellRing, BookOpenText, BookUser, Drama, ChartNoAxesColumn, Code2, HeartPulse, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
+import { BellRing, BookOpenText, BookUser, Drama, ChartNoAxesColumn, Code2, HeartHandshake, HeartPulse, Inbox as NeedsIcon, Newspaper, Check, CalendarDays, CalendarRange, ChevronRight, ChevronsUpDown, LayoutDashboard, Inbox, Mail, Menu, NotebookPen, Search, SlidersHorizontal, Sparkles, SquareArrowOutUpRight, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Navigate, useLocation, useOutlet } from 'react-router-dom'
 import { NavLink } from '@/presentation/routing'
@@ -19,6 +19,7 @@ import { useAgentAttention } from '@/presentation/agents/useAgent'
 import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
 import { useHealth } from '@/presentation/agents/useAgent'
 import { useNeeds } from '@/presentation/needs/useNeeds'
+import { useActionCount } from '@/presentation/actions/useActionItems'
 import type { WorkspaceScope } from '@/presentation/app/workspaceFilter'
 import { ActionMenu } from '@/presentation/components/ActionMenu'
 import { KIND_META } from '@/presentation/components/kinds'
@@ -154,10 +155,12 @@ export function AppShell() {
 
 function Sidebar({ onNotes }: { onNotes: () => void }) {
   const attention = useAttention()
-  const needs = useNeeds()
+  const local = useNeeds()
+  const remote = useActionCount()
   const health = useHealth().data
   const { scope, setScope } = useWorkspaceFilter()
   const { backend } = useServices()
+  const needs = backend === 'api' ? remote : local
   const { enabled } = usePages()
   const on = (page: string) => enabled(scope, page)
   const waiting = useAgentAttention(scope === 'sb' ? 'sb' : undefined, scope === 'sb').data?.count ?? 0
@@ -202,7 +205,7 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       label: 'Now',
       items: [
         ...(scope === 'all' ? [{ to: '/overview', label: 'Overview', icon: LayoutDashboard }] : []),
-        { to: '/needs', label: 'Needs me', icon: NeedsIcon, badge: needs.total, tone: needs.urgent ? ('danger' as const) : ('default' as const) },
+        { to: '/actions', label: backend === 'api' ? 'Action items' : 'Needs me', icon: NeedsIcon, badge: needs.total, tone: needs.urgent ? ('danger' as const) : ('default' as const) },
         { to: '/today', label: 'Today', icon: Sun },
         ...(backend === 'api' ? [{ to: '/insights', label: 'Insights', icon: ChartNoAxesColumn }] : []),
       ].filter((i) => on(i.to.slice(1))),
@@ -212,9 +215,11 @@ function Sidebar({ onNotes }: { onNotes: () => void }) {
       label: 'Communicate',
       items: [
         { to: '/calendar', label: 'Calendar', icon: CalendarDays },
-        ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }, { to: '/contacts', label: 'Contacts', icon: BookUser }] : []),
+        ...(backend === 'api' ? [{ to: '/mail', label: 'Mail', icon: Inbox }] : []),
       ].filter((i) => on(i.to.slice(1))),
     },
+    // The people you keep up with: their contacts, and the plan for staying in touch.
+    ...(backend === 'api' ? [{ label: 'Relationships', items: [{ to: '/contacts', label: 'Contacts', icon: BookUser }, { to: '/rapport', label: 'Rapport', icon: HeartHandshake }].filter((i) => on(i.to.slice(1))) }] : []),
     ...workspaceGroups,
     // Stories you write, and the people in them: every workspace has them.
     ...(backend === 'api'

@@ -242,6 +242,56 @@ export interface InsightDigest {
 }
 
 /** Something an agent proposed that is still waiting for you to approve or drop. */
+/** One thing to do, whatever it is made from (a task, a call, a meeting, a hearing, a Google event, a mail that needs you). */
+export interface ActionItem {
+  ref: string
+  kind: string
+  title: string
+  workspace: string
+  day: string | null
+  dayLabel?: string | null
+  time: string | null
+  minutes: number | null
+  due: string | null
+  dueLabel?: string | null
+  status: string
+  priority: string
+  fixed: boolean
+  case: string | null
+  contact: string | null
+  source: string
+  daysLate?: number
+  notes?: string | null
+}
+
+export interface ActionChange {
+  ok: boolean
+  did: string
+  changesetId: string
+  undo: string
+}
+
+export interface RapportPlan {
+  id: string
+  contactId: string | null
+  name: string
+  workspace: string | null
+  zone: string | null
+  source: string | null
+  tier: string | null
+  status: string
+  sent: number
+  planned: number
+  next: { day: string; purpose: string } | null
+  pausedUntil: string | null
+  unanswered: number
+}
+
+export interface RapportOverview {
+  status: { plans: number; active: number; paused: number; excluded: number; dueSoon: { name: string; day?: string; purpose?: string }[] }
+  plans: RapportPlan[]
+}
+
 export interface WaitingProposal {
   id: string
   action: string
@@ -1040,6 +1090,12 @@ export interface AgentApi {
   sendSampleAlert(): Promise<{ sent: number }>
   mailWatch(): Promise<MailWatch[]>
   waitingProposals(): Promise<WaitingProposal[]>
+  /** Every open action item across all workspaces. */
+  actionItems(workspace?: string): Promise<{ today: string; total: number; items: ActionItem[] }>
+  actOnItem(ref: string, action: 'complete' | 'cancel' | 'reopen' | 'move' | 'snooze', to?: string): Promise<ActionChange>
+  undoChange(changesetId: string): Promise<void>
+  rapport(): Promise<RapportOverview>
+  rapportDo(planId: string, action: 'pause' | 'exclude' | 'tier', tier?: string): Promise<string>
   health(): Promise<Health>
   testMailbox(accountId: string): Promise<{ ok: boolean; message: string }>
   deliveries(limit: number, failedOnly: boolean): Promise<{ items: Delivery[]; last24h: { sent: number; failed: number } }>

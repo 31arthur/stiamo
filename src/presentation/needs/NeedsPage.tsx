@@ -261,7 +261,7 @@ function useSettle() {
   }
 }
 
-function ProposalRow({ n }: { n: Extract<Need, { kind: 'proposal' }> }) {
+export function ProposalRow({ n }: { n: Extract<Need, { kind: 'proposal' }> }) {
   const { agent } = useServices()
   const settle = useSettle()
   const p = n.item
@@ -284,7 +284,7 @@ function ProposalRow({ n }: { n: Extract<Need, { kind: 'proposal' }> }) {
   )
 }
 
-function PlanRow({ n }: { n: Extract<Need, { kind: 'plan' }> }) {
+export function PlanRow({ n }: { n: Extract<Need, { kind: 'plan' }> }) {
   const { agent } = useServices()
   const settle = useSettle()
   const p = n.item

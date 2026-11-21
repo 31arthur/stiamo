@@ -1,4 +1,4 @@
-import type { AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowProgress, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
+import type { ActionChange, ActionItem, RapportOverview, AgentApi, AgentFlow, AgentSummary, FlowCatalogNode, FlowConnections, FlowNode, FlowProgress, FlowTemplate, AvailabilityRule, ChannelRole, Conversation, ConversationSummary, ConversationTurn, DayPlan, DayPlanSchedule, DayPlanSettings, Delivery, EnvVariable, Health, WaitingProposal, InsightDigest, Insights, MailWatch, ReminderSettings, Theme, NewsSort, NewsStory, ListenStatus, AttentionEvent, AttentionItem, Sweep, UsagePage, UsageSummary, FeedbackSuggestion, Execution, ExecutionDetail, PromptPreview, SafeSenders, AgentDetail, AgentSettings, AgentStats, ReviewItem, RunDetail, RunPage, Workflow, WorkflowConfig, WorkflowRun, Channel, ChatReply, DecisionQuestion, DecisionResult, PromptPackage, PromptSettings, WhatsAppConnection } from '@/domain/ai/AgentApi'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import type { AiSelection, ModelInfo, ProviderId } from '@/domain/ai/types'
 import { ApiHttp } from './ApiHttp'
@@ -210,6 +210,26 @@ export class RemoteAgent implements AgentApi {
 
   async waitingProposals() {
     return (await this.http.get<{ items: WaitingProposal[] }>('/v1/agent/proposals')).items
+  }
+
+  actionItems(workspace?: string) {
+    return this.http.get<{ today: string; total: number; items: ActionItem[] }>('/v1/agent/action-items', { workspace })
+  }
+
+  actOnItem(ref: string, action: 'complete' | 'cancel' | 'reopen' | 'move' | 'snooze', to?: string) {
+    return this.http.post<ActionChange>(`/v1/agent/action-items/${encodeURIComponent(ref)}/act`, { action, to })
+  }
+
+  async undoChange(changesetId: string) {
+    await this.http.post(`/v1/agent/action-items/changes/${encodeURIComponent(changesetId)}/undo`, {})
+  }
+
+  rapport() {
+    return this.http.get<RapportOverview>('/v1/agent/rapport')
+  }
+
+  async rapportDo(planId: string, action: 'pause' | 'exclude' | 'tier', tier?: string) {
+    return (await this.http.post<{ said: string }>(`/v1/agent/rapport/${encodeURIComponent(planId)}/do`, { action, tier })).said
   }
 
   health() {

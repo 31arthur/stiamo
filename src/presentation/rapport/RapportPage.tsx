@@ -1,0 +1,118 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { HeartHandshake, Pause, UserX } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import type { RapportPlan } from '@/domain/ai/AgentApi'
+import { WORKSPACES } from '@/domain/shared/workspace'
+import type { WorkspaceId } from '@/domain/shared/workspace'
+import { cn } from '@/lib/utils'
+import { useAgentAvailable } from '@/presentation/agents/useAgent'
+import { useServices } from '@/presentation/app/services'
+import { useWorkspaceFilter } from '@/presentation/app/workspaceFilter'
+import { friendlyDate } from '@/presentation/components/dates'
+import { PageHeader } from '@/presentation/components/layout'
+import { WorkspaceBadge } from '@/presentation/components/workspace'
+import { useToday, useUserId } from '@/presentation/data/hooks'
+import { toast } from '@/presentation/notifications/toast'
+import { useNavigate } from '@/presentation/routing'
+
+const TIERS = ['A', 'B', 'C'] as const
+
+/** The get-to-know plans Chittu keeps for new contacts: who, how close, what went out, what is next. */
+export function RapportPage() {
+  const { agent } = useServices()
+  const userId = useUserId()
+  const client = useQueryClient()
+  const available = useAgentAvailable()
+  const { matches } = useWorkspaceFilter()
+  const today = useToday()
+  const navigate = useNavigate()
+  const q = useQuery({ queryKey: ['agent', 'rapport', userId], queryFn: () => agent.rapport(), enabled: available, staleTime: 15_000, refetchInterval: 60_000, retry: false })
+  const plans = (q.data?.plans ?? []).filter((p) => matches((p.workspace ?? undefined) as WorkspaceId | undefined))
+  const status = q.data?.status
+
+  async function change(p: RapportPlan, action: 'pause' | 'exclude' | 'tier', tier?: string) {
+    try {
+      toast.success(await agent.rapportDo(p.id, action, tier))
+      await client.invalidateQueries({ queryKey: ['agent', 'rapport'] })
+    } catch (e) {
+      toast.error('Couldn’t do that', { description: e instanceof Error ? e.message : undefined })
+    }
+  }
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Relationships"
+        title="Rapport"
+        description="Every new contact gets a short, spaced plan of friendly messages: close at first, less often as time goes on. Chittu sends them on WhatsApp inside your 10:00–15:00 window, or hands you a tap-to-send link."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => navigate('/contacts')}>
+            Contacts
+          </Button>
+        }
+      />
+      {!available ? (
+        <p className="rounded-2xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">Rapport plans need the Stiamo backend.</p>
+      ) : q.isLoading ? (
+        <Spinner label="Loading" />
+      ) : q.error ? (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm">
+          {q.error instanceof Error ? q.error.message : 'Couldn’t load the plans'}
+        </p>
+      ) : plans.length === 0 ? (
+        <div className="grid justify-items-center gap-3 rounded-2xl border border-dashed px-4 py-14 text-center">
+          <span className="grid size-12 place-items-center rounded-2xl bg-muted">
+            <HeartHandshake className="size-5" />
+          </span>
+          <p className="font-medium">No plans yet</p>
+          <p className="max-w-md text-sm text-muted-foreground">When a new Google contact appears, Chittu builds a plan for them here. You can switch it off for anyone, or bring an older contact in, from Contacts.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {status && (
+            <p className="text-xs text-muted-foreground">
+              {status.active} active · {status.paused} paused · {status.excluded} without a plan
+            </p>
+          )}
+          <ul className="grid divide-y overflow-hidden rounded-2xl border bg-card/80">
+            {plans.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-2 truncate text-sm font-medium">
+                    {p.workspace && p.workspace in WORKSPACES && <WorkspaceBadge ws={p.workspace as WorkspaceId} />}
+                    <span className="truncate">{p.name}</span>
+                    <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium', p.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{p.pausedUntil ? 'paused' : p.status}</span>
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {p.sent} sent · {p.planned} to come
+                    {p.next ? ` · next ${friendlyDate(p.next.day, today)}: ${p.next.purpose}` : ''}
+                    {p.unanswered > 0 ? ` · ${p.unanswered} unanswered` : ''}
+                    {p.zone ? ` · ${p.zone}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  {TIERS.map((t) => (
+                    <Button key={t} variant={p.tier === t ? 'default' : 'outline'} size="xs" aria-label={`Tier ${t}`} aria-pressed={p.tier === t} onClick={() => p.tier !== t && void change(p, 'tier', t)}>
+                      {t}
+                    </Button>
+                  ))}
+                  {p.status === 'active' && !p.pausedUntil && (
+                    <Button variant="ghost" size="xs" onClick={() => void change(p, 'pause')}>
+                      <Pause /> Pause
+                    </Button>
+                  )}
+                  {p.status !== 'excluded' && (
+                    <Button variant="ghost" size="xs" onClick={() => void change(p, 'exclude')}>
+                      <UserX /> No plan
+                    </Button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  )
+}

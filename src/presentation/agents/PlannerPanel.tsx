@@ -180,7 +180,7 @@ export function PlannerPanel() {
             </span>
           )}
           {waiting.length > 0 && (
-            <Link to="/needs" className="ml-auto text-xs font-medium hover:underline">
+            <Link to="/actions" className="ml-auto text-xs font-medium hover:underline">
               {waiting.length === 1 ? `A plan for ${format(parseISO(waiting[0]!.day), 'EEE d MMM')} is waiting for you` : `${waiting.length} plans are waiting for you`}
             </Link>
           )}
