@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookUser, History, Mail, MapPin, Phone, Search, Tag, Users } from 'lucide-react'
+import { BookUser, Download, History, Mail, MapPin, Phone, Search, Tag, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -17,6 +17,7 @@ import { friendlyDate } from '@/presentation/components/dates'
 import { ContactAccountsSheet } from './ContactAccountsSheet'
 import { ContactHistory } from './ContactHistory'
 import { ContactTagsSheet } from './ContactTagsSheet'
+import { useServices } from '@/presentation/app/services'
 import { useContactList, useContactsAvailable, useContactsStatus } from './useContacts'
 
 const PAGE = 60
@@ -33,6 +34,23 @@ export function ContactsPage() {
   const [history, setHistory] = useState<Contact | null>(null)
   const [tagging, setTagging] = useState<Contact | null>(null)
   const [recentOnly, setRecentOnly] = useState(false)
+  const { contacts: api } = useServices()
+  const [exporting, setExporting] = useState(false)
+  async function exportAll() {
+    setExporting(true)
+    try {
+      const url = URL.createObjectURL(await api.exportAll())
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'stiamo-contacts.xlsx'
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    } catch (e) {
+      toast.error('Couldn’t export', { description: e instanceof Error ? e.message : undefined })
+    } finally {
+      setExporting(false)
+    }
+  }
   const today = useToday()
   const { data: followUps } = useEntities('followUp')
   const { data: tasks } = useEntities('task')
@@ -65,9 +83,14 @@ export function ContactsPage() {
         description="The people in your Google address books, kept per workspace. A workspace can have several Google accounts, and one account can be in several workspaces."
         actions={
           available && (
-            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-              <BookUser /> Google accounts
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={exporting} onClick={() => void exportAll()}>
+                {exporting ? <Spinner size="xs" tone="current" decorative /> : <Download />} Export to Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+                <BookUser /> Google accounts
+              </Button>
+            </div>
           )
         }
       />

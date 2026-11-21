@@ -32,8 +32,14 @@ export interface Contact {
   rapportExcluded?: boolean
 }
 
-/** What saving a contact answers: the contact, and whether the place also reached Google. */
-export type ContactSaved = Contact & { googleSaved?: boolean; googleNote?: string }
+/** A place from the search box: a town, region and country, with the time zone it is in. */
+export interface Place {
+  label: string
+  name: string
+  region: string
+  country: string
+  timezone: string
+}
 
 /** The structured part of what you know about a contact. The rapport plan reads it to write each message. */
 export interface ContactProfile {
@@ -77,8 +83,12 @@ export interface ContactsApi {
   status(): Promise<ContactsStatus>
   /** One workspace's contacts, or everyone's together; sorted by name. */
   list(scope: WorkspaceScope, q: string, limit: number, opts?: { recent?: number }): Promise<{ items: Contact[]; total: number }>
-  /** Tags, profile, zone, or "no rapport plan" for a contact (kept in Stiamo; a place is also written to their address in Google). */
-  update(id: string, changes: ContactChanges): Promise<ContactSaved>
+  /** Tags, profile, zone, or "no rapport plan" for a contact (all kept in Stiamo; nothing is written to Google). */
+  update(id: string, changes: ContactChanges): Promise<Contact>
+  /** Places that match what was typed (any town in the world), each with its time zone. */
+  places(q: string): Promise<Place[]>
+  /** Every contact with everything known about them, as an Excel file. */
+  exportAll(): Promise<Blob>
   /** Where to send the person to let Stiamo read a Google account's contacts. */
   start(workspace: WorkspaceId, email?: string): Promise<{ url: string }>
   /** The same Google account in another workspace too: no new sign-in. */

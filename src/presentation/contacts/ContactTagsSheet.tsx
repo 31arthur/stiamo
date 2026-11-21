@@ -5,6 +5,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Spinner } from '@/components/ui/spinner'
 import type { Contact, ContactProfile } from '@/domain/contacts/Contacts'
 import { toast } from '@/presentation/notifications/toast'
+import { useServices } from '@/presentation/app/services'
+import { PlacePicker } from './PlacePicker'
 import { useContactUpdate } from './useContacts'
 
 const SECTORS = ['Trade union', 'Government', 'Funder', 'Media', 'Client', 'Legal', 'Technology', 'Civil society', 'International body', 'Other']
@@ -14,6 +16,7 @@ const ZONES = ['Asia/Kolkata', 'Asia/Qatar', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/
 /** What you know about one contact: tags, sector, how close to keep, where they are. Kept in Stiamo only. Every new contact gets a get-to-know plan that reads this to write each message. */
 export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null; onClose: () => void }) {
   const update = useContactUpdate()
+  const { agent } = useServices()
   const [tags, setTags] = useState('')
   const [profile, setProfile] = useState<ContactProfile>({})
   const [zone, setZone] = useState('')
@@ -32,12 +35,12 @@ export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null
   async function save() {
     if (!contact) return
     try {
-      const saved = await update.mutateAsync({
+      await update.mutateAsync({
         id: contact.id,
         changes: { tags: tags.split(',').map((t) => t.trim()).filter(Boolean), profile: Object.fromEntries(Object.entries(profile).filter(([, v]) => v)) as ContactProfile, timezone: zone, rapport_excluded: excluded, ...(place.trim() !== (contact.location ?? '') ? { location: place.trim() } : {}) },
       })
-      if (saved.googleNote) toast.warning('Saved', { description: saved.googleNote })
-      else toast.success('Saved', { description: saved.googleSaved ? 'Their place is in Google too.' : 'Kept in Stiamo.' })
+      void agent.rapportScan().catch(() => undefined) // with the tags and place in, their plan can start now
+      toast.success('Saved', { description: 'Kept in Stiamo. Nothing was changed in Google.' })
       onClose()
     } catch (e) {
       toast.error('Couldn’t save that', { description: e instanceof Error ? e.message : undefined })
@@ -50,7 +53,7 @@ export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null
       <SheetContent side="right" className="gap-0 p-0 data-[side=right]:w-[min(96vw,34rem)] data-[side=right]:sm:max-w-none">
         <SheetHeader className="border-b px-5 py-4 pr-12">
           <SheetTitle className="font-display text-2xl font-normal">{contact?.name}</SheetTitle>
-          <SheetDescription className="text-xs">Tags and notes for the get-to-know plan, kept in Stiamo. Where they are is also saved in their address in Google.</SheetDescription>
+          <SheetDescription className="text-xs">Their tags and where they are. A get-to-know plan starts once both are filled in. Kept in Stiamo; nothing is written to Google.</SheetDescription>
         </SheetHeader>
         {contact && (
           <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 py-4">
@@ -88,8 +91,8 @@ export function ContactTagsSheet({ contact, onClose }: { contact: Contact | null
               </label>
               <label className={field}>
                 Where they are (city, country)
-                <Input value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Doha, Qatar" />
-                <span className="font-normal">Their messages go in their working hours. Saved in Google too.</span>
+                <PlacePicker value={place} onChange={setPlace} onPick={(p) => (setPlace(p.label), p.timezone && setZone(p.timezone))} />
+                <span className="font-normal">Their messages go in their working hours, so the time zone is taken from the place.</span>
               </label>
               <label className={field}>
                 Time zone (if it is not obvious)

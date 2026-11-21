@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { HeartHandshake, Pause, UserX } from 'lucide-react'
+import { HeartHandshake, Pause, Pencil, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import type { RapportPlan } from '@/domain/ai/AgentApi'
+import type { Contact } from '@/domain/contacts/Contacts'
 import { WORKSPACES } from '@/domain/shared/workspace'
 import type { WorkspaceId } from '@/domain/shared/workspace'
 import { cn } from '@/lib/utils'
@@ -14,13 +16,15 @@ import { PageHeader } from '@/presentation/components/layout'
 import { WorkspaceBadge } from '@/presentation/components/workspace'
 import { useToday, useUserId } from '@/presentation/data/hooks'
 import { toast } from '@/presentation/notifications/toast'
+import { ContactTagsSheet } from '@/presentation/contacts/ContactTagsSheet'
 import { useNavigate } from '@/presentation/routing'
 
 const TIERS = ['A', 'B', 'C'] as const
 
 /** The get-to-know plans Chittu keeps for new contacts: who, how close, what went out, what is next. */
 export function RapportPage() {
-  const { agent } = useServices()
+  const { agent, contacts } = useServices()
+  const [tagging, setTagging] = useState<Contact | null>(null)
   const userId = useUserId()
   const client = useQueryClient()
   const available = useAgentAvailable()
@@ -40,12 +44,22 @@ export function RapportPage() {
     }
   }
 
+  async function fill(p: RapportPlan) {
+    try {
+      const found = (await contacts.list('all', p.name, 20)).items.find((c) => c.id === p.contactId) ?? null
+      if (found) setTagging(found)
+      else toast.error('Couldn’t find that contact', { description: 'Open it from Contacts.' })
+    } catch (e) {
+      toast.error('Couldn’t open that contact', { description: e instanceof Error ? e.message : undefined })
+    }
+  }
+
   return (
     <>
       <PageHeader
         eyebrow="Relationships"
         title="Rapport"
-        description="Every new contact gets a short, spaced plan of friendly messages: close at first, less often as time goes on. Chittu sends them on WhatsApp inside your 10:00–15:00 window, or hands you a tap-to-send link."
+        description="Every new contact gets a short, spaced plan of friendly messages: close at first, less often as time goes on. Each message comes to you inside your 10:00–15:00 window, with a button that opens that person’s WhatsApp chat with the text ready. A plan starts once a contact’s tags and place are filled in."
         actions={
           <Button variant="outline" size="sm" onClick={() => navigate('/contacts')}>
             Contacts
@@ -72,7 +86,7 @@ export function RapportPage() {
         <div className="grid gap-4">
           {status && (
             <p className="text-xs text-muted-foreground">
-              {status.active} active · {status.paused} paused · {status.excluded} without a plan
+              {status.needsInfo ? `${status.needsInfo} need details · ` : ''}{status.active} active · {status.paused} paused · {status.excluded} without a plan
             </p>
           )}
           <ul className="grid divide-y overflow-hidden rounded-2xl border bg-card/80">
@@ -82,17 +96,22 @@ export function RapportPage() {
                   <p className="flex items-center gap-2 truncate text-sm font-medium">
                     {p.workspace && p.workspace in WORKSPACES && <WorkspaceBadge ws={p.workspace as WorkspaceId} />}
                     <span className="truncate">{p.name}</span>
-                    <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium', p.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{p.pausedUntil ? 'paused' : p.status}</span>
+                    <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium', p.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{p.pausedUntil ? 'paused' : p.status === 'needs_info' ? 'needs details' : p.status}</span>
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {p.sent} sent · {p.planned} to come
+                    {p.status === 'needs_info' ? `Add their ${(p.missing ?? []).join(' and ') || 'details'} and the plan starts` : `${p.sent} sent · ${p.planned} to come`}
                     {p.next ? ` · next ${friendlyDate(p.next.day, today)}: ${p.next.purpose}` : ''}
                     {p.unanswered > 0 ? ` · ${p.unanswered} unanswered` : ''}
                     {p.zone ? ` · ${p.zone}` : ''}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  {TIERS.map((t) => (
+                  {p.status === 'needs_info' && (
+                    <Button size="xs" onClick={() => void fill(p)}>
+                      <Pencil /> Fill in
+                    </Button>
+                  )}
+                  {p.status !== 'needs_info' && TIERS.map((t) => (
                     <Button key={t} variant={p.tier === t ? 'default' : 'outline'} size="xs" aria-label={`Tier ${t}`} aria-pressed={p.tier === t} onClick={() => p.tier !== t && void change(p, 'tier', t)}>
                       {t}
                     </Button>
@@ -113,6 +132,7 @@ export function RapportPage() {
           </ul>
         </div>
       )}
+      <ContactTagsSheet contact={tagging} onClose={() => setTagging(null)} />
     </>
   )
 }

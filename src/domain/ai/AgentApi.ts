@@ -262,6 +262,9 @@ export interface ActionItem {
   source: string
   daysLate?: number
   notes?: string | null
+  /** For a message to send to someone: opens their WhatsApp chat with the text written. */
+  whatsapp?: string
+  draft?: string
 }
 
 export interface ActionChange {
@@ -285,10 +288,12 @@ export interface RapportPlan {
   next: { day: string; purpose: string } | null
   pausedUntil: string | null
   unanswered: number
+  /** What is still to fill in on the contact before a plan starts (a plan with status needs_info). */
+  missing?: string[]
 }
 
 export interface RapportOverview {
-  status: { plans: number; active: number; paused: number; excluded: number; dueSoon: { name: string; day?: string; purpose?: string }[] }
+  status: { plans: number; active: number; paused: number; excluded: number; needsInfo?: number; dueSoon: { name: string; day?: string; purpose?: string }[] }
   plans: RapportPlan[]
 }
 
@@ -1095,6 +1100,8 @@ export interface AgentApi {
   actOnItem(ref: string, action: 'complete' | 'cancel' | 'reopen' | 'move' | 'snooze', to?: string): Promise<ActionChange>
   undoChange(changesetId: string): Promise<void>
   rapport(): Promise<RapportOverview>
+  /** Looks at the new contacts now: those with tags and a place get their plan. */
+  rapportScan(): Promise<{ started: number; waiting: number }>
   rapportDo(planId: string, action: 'pause' | 'exclude' | 'tier', tier?: string): Promise<string>
   health(): Promise<Health>
   testMailbox(accountId: string): Promise<{ ok: boolean; message: string }>

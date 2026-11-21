@@ -228,6 +228,10 @@ export class RemoteAgent implements AgentApi {
     return this.http.get<RapportOverview>('/v1/agent/rapport')
   }
 
+  rapportScan() {
+    return this.http.post<{ started: number; waiting: number }>('/v1/agent/rapport/scan', {})
+  }
+
   async rapportDo(planId: string, action: 'pause' | 'exclude' | 'tier', tier?: string) {
     return (await this.http.post<{ said: string }>(`/v1/agent/rapport/${encodeURIComponent(planId)}/do`, { action, tier })).said
   }

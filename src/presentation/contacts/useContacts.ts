@@ -33,7 +33,7 @@ export function useContactUpdate() {
   const { contacts } = useServices()
   const client = useQueryClient()
   const userId = useUserId()
-  return useMutation({ mutationFn: (v: { id: string; changes: ContactChanges }) => contacts.update(v.id, v.changes), onSuccess: () => client.invalidateQueries({ queryKey: ['contacts', userId] }) })
+  return useMutation({ mutationFn: (v: { id: string; changes: ContactChanges }) => contacts.update(v.id, v.changes), onSuccess: () => client.invalidateQueries({ queryKey: ['contacts', userId] }).then(() => client.invalidateQueries({ queryKey: ['agent', 'rapport'] })) })
 }
 
 /** Reads the contacts again now, for one account link or all of them, then refreshes what is shown. */

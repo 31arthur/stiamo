@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { CalendarClock, CalendarPlus, Check, Gavel, ListChecks, Mail, Phone, Users, X } from 'lucide-react'
+import { CalendarClock, MessageCircle, CalendarPlus, Check, Gavel, ListChecks, Mail, Phone, Users, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -146,11 +146,17 @@ function ItemRow({ item: i }: { item: ActionItem }) {
             {i.case && ` · ${i.case}`}
           </Fragment>
         </p>
+        {i.draft && <p className="mt-0.5 line-clamp-2 text-xs">{i.draft}</p>}
       </div>
       {changeable && (
         <div className="flex shrink-0 gap-1">
+          {i.whatsapp && (
+            <Button variant="outline" size="xs" onClick={() => window.open(i.whatsapp, '_blank', 'noopener')}>
+              <MessageCircle /> Open WhatsApp
+            </Button>
+          )}
           <Button size="xs" disabled={pending} onClick={() => act({ ref: i.ref, action: 'complete' })}>
-            <Check /> Done
+            <Check /> {i.whatsapp ? 'Sent' : 'Done'}
           </Button>
           <Button variant="outline" size="xs" disabled={pending} onClick={() => act({ ref: i.ref, action: 'move', to: 'tomorrow' })}>
             Tomorrow
