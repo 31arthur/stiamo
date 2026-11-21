@@ -1,4 +1,4 @@
-import type { Contact, ContactAccount, ContactsApi, ContactsStatus } from '@/domain/contacts/Contacts'
+import type { Contact, ContactAccount, ContactChanges, ContactsApi, ContactsStatus } from '@/domain/contacts/Contacts'
 import type { WorkspaceId, WorkspaceScope } from '@/domain/shared/workspace'
 import { ApiHttp } from './ApiHttp'
 
@@ -10,8 +10,12 @@ export class RemoteContacts implements ContactsApi {
     return this.http.get<ContactsStatus>('/v1/calendar/contacts/status')
   }
 
-  list(scope: WorkspaceScope, q: string, limit: number) {
-    return this.http.get<{ items: Contact[]; total: number }>('/v1/calendar/contacts', { workspace: scope === 'all' ? undefined : scope, q: q || undefined, limit })
+  list(scope: WorkspaceScope, q: string, limit: number, opts?: { recent?: number }) {
+    return this.http.get<{ items: Contact[]; total: number }>('/v1/calendar/contacts', { workspace: scope === 'all' ? undefined : scope, q: q || undefined, limit, recent: opts?.recent })
+  }
+
+  update(id: string, changes: ContactChanges) {
+    return this.http.request<Contact>('PATCH', `/v1/calendar/contacts/${encodeURIComponent(id)}`, { json: changes })
   }
 
   start(workspace: WorkspaceId, email?: string) {

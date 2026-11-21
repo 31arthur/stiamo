@@ -20,6 +20,33 @@ export interface Contact {
   workspaces: WorkspaceId[]
   /** The Google accounts it comes from. */
   accounts: string[]
+  /** When it first appeared here, and whether that was after the first read of its account (so it is really new). */
+  firstSeenAt?: string | null
+  isNew?: boolean
+  /** What you know about them, kept in Stiamo only (never written to Google): tags, a profile, where they are, and whether a rapport plan is wanted. */
+  tags?: string[]
+  profile?: ContactProfile
+  timezone?: string
+  rapportExcluded?: boolean
+}
+
+/** The structured part of what you know about a contact. The rapport plan reads it to write each message. */
+export interface ContactProfile {
+  sector?: string
+  relationship?: string
+  /** A key, B usual, C light: how closely to keep in touch. */
+  tier?: 'A' | 'B' | 'C'
+  language?: string
+  how_met?: string
+  interests?: string
+  goal?: string
+}
+
+export interface ContactChanges {
+  tags?: string[]
+  profile?: ContactProfile
+  timezone?: string
+  rapport_excluded?: boolean
 }
 
 /** A Google account linked to one workspace for its contacts. The same account can be linked to several workspaces; a workspace can have several accounts. */
@@ -43,7 +70,9 @@ export interface ContactsStatus {
 export interface ContactsApi {
   status(): Promise<ContactsStatus>
   /** One workspace's contacts, or everyone's together; sorted by name. */
-  list(scope: WorkspaceScope, q: string, limit: number): Promise<{ items: Contact[]; total: number }>
+  list(scope: WorkspaceScope, q: string, limit: number, opts?: { recent?: number }): Promise<{ items: Contact[]; total: number }>
+  /** Tags, profile, zone, or "no rapport plan" for a contact (kept in Stiamo; nothing is written to Google). */
+  update(id: string, changes: ContactChanges): Promise<Contact>
   /** Where to send the person to let Stiamo read a Google account's contacts. */
   start(workspace: WorkspaceId, email?: string): Promise<{ url: string }>
   /** The same Google account in another workspace too: no new sign-in. */

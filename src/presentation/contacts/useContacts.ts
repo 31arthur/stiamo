@@ -1,6 +1,6 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-import type { Contact, ContactsStatus } from '@/domain/contacts/Contacts'
+import type { Contact, ContactChanges, ContactsStatus } from '@/domain/contacts/Contacts'
 import type { WorkspaceScope } from '@/domain/shared/workspace'
 import { useServices } from '@/presentation/app/services'
 import { useUserId } from '@/presentation/data/hooks'
@@ -21,11 +21,19 @@ export function useContactsStatus() {
 const EMPTY: Contact[] = []
 
 /** One workspace's contacts (or everyone's), matching what was typed. `limit` grows as more are asked for. */
-export function useContactList(scope: WorkspaceScope, q: string, limit: number, enabled: boolean) {
+export function useContactList(scope: WorkspaceScope, q: string, limit: number, enabled: boolean, recent?: number) {
   const { contacts } = useServices()
   const userId = useUserId()
-  const query = useQuery({ queryKey: ['contacts', userId, 'list', scope, q, limit], queryFn: () => contacts.list(scope, q, limit), enabled, staleTime: 60_000, placeholderData: (prev) => prev, retry: false })
+  const query = useQuery({ queryKey: ['contacts', userId, 'list', scope, q, limit, recent ?? 0], queryFn: () => contacts.list(scope, q, limit, recent ? { recent } : undefined), enabled, staleTime: 60_000, placeholderData: (prev) => prev, retry: false })
   return { items: query.data?.items ?? EMPTY, total: query.data?.total ?? 0, loading: query.isLoading, error: query.error instanceof Error ? query.error.message : null }
+}
+
+/** Saves what you know about a contact (tags, profile, zone, no rapport plan) and refreshes the lists. */
+export function useContactUpdate() {
+  const { contacts } = useServices()
+  const client = useQueryClient()
+  const userId = useUserId()
+  return useMutation({ mutationFn: (v: { id: string; changes: ContactChanges }) => contacts.update(v.id, v.changes), onSuccess: () => client.invalidateQueries({ queryKey: ['contacts', userId] }) })
 }
 
 /** Reads the contacts again now, for one account link or all of them, then refreshes what is shown. */

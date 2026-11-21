@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookUser, History, Mail, Phone, Search, Users } from 'lucide-react'
+import { BookUser, History, Mail, Phone, Search, Tag, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -16,6 +16,7 @@ import { useEntities, useToday } from '@/presentation/data/hooks'
 import { friendlyDate } from '@/presentation/components/dates'
 import { ContactAccountsSheet } from './ContactAccountsSheet'
 import { ContactHistory } from './ContactHistory'
+import { ContactTagsSheet } from './ContactTagsSheet'
 import { useContactList, useContactsAvailable, useContactsStatus } from './useContacts'
 
 const PAGE = 60
@@ -30,6 +31,8 @@ export function ContactsPage() {
   const [q, setQ] = useState('')
   const [limit, setLimit] = useState(PAGE)
   const [history, setHistory] = useState<Contact | null>(null)
+  const [tagging, setTagging] = useState<Contact | null>(null)
+  const [recentOnly, setRecentOnly] = useState(false)
   const today = useToday()
   const { data: followUps } = useEntities('followUp')
   const { data: tasks } = useEntities('task')
@@ -51,7 +54,7 @@ export function ContactsPage() {
   }, [params, setParams])
 
   const linked = (status.data?.accounts ?? []).filter((a) => scope === 'all' || a.workspace === scope)
-  const { items, total, loading, error } = useContactList(scope, q, limit, available && linked.length > 0)
+  const { items, total, loading, error } = useContactList(scope, q, limit, available && linked.length > 0, recentOnly ? 14 : undefined)
   const accountsHere = new Set(linked.map((a) => a.email)).size
 
   return (
@@ -94,6 +97,10 @@ export function ContactsPage() {
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Search by name, organisation, email or number" className="pl-9" />
             </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={recentOnly} onChange={(e) => setRecentOnly(e.target.checked)} className="size-4 accent-[var(--foreground)]" />
+              Added in the last 14 days
+            </label>
             <span className="text-xs text-muted-foreground">
               {total} {total === 1 ? 'contact' : 'contacts'} from {accountsHere} Google {accountsHere === 1 ? 'account' : 'accounts'}
             </span>
@@ -113,7 +120,7 @@ export function ContactsPage() {
               <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {items.map((c) => (
                   <li key={c.id}>
-                    <ContactCard contact={c} showWorkspaces={scope === 'all'} showAccount={linked.length > 1 && scope !== 'all'} activity={activityOf(c, followUps, tasks)} today={today} onHistory={() => setHistory(c)} />
+                    <ContactCard contact={c} showWorkspaces={scope === 'all'} showAccount={linked.length > 1 && scope !== 'all'} activity={activityOf(c, followUps, tasks)} today={today} onHistory={() => setHistory(c)} onTag={() => setTagging(c)} />
                   </li>
                 ))}
               </ul>
@@ -129,17 +136,21 @@ export function ContactsPage() {
 
       {available && <ContactAccountsSheet open={open} onOpenChange={setOpen} scope={scope} />}
       <ContactHistory contact={history} onClose={() => setHistory(null)} />
+      <ContactTagsSheet contact={tagging} onClose={() => setTagging(null)} />
     </>
   )
 }
 
-function ContactCard({ contact: c, showWorkspaces, showAccount, activity, today, onHistory }: { contact: Contact; showWorkspaces: boolean; showAccount: boolean; activity: ReturnType<typeof activityOf>; today: string; onHistory: () => void }) {
+function ContactCard({ contact: c, showWorkspaces, showAccount, activity, today, onHistory, onTag }: { contact: Contact; showWorkspaces: boolean; showAccount: boolean; activity: ReturnType<typeof activityOf>; today: string; onHistory: () => void; onTag: () => void }) {
   return (
     <article className="grid h-full content-start gap-2.5 rounded-2xl border bg-card/80 p-4">
       <header className="flex items-center gap-3">
         {c.photo ? <img src={c.photo} alt="" loading="lazy" referrerPolicy="no-referrer" className="size-10 shrink-0 rounded-full object-cover" /> : <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold">{initials(c.name)}</span>}
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold">{c.name}</h3>
+          <h3 className="flex items-center gap-1.5 truncate text-sm font-semibold">
+            {c.name}
+            {c.isNew && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">New</span>}
+          </h3>
           {(c.organisation || c.title) && <p className="truncate text-xs text-muted-foreground">{[c.title, c.organisation].filter(Boolean).join(' · ')}</p>}
         </div>
       </header>
@@ -165,6 +176,12 @@ function ContactCard({ contact: c, showWorkspaces, showAccount, activity, today,
         </ul>
       )}
       {c.notes && <p className="line-clamp-2 text-xs text-muted-foreground">{c.notes}</p>}
+      <button type="button" onClick={onTag} className="flex flex-wrap items-center gap-1.5 rounded-lg bg-muted/50 px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <Tag className="size-3.5 shrink-0" />
+        {c.tags && c.tags.length > 0 ? c.tags.slice(0, 4).map((t) => <span key={t} className="rounded bg-background px-1.5 py-0.5">{t}</span>) : <span>Add tags</span>}
+        {c.profile?.tier && <span className="ml-auto font-medium">Tier {c.profile.tier}</span>}
+        {c.rapportExcluded && <span className="ml-auto">no plan</span>}
+      </button>
       <button type="button" onClick={onHistory} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
         <History className="size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 truncate">
